@@ -3,7 +3,10 @@
     <a href="/" class="nav-brand">Quest Planner</a>
     <% if (user) { %>
       <div class="nav-links">
-        <span class="nav-user"><%= user.username %> (<%= user.role === 'dm' ? 'Dungeon Master' : 'Adventurer' %>)</span>
+        <span class="nav-user"><%= user.username %> (<%= user.role === 'admin' ? 'Guild Master' : user.role === 'dm' ? 'Dungeon Master' : 'Adventurer' %>)</span>
+        <% if (user.role === 'admin') { %>
+          <a href="/admin/users" class="btn btn-small btn-outline">Settings</a>
+        <% } %>
         <form action="/logout" method="POST" class="inline-form">
           <button type="submit" class="btn btn-small btn-outline">Leave Tavern</button>
         </form>

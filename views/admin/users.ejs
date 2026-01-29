@@ -1,0 +1,50 @@
+<%- include('../partials/head', { pageTitle: 'Guild Settings' }) %>
+
+<div class="page-header">
+  <h1>Guild Settings</h1>
+  <a href="/" class="btn btn-outline">Back to Chamber</a>
+</div>
+
+<div class="card">
+  <h2>Guild Members</h2>
+  <div class="admin-table-wrapper">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Role</th>
+          <th>Joined</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const u of users) { %>
+          <tr>
+            <td><%= u.username %></td>
+            <td>
+              <span class="role-badge role-<%= u.role %>">
+                <%= u.role === 'admin' ? 'Guild Master' : u.role === 'dm' ? 'Dungeon Master' : 'Adventurer' %>
+              </span>
+            </td>
+            <td class="admin-date"><%= new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) %></td>
+            <td>
+              <% if (u.role === 'admin') { %>
+                <span class="text-muted">&mdash;</span>
+              <% } else { %>
+                <form action="/admin/users/<%= u.id %>/role" method="POST" class="role-form">
+                  <select name="role" class="role-select">
+                    <option value="player" <%= u.role === 'player' ? 'selected' : '' %>>Adventurer</option>
+                    <option value="dm" <%= u.role === 'dm' ? 'selected' : '' %>>Dungeon Master</option>
+                  </select>
+                  <button type="submit" class="btn btn-small btn-primary">Save</button>
+                </form>
+              <% } %>
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%- include('../partials/foot') %>

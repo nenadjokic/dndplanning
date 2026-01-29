@@ -25,14 +25,52 @@
     <% } %>
   <% } %>
 
+  <% if (Object.keys(preferenceMap).length > 0) { %>
+    <div class="preference-display">
+      <h3>DM / Admin Preferences</h3>
+      <% for (const uid in preferenceMap) { %>
+        <% const pref = preferenceMap[uid]; %>
+        <% const prefSlot = slots.find(s => s.id === pref.slot_id); %>
+        <% if (prefSlot) { %>
+          <p class="preference-entry">
+            <strong><%= pref.username %></strong> prefers:
+            <%= new Date(prefSlot.date_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) %>
+            <%= new Date(prefSlot.date_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %>
+            <% if (prefSlot.label) { %> &mdash; <%= prefSlot.label %><% } %>
+          </p>
+        <% } %>
+      <% } %>
+    </div>
+  <% } %>
+
   <h2>Party Availability</h2>
   <% if (players.length === 0) { %>
     <p class="empty-state-text">No adventurers have joined the guild yet.</p>
   <% } else { %>
-    <%- include('../partials/slot-grid', { slots, players, voteMap, slotSummary }) %>
+    <%- include('../partials/slot-grid', { slots, players, voteMap, slotSummary, preferenceMap }) %>
   <% } %>
 
   <% if (session.status === 'open') { %>
+    <div class="dm-actions">
+      <h3>Your Preferred Date</h3>
+      <form action="/sessions/<%= session.id %>/prefer" method="POST" class="confirm-form">
+        <div class="form-group">
+          <label for="prefer_slot_id">Choose your preferred slot:</label>
+          <select name="slot_id" id="prefer_slot_id">
+            <option value="">-- No preference --</option>
+            <% for (const slot of slots) { %>
+              <option value="<%= slot.id %>" <%= myPreference && myPreference.slot_id === slot.id ? 'selected' : '' %>>
+                <%= new Date(slot.date_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) %>
+                <%= new Date(slot.date_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %>
+                <% if (slot.label) { %> - <%= slot.label %><% } %>
+              </option>
+            <% } %>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-outline">Set Preference</button>
+      </form>
+    </div>
+
     <div class="dm-actions">
       <h3>Proclaim a Quest Date</h3>
       <form action="/sessions/<%= session.id %>/confirm" method="POST" class="confirm-form">

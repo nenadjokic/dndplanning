@@ -1,4 +1,4 @@
-<%# Expects: slots, players, voteMap, slotSummary %>
+<%# Expects: slots, players, voteMap, slotSummary, preferenceMap %>
 <div class="slot-grid-wrapper">
   <table class="slot-grid">
     <thead>
@@ -46,6 +46,21 @@
           </td>
         <% } %>
       </tr>
+      <% if (typeof preferenceMap !== 'undefined' && Object.keys(preferenceMap).length > 0) { %>
+        <tr class="summary-row">
+          <td class="grid-player"><strong>DM Pref</strong></td>
+          <% for (const slot of slots) { %>
+            <td class="grid-cell summary-cell">
+              <% const prefUsers = Object.values(preferenceMap).filter(p => p.slot_id === slot.id); %>
+              <% if (prefUsers.length > 0) { %>
+                <span class="preference-star" title="<%= prefUsers.map(p => p.username).join(', ') %>">&#9733;</span>
+              <% } else { %>
+                &mdash;
+              <% } %>
+            </td>
+          <% } %>
+        </tr>
+      <% } %>
     </tfoot>
   </table>
 </div>

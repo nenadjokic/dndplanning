@@ -53,12 +53,12 @@ router.post('/register', async (req, res) => {
 
   const hash = await bcrypt.hash(password, 10);
   const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
-  const role = userCount === 0 ? 'dm' : 'player';
+  const role = userCount === 0 ? 'admin' : 'player';
 
   const result = db.prepare('INSERT INTO users (username, password, role) VALUES (?, ?, ?)').run(username, hash, role);
 
   req.session.userId = result.lastInsertRowid;
-  const roleLabel = role === 'dm' ? 'Dungeon Master' : 'Adventurer';
+  const roleLabel = role === 'admin' ? 'Guild Master' : 'Adventurer';
   req.flash('success', `Welcome, ${username}! You have joined as ${roleLabel}.`);
   res.redirect('/');
 });

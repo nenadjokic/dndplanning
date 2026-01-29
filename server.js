@@ -13,6 +13,7 @@ const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
 const sessionRoutes = require('./routes/sessions');
 const voteRoutes = require('./routes/votes');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,6 +42,7 @@ app.use('/', authRoutes);
 app.use('/', dashboardRoutes);
 app.use('/sessions', sessionRoutes);
 app.use('/votes', voteRoutes);
+app.use('/admin', adminRoutes);
 
 app.listen(PORT, () => {
   console.log(`Quest Planner running at http://localhost:${PORT}`);

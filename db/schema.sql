@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT NOT NULL UNIQUE,
   password TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'player' CHECK(role IN ('dm', 'player')),
+  role TEXT NOT NULL DEFAULT 'player' CHECK(role IN ('admin', 'dm', 'player')),
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -29,4 +29,12 @@ CREATE TABLE IF NOT EXISTS votes (
   user_id INTEGER NOT NULL REFERENCES users(id),
   status TEXT NOT NULL CHECK(status IN ('available', 'maybe', 'unavailable')),
   UNIQUE(slot_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS preferences (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  slot_id INTEGER NOT NULL REFERENCES slots(id) ON DELETE CASCADE,
+  UNIQUE(session_id, user_id)
 );

@@ -4,14 +4,13 @@ const { requireLogin } = require('../middleware/auth');
 const router = express.Router();
 
 router.get('/', requireLogin, (req, res) => {
-  if (req.user.role === 'dm') {
+  if (req.user.role === 'dm' || req.user.role === 'admin') {
     const sessions = db.prepare(`
       SELECT s.*, sl.date_time as confirmed_date, sl.label as confirmed_label
       FROM sessions s
       LEFT JOIN slots sl ON s.confirmed_slot_id = sl.id
-      WHERE s.created_by = ?
       ORDER BY s.created_at DESC
-    `).all(req.user.id);
+    `).all();
 
     return res.render('dm/dashboard', { sessions });
   }

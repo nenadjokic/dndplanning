@@ -88,10 +88,24 @@ router.get('/:id', requireLogin, (req, res) => {
     }
   }
 
-  const isDM = req.user.role === 'dm';
+  const isDM = req.user.role === 'dm' || req.user.role === 'admin';
+
+  // Load preferences for DM/admin users
+  const preferences = db.prepare(`
+    SELECT p.user_id, p.slot_id, u.username
+    FROM preferences p
+    JOIN users u ON p.user_id = u.id
+    WHERE p.session_id = ?
+  `).all(session.id);
+
+  const preferenceMap = {};
+  for (const p of preferences) {
+    preferenceMap[p.user_id] = { slot_id: p.slot_id, username: p.username };
+  }
 
   if (isDM) {
-    res.render('dm/session-detail', { session, slots, players, voteMap, slotSummary });
+    const myPreference = preferenceMap[req.user.id] || null;
+    res.render('dm/session-detail', { session, slots, players, voteMap, slotSummary, preferences, preferenceMap, myPreference });
   } else {
     // Get this player's votes
     const myVotes = {};
@@ -132,6 +146,33 @@ router.post('/:id/cancel', requireLogin, requireDM, (req, res) => {
     .run('cancelled', session.id);
 
   req.flash('success', 'The quest has been cancelled.');
+  res.redirect('/sessions/' + session.id);
+});
+
+router.post('/:id/prefer', requireLogin, requireDM, (req, res) => {
+  const { slot_id } = req.body;
+  const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(req.params.id);
+
+  if (!session) {
+    req.flash('error', 'Session not found.');
+    return res.redirect('/');
+  }
+
+  if (!slot_id) {
+    db.prepare('DELETE FROM preferences WHERE session_id = ? AND user_id = ?')
+      .run(session.id, req.user.id);
+    req.flash('success', 'Preference cleared.');
+    return res.redirect('/sessions/' + session.id);
+  }
+
+  db.prepare(`
+    INSERT INTO preferences (session_id, user_id, slot_id)
+    VALUES (?, ?, ?)
+    ON CONFLICT(session_id, user_id)
+    DO UPDATE SET slot_id = excluded.slot_id
+  `).run(session.id, req.user.id, slot_id);
+
+  req.flash('success', 'Your preferred date has been set!');
   res.redirect('/sessions/' + session.id);
 });
 

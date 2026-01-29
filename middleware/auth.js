@@ -23,11 +23,19 @@ function requireLogin(req, res, next) {
 }
 
 function requireDM(req, res, next) {
-  if (!req.user || req.user.role !== 'dm') {
+  if (!req.user || (req.user.role !== 'dm' && req.user.role !== 'admin')) {
     req.flash('error', 'Only the Dungeon Master may access that page.');
     return res.redirect('/');
   }
   next();
 }
 
-module.exports = { attachUser, requireLogin, requireDM };
+function requireAdmin(req, res, next) {
+  if (!req.user || req.user.role !== 'admin') {
+    req.flash('error', 'Only the Guild Master may access that page.');
+    return res.redirect('/');
+  }
+  next();
+}
+
+module.exports = { attachUser, requireLogin, requireDM, requireAdmin };

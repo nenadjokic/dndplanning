@@ -190,7 +190,14 @@ sudo certbot --nginx -d quest.example.com
 
 ### 1. Docker build i run
 
-Iz root direktorijuma projekta:
+Kloniraj repozitorijum i udji u direktorijum:
+
+```bash
+git clone https://github.com/nenadjokic/dndplanning.git
+cd dndplanning
+```
+
+Zatim build-uj i pokreni:
 
 ```bash
 # Build image
@@ -233,6 +240,10 @@ docker rm -f quest-planner         # Obrisi kontejner (podaci ostaju u volume-u)
 Jednostavniji nacin za upravljanje kontejnerom. Koristi `docker-compose.yml` koji je vec ukljucen u projekat:
 
 ```bash
+# Kloniraj repo (ako nisi vec)
+git clone https://github.com/nenadjokic/dndplanning.git
+cd dndplanning
+
 # Pokreni (build + start)
 docker compose up -d
 
@@ -293,8 +304,9 @@ Za pristup sa prilagodnim domenom, dodaj u `/etc/hosts` na klijent masini:
 
 1. Otvori `http://localhost:3000` (ili adresu servera)
 2. Klikni **"Join the Guild"** da se registrujes
-3. **Prvi registrovani korisnik automatski postaje Dungeon Master**
+3. **Prvi registrovani korisnik automatski postaje Guild Master (Admin)**
 4. Svi naredni korisnici postaju Playeri (Adventureri)
+5. Admin moze da dodeljuje DM rolu drugim korisnicima kroz **Settings** stranicu
 
 ### DM workflow
 

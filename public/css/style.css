@@ -655,6 +655,112 @@ h3 { font-size: 1.25rem; }
   font-style: italic;
 }
 
+/* === Admin Table === */
+.admin-table-wrapper {
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  border: 1px solid var(--border);
+}
+
+.admin-table thead th {
+  background: var(--bg-darker);
+  color: var(--gold);
+  font-family: var(--font-heading);
+}
+
+.admin-table tbody tr:hover {
+  background: var(--bg-card-hover);
+}
+
+.admin-date {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.role-admin {
+  background: rgba(212, 168, 67, 0.2);
+  color: var(--gold);
+  border: 1px solid var(--gold-dim);
+}
+
+.role-dm {
+  background: rgba(155, 89, 182, 0.2);
+  color: #bb86fc;
+  border: 1px solid #9b59b6;
+}
+
+.role-player {
+  background: rgba(39, 174, 96, 0.2);
+  color: var(--green-light);
+  border: 1px solid var(--green);
+}
+
+.role-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.role-select {
+  padding: 0.3rem 0.5rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+}
+
+.text-muted {
+  color: var(--text-secondary);
+}
+
+/* === Preference === */
+.preference-display {
+  background: rgba(212, 168, 67, 0.08);
+  border: 1px solid var(--gold-dim);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.preference-display h3 {
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.preference-entry {
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.preference-star {
+  color: var(--gold);
+  font-size: 1.2rem;
+}
+
 /* === Responsive === */
 @media (max-width: 640px) {
   body { font-size: 16px; }
