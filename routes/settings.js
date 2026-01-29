@@ -34,11 +34,18 @@ const upload = multer({
 });
 
 router.get('/', requireLogin, (req, res) => {
+  // Re-read user to get latest data (e.g. after token generation)
+  const freshUser = db.prepare('SELECT id, username, role, avatar, time_format, calendar_token FROM users WHERE id = ?').get(req.user.id);
   const unavailabilities = db.prepare(
     'SELECT * FROM unavailability WHERE user_id = ? ORDER BY date'
   ).all(req.user.id);
 
-  res.render('settings', { unavailabilities });
+  let calendarUrl = null;
+  if (freshUser.calendar_token) {
+    calendarUrl = `${req.protocol}://${req.get('host')}/calendar/${freshUser.calendar_token}/feed.ics`;
+  }
+
+  res.render('settings', { unavailabilities, calendarUrl, settingsUser: freshUser });
 });
 
 router.post('/time-format', requireLogin, (req, res) => {

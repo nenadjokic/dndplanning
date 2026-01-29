@@ -94,14 +94,14 @@
 <div class="settings-section card">
   <h2>Calendar Feed</h2>
   <p class="form-hint">Subscribe to your D&D sessions in your favorite calendar app. The feed includes confirmed sessions and your unavailability days.</p>
-  <% if (user.calendar_token) { %>
+  <% if (calendarUrl) { %>
     <div class="form-group">
       <label>Your Calendar Feed URL</label>
-      <input type="text" value="<%= `${req.protocol}://${req.get('host')}/calendar/${user.calendar_token}/feed.ics` %>" readonly onclick="this.select()" class="calendar-url-input">
+      <input type="text" value="<%= calendarUrl %>" readonly onclick="this.select()" class="calendar-url-input">
     </div>
   <% } %>
   <form action="/settings/generate-calendar-token" method="POST">
-    <button type="submit" class="btn btn-outline btn-small"><%= user.calendar_token ? 'Regenerate Token' : 'Generate Calendar URL' %></button>
+    <button type="submit" class="btn btn-outline btn-small"><%= calendarUrl ? 'Regenerate Token' : 'Generate Calendar URL' %></button>
   </form>
 </div>
 
