@@ -108,6 +108,17 @@ h3 { font-size: 1.25rem; }
   display: inline;
 }
 
+.nav-settings-icon {
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+}
+
+.nav-settings-icon:hover {
+  color: var(--gold-bright);
+}
+
 /* === Flash Messages === */
 .flash {
   padding: 0.75rem 1rem;

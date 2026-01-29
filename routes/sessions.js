@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../db/connection');
-const { requireLogin, requireDM } = require('../middleware/auth');
+const { requireLogin, requireDM, requireAdmin } = require('../middleware/auth');
 const router = express.Router();
 
 router.get('/new', requireLogin, requireDM, (req, res) => {
@@ -189,6 +189,26 @@ router.post('/:id/reopen', requireLogin, requireDM, (req, res) => {
 
   req.flash('success', 'The quest board has been reopened!');
   res.redirect('/sessions/' + session.id);
+});
+
+router.post('/:id/delete', requireLogin, requireAdmin, (req, res) => {
+  const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(req.params.id);
+
+  if (!session) {
+    req.flash('error', 'Session not found.');
+    return res.redirect('/');
+  }
+
+  const deleteSession = db.transaction(() => {
+    db.prepare('DELETE FROM preferences WHERE session_id = ?').run(session.id);
+    db.prepare('DELETE FROM votes WHERE slot_id IN (SELECT id FROM slots WHERE session_id = ?)').run(session.id);
+    db.prepare('DELETE FROM slots WHERE session_id = ?').run(session.id);
+    db.prepare('DELETE FROM sessions WHERE id = ?').run(session.id);
+  });
+
+  deleteSession();
+  req.flash('success', 'The quest has been erased from the tavern board.');
+  res.redirect('/');
 });
 
 module.exports = router;

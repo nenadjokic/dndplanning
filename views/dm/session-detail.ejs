@@ -101,6 +101,14 @@
       </form>
     </div>
   <% } %>
+
+  <% if (user && user.role === 'admin') { %>
+    <div class="dm-actions">
+      <form action="/sessions/<%= session.id %>/delete" method="POST" class="inline-form">
+        <button type="submit" class="btn btn-danger" onclick="return confirm('Permanently delete this quest and all associated data? This cannot be undone.')">Delete Quest</button>
+      </form>
+    </div>
+  <% } %>
 </div>
 
 <%- include('../partials/foot') %>
