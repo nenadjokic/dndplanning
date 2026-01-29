@@ -3,7 +3,20 @@
     <a href="/" class="nav-brand">Quest Planner</a>
     <% if (user) { %>
       <div class="nav-links">
-        <span class="nav-user"><%= user.username %> (<%= user.role === 'admin' ? 'Guild Master' : user.role === 'dm' ? 'Dungeon Master' : 'Adventurer' %>)</span>
+        <span class="nav-user">
+          <% if (user.avatar) { %>
+            <img src="/avatars/<%= user.avatar %>" alt="" class="avatar-tiny">
+          <% } else { %>
+            <span class="avatar-letter"><%= user.username.charAt(0).toUpperCase() %></span>
+          <% } %>
+          <%= user.username %> (<%= user.role === 'admin' ? 'Guild Master' : user.role === 'dm' ? 'Dungeon Master' : 'Adventurer' %>)
+        </span>
+        <a href="/settings" class="nav-settings-icon" title="Settings">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+          </svg>
+        </a>
         <% if (user.role === 'admin') { %>
           <a href="/admin/users" class="nav-settings-icon" title="Guild Settings">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

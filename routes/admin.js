@@ -33,4 +33,27 @@ router.post('/users/:id/role', requireLogin, requireAdmin, (req, res) => {
   res.redirect('/admin/users');
 });
 
+router.get('/check-update', requireLogin, requireAdmin, async (req, res) => {
+  try {
+    const response = await fetch('https://api.github.com/repos/nenadjokic/dndplanning/releases/latest');
+    if (!response.ok) {
+      return res.json({ error: 'Could not check for updates.' });
+    }
+    const release = await response.json();
+    const latestVersion = release.tag_name.replace(/^v/, '');
+    const currentVersion = require('../package.json').version;
+
+    res.json({
+      currentVersion,
+      latestVersion,
+      updateAvailable: latestVersion !== currentVersion,
+      releaseUrl: release.html_url,
+      releaseName: release.name,
+      releaseBody: release.body
+    });
+  } catch (e) {
+    res.json({ error: 'Could not check for updates.' });
+  }
+});
+
 module.exports = router;

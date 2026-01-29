@@ -14,15 +14,20 @@ const dashboardRoutes = require('./routes/dashboard');
 const sessionRoutes = require('./routes/sessions');
 const voteRoutes = require('./routes/votes');
 const adminRoutes = require('./routes/admin');
+const settingsRoutes = require('./routes/settings');
+const calendarRoutes = require('./routes/calendar');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+app.locals.appVersion = require('./package.json').version;
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/avatars', express.static(path.join(__dirname, 'data', 'avatars')));
 
 app.use(session({
   store: new SQLiteStore({
@@ -43,6 +48,8 @@ app.use('/', dashboardRoutes);
 app.use('/sessions', sessionRoutes);
 app.use('/votes', voteRoutes);
 app.use('/admin', adminRoutes);
+app.use('/settings', settingsRoutes);
+app.use('/calendar', calendarRoutes);
 
 app.listen(PORT, () => {
   console.log(`Quest Planner running at http://localhost:${PORT}`);

@@ -1,61 +1,81 @@
 # Quest Planner — D&D Session Scheduler
 
-Web aplikacija gde Dungeon Master kreira termine za sesije, a igraci glasaju koji im odgovaraju.
-Dark fantasy tema, Node.js + SQLite backend, EJS server-side rendering.
+A web application where the Dungeon Master creates session time slots and players vote on their availability.
+Dark fantasy theme, Node.js + SQLite backend, EJS server-side rendering.
 
-## Sadrzaj
+## Table of Contents
 
-- [Preduslovi](#preduslovi)
-- [Instalacija na web serveru](#instalacija-na-web-serveru)
-  - [1. Kloniranje repozitorijuma](#1-kloniranje-repozitorijuma)
-  - [2. Instalacija zavisnosti](#2-instalacija-zavisnosti)
-  - [3. Konfiguracija](#3-konfiguracija)
-  - [4. Pokretanje](#4-pokretanje)
-  - [5. Process manager (produkcija)](#5-process-manager-produkcija)
-  - [6. Reverse proxy (Nginx)](#6-reverse-proxy-nginx)
-- [Instalacija putem Dockera](#instalacija-putem-dockera)
-  - [1. Docker build i run](#1-docker-build-i-run)
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Server Installation](#server-installation)
+  - [1. Clone the Repository](#1-clone-the-repository)
+  - [2. Install Dependencies](#2-install-dependencies)
+  - [3. Configuration](#3-configuration)
+  - [4. Start the App](#4-start-the-app)
+  - [5. Process Manager (Production)](#5-process-manager-production)
+  - [6. Reverse Proxy (Nginx)](#6-reverse-proxy-nginx)
+- [Docker Installation](#docker-installation)
+  - [1. Docker Build and Run](#1-docker-build-and-run)
   - [2. Docker Compose](#2-docker-compose)
-  - [3. Docker na Raspberry Pi](#3-docker-na-raspberry-pi)
-- [Koriscenje aplikacije](#koriscenje-aplikacije)
-- [Struktura projekta](#struktura-projekta)
-- [Backup baze](#backup-baze)
+  - [3. Docker on Raspberry Pi](#3-docker-on-raspberry-pi)
+- [Usage](#usage)
+- [Project Structure](#project-structure)
+- [Database Backup](#database-backup)
+- [Updating](#updating)
+- [Changelog](#changelog)
 
 ---
 
-## Preduslovi
+## Features
 
-### Za instalaciju na serveru (bez Dockera)
+- **Session Scheduling** — DM posts proposed time slots, players vote on availability
+- **Availability Grid** — Visual overview of who can play when (available / maybe / unavailable)
+- **DM Preferences** — DMs and admins can mark their preferred slot with a star
+- **Session Lifecycle** — Open → Confirmed → Cancelled / Reopened
+- **User Settings** — Avatar upload, 12h/24h time format toggle, password change
+- **Unavailability Days** — Players mark dates they can't play; DM sees these when creating sessions
+- **Calendar Feed (iCal)** — Subscribe to confirmed sessions and unavailability in any calendar app
+- **Auto-Update Check** — Admin can check for new releases from the Guild Settings page
+- **Role System** — Guild Master (admin), Dungeon Master, Adventurer (player)
+- **Dark Fantasy Theme** — Medieval-inspired UI with custom fonts
+- **SQLite Database** — Zero-config, file-based, easy to back up
+- **Docker Ready** — Dockerfile and docker-compose.yml included
+
+---
+
+## Prerequisites
+
+### Server Installation (without Docker)
 
 - **Node.js** >= 18.x
 - **npm** >= 9.x
 - **Git**
 
-Na Raspberry Pi (Debian/Ubuntu):
+On Raspberry Pi (Debian/Ubuntu):
 
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
 sudo apt install -y nodejs git
 ```
 
-### Za Docker instalaciju
+### Docker Installation
 
 - **Docker** >= 20.x
-- **Docker Compose** >= 2.x (opciono, ali preporuceno)
+- **Docker Compose** >= 2.x (optional but recommended)
 
-Na Raspberry Pi:
+On Raspberry Pi:
 
 ```bash
 curl -fsSL https://get.docker.com | sudo bash
 sudo usermod -aG docker $USER
-# Logout/login da bi grupa postala aktivna
+# Log out and back in for the group change to take effect
 ```
 
 ---
 
-## Instalacija na web serveru
+## Server Installation
 
-### 1. Kloniranje repozitorijuma
+### 1. Clone the Repository
 
 ```bash
 cd /opt
@@ -63,97 +83,97 @@ git clone https://github.com/nenadjokic/dndplanning.git
 cd dndplanning
 ```
 
-Ili ako kopiras fajlove rucno, prebaci ih u zeljeni direktorijum (npr. `/opt/dndplanning`).
+Or manually copy the files to your desired directory (e.g. `/opt/dndplanning`).
 
-### 2. Instalacija zavisnosti
+### 2. Install Dependencies
 
 ```bash
 npm install --production
 ```
 
-Flag `--production` preskace dev zavisnosti (nodemon) jer u produkciji nisu potrebne.
+The `--production` flag skips dev dependencies (nodemon) which aren't needed in production.
 
-### 3. Konfiguracija
+### 3. Configuration
 
-Kreiraj `.env` fajl na osnovu primera:
+Create a `.env` file from the example:
 
 ```bash
 cp .env.example .env
 ```
 
-Otvori `.env` i podesi vrednosti:
+Open `.env` and set the values:
 
 ```env
 PORT=3000
-SESSION_SECRET=ovde-stavi-dugi-random-string
+SESSION_SECRET=put-a-long-random-string-here
 ```
 
-Za generisanje sigurnog session secret-a:
+To generate a secure session secret:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
 
-Kopiraj izlaz i postavi ga kao `SESSION_SECRET`.
+Copy the output and set it as `SESSION_SECRET`.
 
-### 4. Pokretanje
+### 4. Start the App
 
-**Development** (sa auto-reload-om):
+**Development** (with auto-reload):
 
 ```bash
 npm run dev
 ```
 
-**Produkcija**:
+**Production**:
 
 ```bash
 npm start
 ```
 
-Aplikacija ce biti dostupna na `http://localhost:3000` (ili koji port si podesio u `.env`).
+The app will be available at `http://localhost:3000` (or whichever port you set in `.env`).
 
-### 5. Process manager (produkcija)
+### 5. Process Manager (Production)
 
-Za produkcijsko okruzenje koristi **PM2** da bi aplikacija radila kao servis i automatski se restartovala:
+For production environments, use **PM2** to run the app as a service with automatic restarts:
 
 ```bash
-# Instalacija PM2
+# Install PM2
 sudo npm install -g pm2
 
-# Pokretanje aplikacije
+# Start the app
 cd /opt/dndplanning
 pm2 start server.js --name quest-planner
 
-# Automatsko pokretanje pri boot-u
+# Enable auto-start on boot
 pm2 startup
 pm2 save
 ```
 
-Korisne PM2 komande:
+Useful PM2 commands:
 
 ```bash
-pm2 status              # Status svih procesa
-pm2 logs quest-planner  # Logovi u realnom vremenu
+pm2 status              # Status of all processes
+pm2 logs quest-planner  # Real-time logs
 pm2 restart quest-planner
 pm2 stop quest-planner
 ```
 
-### 6. Reverse proxy (Nginx)
+### 6. Reverse Proxy (Nginx)
 
-Ako zelis da aplikacija bude dostupna na portu 80/443 (sa ili bez domena), postavi Nginx kao reverse proxy.
+To make the app available on port 80/443 (with or without a domain), set up Nginx as a reverse proxy.
 
-Instaliraj Nginx:
+Install Nginx:
 
 ```bash
 sudo apt install -y nginx
 ```
 
-Kreiraj konfiguraciju `/etc/nginx/sites-available/quest-planner`:
+Create the config file `/etc/nginx/sites-available/quest-planner`:
 
 ```nginx
 server {
     listen 80;
-    server_name quest.example.com;  # ili tvoja IP adresa
+    server_name quest.example.com;  # or your IP address
 
     location / {
         proxy_pass http://127.0.0.1:3000;
@@ -169,7 +189,7 @@ server {
 }
 ```
 
-Aktiviraj sajt i restartuj Nginx:
+Enable the site and restart Nginx:
 
 ```bash
 sudo ln -s /etc/nginx/sites-available/quest-planner /etc/nginx/sites-enabled/
@@ -177,7 +197,7 @@ sudo nginx -t
 sudo systemctl restart nginx
 ```
 
-Za HTTPS sa Let's Encrypt:
+For HTTPS with Let's Encrypt:
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
@@ -186,24 +206,24 @@ sudo certbot --nginx -d quest.example.com
 
 ---
 
-## Instalacija putem Dockera
+## Docker Installation
 
-### 1. Docker build i run
+### 1. Docker Build and Run
 
-Kloniraj repozitorijum i udji u direktorijum:
+Clone the repository and enter the directory:
 
 ```bash
 git clone https://github.com/nenadjokic/dndplanning.git
 cd dndplanning
 ```
 
-Zatim build-uj i pokreni:
+Then build and run:
 
 ```bash
-# Build image
+# Build the image
 docker build -t quest-planner .
 
-# Pokreni kontejner
+# Run the container
 docker run -d \
   --name quest-planner \
   -p 3000:3000 \
@@ -213,84 +233,84 @@ docker run -d \
   quest-planner
 ```
 
-Objasnjenje parametara:
+Parameter reference:
 
-| Parametar | Opis |
+| Parameter | Description |
 |---|---|
-| `-d` | Pokrece kontejner u pozadini (detached) |
-| `--name quest-planner` | Ime kontejnera za lakse upravljanje |
-| `-p 3000:3000` | Mapira port 3000 sa hosta na kontejner |
-| `-e SESSION_SECRET=...` | Postavlja session secret kao env varijablu |
-| `-v quest-planner-data:/app/data` | Perzistentni volume za SQLite bazu podataka |
-| `--restart unless-stopped` | Auto-restart pri boot-u i crash-u |
+| `-d` | Run the container in the background (detached) |
+| `--name quest-planner` | Container name for easier management |
+| `-p 3000:3000` | Map host port 3000 to container port 3000 |
+| `-e SESSION_SECRET=...` | Set the session secret as an environment variable |
+| `-v quest-planner-data:/app/data` | Persistent volume for the SQLite database |
+| `--restart unless-stopped` | Auto-restart on boot and crash |
 
-Korisne Docker komande:
+Useful Docker commands:
 
 ```bash
-docker logs quest-planner          # Logovi
-docker logs -f quest-planner       # Logovi u realnom vremenu
-docker stop quest-planner          # Zaustavi
-docker start quest-planner         # Pokreni ponovo
+docker logs quest-planner          # View logs
+docker logs -f quest-planner       # Real-time logs
+docker stop quest-planner          # Stop
+docker start quest-planner         # Start again
 docker restart quest-planner       # Restart
-docker rm -f quest-planner         # Obrisi kontejner (podaci ostaju u volume-u)
+docker rm -f quest-planner         # Remove container (data persists in volume)
 ```
 
 ### 2. Docker Compose
 
-Jednostavniji nacin za upravljanje kontejnerom. Koristi `docker-compose.yml` koji je vec ukljucen u projekat:
+A simpler way to manage the container. Uses the `docker-compose.yml` included in the project:
 
 ```bash
-# Kloniraj repo (ako nisi vec)
+# Clone repo (if you haven't already)
 git clone https://github.com/nenadjokic/dndplanning.git
 cd dndplanning
 
-# Pokreni (build + start)
+# Start (build + run)
 docker compose up -d
 
-# Logovi
+# View logs
 docker compose logs -f
 
-# Zaustavi
+# Stop
 docker compose down
 
-# Rebuild posle izmena koda
+# Rebuild after code changes
 docker compose up -d --build
 ```
 
-`docker-compose.yml` automatski:
-- Build-uje image iz Dockerfile-a
-- Mapira port 3000
-- Kreira perzistentni volume za bazu
-- Postavlja restart politiku
-- Ucitava env varijable iz `.env` fajla
+The `docker-compose.yml` automatically:
+- Builds the image from the Dockerfile
+- Maps port 3000
+- Creates a persistent volume for the database
+- Sets a restart policy
+- Loads environment variables from the `.env` file
 
-### 3. Docker na Raspberry Pi
+### 3. Docker on Raspberry Pi
 
-Docker image radi na ARM64 arhitekturi (Raspberry Pi 4/5) bez ikakvih izmena jer koristi Node.js Alpine image koji podrzava vise arhitektura.
+The Docker image works on ARM64 architecture (Raspberry Pi 4/5) without any modifications since it uses the Node.js Alpine image which supports multiple architectures.
 
 ```bash
-# Na Raspberry Pi-u
+# On Raspberry Pi
 cd /opt/dndplanning
 docker compose up -d
 ```
 
-Ako se na Pi-u koristi stariji 32-bit OS, zameni base image u `Dockerfile`:
+If the Pi is running an older 32-bit OS, change the base image in the `Dockerfile`:
 
 ```dockerfile
 FROM node:20-bullseye-slim
 ```
 
-umesto `node:20-alpine`.
+instead of `node:20-alpine`.
 
-#### Pristup iz lokalne mreze
+#### Local Network Access
 
-Ako je Pi na adresi `192.168.1.100`, aplikacija je dostupna na:
+If the Pi is at `192.168.1.100`, the app is available at:
 
 ```
 http://192.168.1.100:3000
 ```
 
-Za pristup sa prilagodnim domenom, dodaj u `/etc/hosts` na klijent masini:
+For access with a custom domain, add to `/etc/hosts` on the client machine:
 
 ```
 192.168.1.100  quest.local
@@ -298,88 +318,164 @@ Za pristup sa prilagodnim domenom, dodaj u `/etc/hosts` na klijent masini:
 
 ---
 
-## Koriscenje aplikacije
+## Usage
 
-### Prvog korisnika
+### First User
 
-1. Otvori `http://localhost:3000` (ili adresu servera)
-2. Klikni **"Join the Guild"** da se registrujes
-3. **Prvi registrovani korisnik automatski postaje Guild Master (Admin)**
-4. Svi naredni korisnici postaju Playeri (Adventureri)
-5. Admin moze da dodeljuje DM rolu drugim korisnicima kroz **Settings** stranicu
+1. Open `http://localhost:3000` (or your server address)
+2. Click **"Join the Guild"** to register
+3. **The first registered user automatically becomes Guild Master (Admin)**
+4. All subsequent users become Players (Adventurers)
+5. The admin can assign the DM role to other users through the **Guild Settings** page
 
-### DM workflow
+### DM Workflow
 
-1. Na dashboard-u klikni **"Post to Tavern Board"**
-2. Unesi naziv sesije, opis i predlozene termine
-3. Klikni **"Post to Tavern Board"** da objavis
-4. Pregledaj glasove igraca u tabeli dostupnosti
-5. Izaberi termin i klikni **"Proclaim This Date"** da potvrdis
+1. On the dashboard, click **"Post to Tavern Board"**
+2. Enter a session title, description, and proposed time slots
+3. Review any player unavailability dates shown above the form
+4. Click **"Post to Tavern Board"** to publish
+5. Review player votes in the availability grid
+6. Select a slot and click **"Proclaim This Date"** to confirm
 
-### Player workflow
+### Player Workflow
 
-1. Na dashboard-u vidis sve objavljene sesije
-2. Klikni na sesiju koja ima badge **"Needs your vote"**
-3. Za svaki termin izaberi: **Available** / **Maybe** / **Unavailable**
-4. Klikni **"Submit Availability"**
+1. On the dashboard, see all posted sessions
+2. Click on a session with the **"Needs your vote"** badge
+3. For each slot, choose: **Available** / **Maybe** / **Unavailable**
+4. Click **"Submit Availability"**
+
+### Settings
+
+All users can access **Settings** (pencil icon in the nav bar) to:
+- Upload an avatar (displayed in the nav, availability grid, and preferences)
+- Toggle between 12-hour and 24-hour time format
+- Change their password
+- Mark unavailability days with optional reasons
+- Generate a calendar feed URL (iCal) for subscribing in external calendar apps
+
+### Admin Features
+
+The Guild Master can access **Guild Settings** (cogwheel icon) to:
+- Manage user roles (promote/demote between DM and Player)
+- Check for application updates
 
 ---
 
-## Struktura projekta
+## Project Structure
 
 ```
 dndplanning/
 ├── server.js              # Express entry point
 ├── package.json
-├── .env                   # Env varijable (nije u git-u)
-├── .env.example           # Primer env fajla
+├── .env                   # Environment variables (not in git)
+├── .env.example           # Example env file
 ├── Dockerfile
 ├── docker-compose.yml
 ├── .dockerignore
 ├── db/
-│   ├── schema.sql         # DDL za SQLite tabele
-│   └── connection.js      # SQLite konekcija i inicijalizacija
+│   ├── schema.sql         # DDL for SQLite tables
+│   └── connection.js      # SQLite connection and initialization
+├── helpers/
+│   └── time.js            # Date/time formatting helpers (12h/24h)
 ├── middleware/
-│   ├── auth.js            # Auth middleware (login, DM check)
-│   └── flash.js           # Flash poruke
+│   ├── auth.js            # Auth middleware (login, DM check, user data)
+│   └── flash.js           # Flash messages
 ├── routes/
 │   ├── auth.js            # Register, login, logout
-│   ├── dashboard.js       # Redirect po roli (DM/Player)
-│   ├── sessions.js        # CRUD sesija, potvrda termina
-│   └── votes.js           # Glasanje igraca
-├── views/                 # EJS templejti
-│   ├── partials/          # Header, footer, nav, flash, grid
-│   ├── auth/              # Login, register stranice
-│   ├── dm/                # DM dashboard, forma, detalj sesije
-│   └── player/            # Player dashboard, glasanje
+│   ├── admin.js           # User management, update check
+│   ├── calendar.js        # iCal feed endpoint
+│   ├── dashboard.js       # Role-based redirect (DM/Player)
+│   ├── sessions.js        # Session CRUD, slot confirmation
+│   ├── settings.js        # User settings (avatar, time, password, unavailability)
+│   └── votes.js           # Player voting
+├── views/                 # EJS templates
+│   ├── partials/          # Header, footer, nav, flash, slot grid
+│   ├── auth/              # Login, register pages
+│   ├── dm/                # DM dashboard, form, session detail
+│   ├── player/            # Player dashboard, voting
+│   └── settings.ejs       # User settings page
 ├── public/
-│   ├── css/style.css      # Dark fantasy tema
-│   └── js/app.js          # Slot picker, flash dismiss
-└── data/                  # SQLite fajlovi (nije u git-u)
+│   ├── css/style.css      # Dark fantasy theme
+│   └── js/app.js          # Slot picker, flash dismiss, update check
+└── data/                  # SQLite files + avatars (not in git)
+    └── avatars/           # User avatar uploads
 ```
 
 ---
 
-## Backup baze
+## Database Backup
 
-SQLite baza se nalazi u `data/` direktorijumu (ili u Docker volume-u).
+The SQLite database is located in the `data/` directory (or in the Docker volume).
 
-### Na serveru (bez Dockera)
+### On the Server (without Docker)
 
 ```bash
-# Rucni backup
+# Manual backup
 cp /opt/dndplanning/data/dndplanning.db /backup/dndplanning-$(date +%Y%m%d).db
 
-# Cron job za dnevni backup (dodaj u crontab -e)
+# Cron job for daily backup (add with crontab -e)
 0 3 * * * cp /opt/dndplanning/data/dndplanning.db /backup/dndplanning-$(date +\%Y\%m\%d).db
 ```
 
-### Sa Docker volume-a
+### From a Docker Volume
 
 ```bash
-# Pronalazenje volume putanje
+# Find the volume path
 docker volume inspect quest-planner-data
 
-# Kopiranje baze iz kontejnera
+# Copy the database from the container
 docker cp quest-planner:/app/data/dndplanning.db ./backup-dndplanning.db
 ```
+
+---
+
+## Updating
+
+### With Docker (recommended)
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+### Without Docker
+
+```bash
+cd /opt/dndplanning
+git pull
+npm install --production
+pm2 restart quest-planner
+```
+
+The admin can also check for updates from the **Guild Settings** page using the "Check for Updates" button.
+
+---
+
+## Changelog
+
+### v0.2.0
+
+- **User Settings page** — accessible to all logged-in users via the pencil icon in the nav bar
+- **Avatar uploads** — displayed in the nav, availability grid, and DM preference display
+- **Time format toggle** — switch between 12-hour and 24-hour format; applied across all views
+- **Password change** — requires current password for verification
+- **Unavailability days** — players mark dates they can't play with optional reasons; shown to the DM when creating sessions and as warnings in the availability grid
+- **iCal calendar feed** — subscribe to confirmed sessions and personal unavailability in any calendar app via a generated token-based URL
+- **Auto-update check** — admin can check for new GitHub releases from Guild Settings
+- **Version in footer** — current app version displayed on every page
+
+### v0.1.0
+
+- Initial release
+- DM session creation with proposed time slots
+- Player availability voting (available / maybe / unavailable)
+- Availability grid with vote summary
+- DM/Admin date preference with star display
+- Session lifecycle: open → confirmed → cancelled / reopened
+- Role system: Guild Master (admin), Dungeon Master, Adventurer (player)
+- First registered user becomes admin automatically
+- Admin user management (role assignment)
+- Session deletion (admin only)
+- Dark fantasy themed UI
+- SQLite database with Docker volume persistence
+- Docker and Docker Compose support

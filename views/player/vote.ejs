@@ -17,8 +17,7 @@
       <div class="confirmed-banner">
         <h3>Quest Date Proclaimed!</h3>
         <p>
-          <%= new Date(confirmedSlot.date_time).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) %>
-          at <%= new Date(confirmedSlot.date_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %>
+          <%= formatDate(confirmedSlot.date_time, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) %>
           <% if (confirmedSlot.label) { %> &mdash; <%= confirmedSlot.label %><% } %>
         </p>
       </div>
@@ -32,8 +31,8 @@
         <% for (const slot of slots) { %>
           <div class="vote-slot-card">
             <div class="vote-slot-header">
-              <div class="slot-date"><%= new Date(slot.date_time).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) %></div>
-              <div class="slot-time"><%= new Date(slot.date_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %></div>
+              <div class="slot-date"><%= formatDate(slot.date_time, { weekday: 'long', month: 'long', day: 'numeric', showTime: false }) %></div>
+              <div class="slot-time"><%= formatTime(slot.date_time) %></div>
               <% if (slot.label) { %><div class="slot-label"><%= slot.label %></div><% } %>
             </div>
             <div class="vote-options">
@@ -61,8 +60,8 @@
       <% for (const slot of slots) { %>
         <div class="vote-slot-card">
           <div class="vote-slot-header">
-            <div class="slot-date"><%= new Date(slot.date_time).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) %></div>
-            <div class="slot-time"><%= new Date(slot.date_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %></div>
+            <div class="slot-date"><%= formatDate(slot.date_time, { weekday: 'long', month: 'long', day: 'numeric', showTime: false }) %></div>
+            <div class="slot-time"><%= formatTime(slot.date_time) %></div>
             <% if (slot.label) { %><div class="slot-label"><%= slot.label %></div><% } %>
           </div>
           <div class="vote-result vote-<%= myVotes[slot.id] || 'none' %>">

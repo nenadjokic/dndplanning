@@ -20,12 +20,11 @@
         <% } %>
         <% if (s.status === 'confirmed' && s.confirmed_date) { %>
           <div class="session-confirmed-date">
-            <%= new Date(s.confirmed_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) %>
-            at <%= new Date(s.confirmed_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %>
+            <%= formatDate(s.confirmed_date, { weekday: 'long', month: 'long', day: 'numeric' }) %>
             <% if (s.confirmed_label) { %> &mdash; <%= s.confirmed_label %><% } %>
           </div>
         <% } %>
-        <div class="session-meta">Created <%= new Date(s.created_at).toLocaleDateString() %></div>
+        <div class="session-meta">Created <%= formatDate(s.created_at, { showTime: false }) %></div>
       </a>
     <% } %>
   </div>

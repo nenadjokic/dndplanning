@@ -38,3 +38,11 @@ CREATE TABLE IF NOT EXISTS preferences (
   slot_id INTEGER NOT NULL REFERENCES slots(id) ON DELETE CASCADE,
   UNIQUE(session_id, user_id)
 );
+
+CREATE TABLE IF NOT EXISTS unavailability (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  date TEXT NOT NULL,
+  reason TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

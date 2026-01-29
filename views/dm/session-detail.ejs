@@ -17,8 +17,7 @@
       <div class="confirmed-banner">
         <h3>Quest Date Proclaimed!</h3>
         <p>
-          <%= new Date(confirmedSlot.date_time).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) %>
-          at <%= new Date(confirmedSlot.date_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %>
+          <%= formatDate(confirmedSlot.date_time, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) %>
           <% if (confirmedSlot.label) { %> &mdash; <%= confirmedSlot.label %><% } %>
         </p>
       </div>
@@ -33,9 +32,11 @@
         <% const prefSlot = slots.find(s => s.id === pref.slot_id); %>
         <% if (prefSlot) { %>
           <p class="preference-entry">
+            <% if (typeof allUsersMap !== 'undefined' && allUsersMap[uid] && allUsersMap[uid].avatar) { %>
+              <img src="/avatars/<%= allUsersMap[uid].avatar %>" alt="" class="avatar-tiny">
+            <% } %>
             <strong><%= pref.username %></strong> prefers:
-            <%= new Date(prefSlot.date_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) %>
-            <%= new Date(prefSlot.date_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %>
+            <%= formatDate(prefSlot.date_time, { weekday: 'short', month: 'short', day: 'numeric' }) %>
             <% if (prefSlot.label) { %> &mdash; <%= prefSlot.label %><% } %>
           </p>
         <% } %>
@@ -47,7 +48,7 @@
   <% if (players.length === 0) { %>
     <p class="empty-state-text">No adventurers have joined the guild yet.</p>
   <% } else { %>
-    <%- include('../partials/slot-grid', { slots, players, voteMap, slotSummary, preferenceMap }) %>
+    <%- include('../partials/slot-grid', { slots, players, voteMap, slotSummary, preferenceMap, allUsersMap: typeof allUsersMap !== 'undefined' ? allUsersMap : {}, unavailabilityMap: typeof unavailabilityMap !== 'undefined' ? unavailabilityMap : undefined }) %>
   <% } %>
 
   <% if (session.status === 'open') { %>
@@ -60,8 +61,7 @@
             <option value="">-- No preference --</option>
             <% for (const slot of slots) { %>
               <option value="<%= slot.id %>" <%= myPreference && myPreference.slot_id === slot.id ? 'selected' : '' %>>
-                <%= new Date(slot.date_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) %>
-                <%= new Date(slot.date_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %>
+                <%= formatDate(slot.date_time, { weekday: 'short', month: 'short', day: 'numeric' }) %>
                 <% if (slot.label) { %> - <%= slot.label %><% } %>
               </option>
             <% } %>
@@ -80,10 +80,9 @@
             <option value="">-- Select a slot --</option>
             <% for (const slot of slots) { %>
               <option value="<%= slot.id %>">
-                <%= new Date(slot.date_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) %>
-                <%= new Date(slot.date_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %>
+                <%= formatDate(slot.date_time, { weekday: 'short', month: 'short', day: 'numeric' }) %>
                 <% if (slot.label) { %> - <%= slot.label %><% } %>
-                (<%=slotSummary[slot.id].available %> available)
+                (<%= slotSummary[slot.id].available %> available)
               </option>
             <% } %>
           </select>

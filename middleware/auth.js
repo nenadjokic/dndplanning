@@ -1,12 +1,20 @@
 const db = require('../db/connection');
+const { formatDate, formatTime } = require('../helpers/time');
 
 function attachUser(req, res, next) {
   res.locals.user = null;
+  res.locals.timeFormat = '24h';
+  res.locals.formatDate = (iso, opts) => formatDate(iso, '24h', opts);
+  res.locals.formatTime = (iso) => formatTime(iso, '24h');
+
   if (req.session.userId) {
-    const user = db.prepare('SELECT id, username, role FROM users WHERE id = ?').get(req.session.userId);
+    const user = db.prepare('SELECT id, username, role, avatar, time_format, calendar_token FROM users WHERE id = ?').get(req.session.userId);
     if (user) {
       req.user = user;
       res.locals.user = user;
+      res.locals.timeFormat = user.time_format || '24h';
+      res.locals.formatDate = (iso, opts) => formatDate(iso, user.time_format || '24h', opts);
+      res.locals.formatTime = (iso) => formatTime(iso, user.time_format || '24h');
     } else {
       delete req.session.userId;
     }

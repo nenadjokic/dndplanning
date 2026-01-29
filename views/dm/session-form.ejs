@@ -5,6 +5,24 @@
   <a href="/" class="btn btn-outline">Back to Chamber</a>
 </div>
 
+<% if (unavailabilities.length > 0) { %>
+  <div class="card unavail-info-card">
+    <h2>Adventurer Unavailability</h2>
+    <p class="form-hint">These adventurers have marked dates they cannot play:</p>
+    <div class="unavail-list">
+      <% for (const u of unavailabilities) { %>
+        <div class="unavail-item">
+          <strong><%= u.username %></strong>
+          <span class="unavail-date"><%= formatDate(u.date + 'T00:00:00', { weekday: 'short', month: 'short', day: 'numeric', showTime: false }) %></span>
+          <% if (u.reason) { %>
+            <span class="unavail-reason">&mdash; <%= u.reason %></span>
+          <% } %>
+        </div>
+      <% } %>
+    </div>
+  </div>
+<% } %>
+
 <div class="card">
   <form action="/sessions" method="POST" id="session-form">
     <div class="form-group">

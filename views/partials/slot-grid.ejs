@@ -1,4 +1,4 @@
-<%# Expects: slots, players, voteMap, slotSummary, preferenceMap %>
+<%# Expects: slots, players, voteMap, slotSummary, preferenceMap, allUsersMap (optional), unavailabilityMap (optional) %>
 <div class="slot-grid-wrapper">
   <table class="slot-grid">
     <thead>
@@ -6,8 +6,8 @@
         <th class="grid-corner">Adventurer</th>
         <% for (const slot of slots) { %>
           <th class="grid-slot-header">
-            <div class="slot-date"><%= new Date(slot.date_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) %></div>
-            <div class="slot-time"><%= new Date(slot.date_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %></div>
+            <div class="slot-date"><%= formatDate(slot.date_time, { weekday: 'short', month: 'short', day: 'numeric', showTime: false }) %></div>
+            <div class="slot-time"><%= formatTime(slot.date_time) %></div>
             <% if (slot.label) { %><div class="slot-label"><%= slot.label %></div><% } %>
           </th>
         <% } %>
@@ -16,7 +16,14 @@
     <tbody>
       <% for (const player of players) { %>
         <tr>
-          <td class="grid-player"><%= player.username %></td>
+          <td class="grid-player">
+            <% if (typeof allUsersMap !== 'undefined' && allUsersMap[player.id] && allUsersMap[player.id].avatar) { %>
+              <img src="/avatars/<%= allUsersMap[player.id].avatar %>" alt="" class="avatar-tiny">
+            <% } else { %>
+              <span class="avatar-letter avatar-letter-sm"><%= player.username.charAt(0).toUpperCase() %></span>
+            <% } %>
+            <%= player.username %>
+          </td>
           <% for (const slot of slots) { %>
             <% const status = (voteMap[slot.id] && voteMap[slot.id][player.id]) || 'none'; %>
             <td class="grid-cell vote-<%= status %>">
@@ -60,6 +67,25 @@
             </td>
           <% } %>
         </tr>
+      <% } %>
+      <% if (typeof unavailabilityMap !== 'undefined') { %>
+        <% const hasAny = slots.some(s => { const d = s.date_time.split('T')[0]; return unavailabilityMap[d] && unavailabilityMap[d].length > 0; }); %>
+        <% if (hasAny) { %>
+          <tr class="summary-row unavail-row">
+            <td class="grid-player"><strong>Unavail</strong></td>
+            <% for (const slot of slots) { %>
+              <% const slotDate = slot.date_time.split('T')[0]; %>
+              <% const unavails = unavailabilityMap[slotDate] || []; %>
+              <td class="grid-cell summary-cell">
+                <% if (unavails.length > 0) { %>
+                  <span class="unavail-warning" title="<%= unavails.map(u => u.username + (u.reason ? ': ' + u.reason : '')).join('\n') %>">&#9888; <%= unavails.length %></span>
+                <% } else { %>
+                  &mdash;
+                <% } %>
+              </td>
+            <% } %>
+          </tr>
+        <% } %>
       <% } %>
     </tfoot>
   </table>

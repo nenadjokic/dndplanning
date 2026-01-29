@@ -4,7 +4,17 @@ const { requireLogin, requireDM, requireAdmin } = require('../middleware/auth');
 const router = express.Router();
 
 router.get('/new', requireLogin, requireDM, (req, res) => {
-  res.render('dm/session-form', { session: null, slots: [] });
+  // Query future unavailabilities for all players
+  const today = new Date().toISOString().split('T')[0];
+  const unavailabilities = db.prepare(`
+    SELECT u.date, u.reason, usr.username
+    FROM unavailability u
+    JOIN users usr ON u.user_id = usr.id
+    WHERE u.date >= ?
+    ORDER BY u.date
+  `).all(today);
+
+  res.render('dm/session-form', { session: null, slots: [], unavailabilities });
 });
 
 router.post('/', requireLogin, requireDM, (req, res) => {
@@ -62,6 +72,13 @@ router.get('/:id', requireLogin, (req, res) => {
 
   const players = db.prepare("SELECT id, username FROM users WHERE role = 'player' ORDER BY username").all();
 
+  // Build allUsersMap for avatars
+  const allUsers = db.prepare('SELECT id, username, avatar FROM users').all();
+  const allUsersMap = {};
+  for (const u of allUsers) {
+    allUsersMap[u.id] = { username: u.username, avatar: u.avatar };
+  }
+
   const votes = db.prepare(`
     SELECT v.slot_id, v.user_id, v.status
     FROM votes v
@@ -88,6 +105,24 @@ router.get('/:id', requireLogin, (req, res) => {
     }
   }
 
+  // Build unavailabilityMap: { 'YYYY-MM-DD': [{ username, reason }] }
+  const slotDates = slots.map(s => s.date_time.split('T')[0]);
+  const unavailabilityMap = {};
+  if (slotDates.length > 0) {
+    const placeholders = slotDates.map(() => '?').join(',');
+    const unavails = db.prepare(`
+      SELECT u.date, u.reason, usr.username
+      FROM unavailability u
+      JOIN users usr ON u.user_id = usr.id
+      WHERE u.date IN (${placeholders})
+    `).all(...slotDates);
+
+    for (const u of unavails) {
+      if (!unavailabilityMap[u.date]) unavailabilityMap[u.date] = [];
+      unavailabilityMap[u.date].push({ username: u.username, reason: u.reason });
+    }
+  }
+
   const isDM = req.user.role === 'dm' || req.user.role === 'admin';
 
   // Load preferences for DM/admin users
@@ -105,7 +140,7 @@ router.get('/:id', requireLogin, (req, res) => {
 
   if (isDM) {
     const myPreference = preferenceMap[req.user.id] || null;
-    res.render('dm/session-detail', { session, slots, players, voteMap, slotSummary, preferences, preferenceMap, myPreference });
+    res.render('dm/session-detail', { session, slots, players, voteMap, slotSummary, preferences, preferenceMap, myPreference, allUsersMap, unavailabilityMap });
   } else {
     // Get this player's votes
     const myVotes = {};

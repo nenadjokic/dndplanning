@@ -1,0 +1,108 @@
+<%- include('partials/head', { pageTitle: 'Settings' }) %>
+
+<div class="page-header">
+  <h1>Adventurer Settings</h1>
+  <a href="/" class="btn btn-outline">Back to Quest Board</a>
+</div>
+
+<div class="settings-section card">
+  <h2>Avatar</h2>
+  <div class="avatar-section">
+    <div class="avatar-preview">
+      <% if (user.avatar) { %>
+        <img src="/avatars/<%= user.avatar %>" alt="Avatar" class="avatar-preview-img">
+      <% } else { %>
+        <div class="avatar-placeholder"><%= user.username.charAt(0).toUpperCase() %></div>
+      <% } %>
+    </div>
+    <form action="/settings/avatar" method="POST" enctype="multipart/form-data">
+      <div class="form-group">
+        <label for="avatar">Upload new avatar (max 2MB, images only)</label>
+        <input type="file" id="avatar" name="avatar" accept="image/*">
+      </div>
+      <button type="submit" class="btn btn-primary btn-small">Upload Avatar</button>
+    </form>
+  </div>
+</div>
+
+<div class="settings-section card">
+  <h2>Time Format</h2>
+  <form action="/settings/time-format" method="POST">
+    <div class="form-group">
+      <label>
+        <input type="radio" name="time_format" value="24h" <%= (user.time_format || '24h') === '24h' ? 'checked' : '' %>> 24-hour (14:30)
+      </label>
+      <label style="margin-left: 1.5rem;">
+        <input type="radio" name="time_format" value="12h" <%= user.time_format === '12h' ? 'checked' : '' %>> 12-hour (2:30 PM)
+      </label>
+    </div>
+    <button type="submit" class="btn btn-primary btn-small">Save Time Format</button>
+  </form>
+</div>
+
+<div class="settings-section card">
+  <h2>Change Password</h2>
+  <form action="/settings/password" method="POST">
+    <div class="form-group">
+      <label for="current_password">Current Password</label>
+      <input type="password" id="current_password" name="current_password" required>
+    </div>
+    <div class="form-group">
+      <label for="new_password">New Password</label>
+      <input type="password" id="new_password" name="new_password" required minlength="4">
+    </div>
+    <div class="form-group">
+      <label for="confirm_password">Confirm New Password</label>
+      <input type="password" id="confirm_password" name="confirm_password" required minlength="4">
+    </div>
+    <button type="submit" class="btn btn-primary btn-small">Change Password</button>
+  </form>
+</div>
+
+<div class="settings-section card">
+  <h2>Unavailability Days</h2>
+  <p class="form-hint">Mark dates when you cannot play. The DM will see these when creating sessions.</p>
+  <form action="/settings/unavailability" method="POST" class="unavail-form">
+    <div class="form-group">
+      <label for="unavail_date">Date</label>
+      <input type="date" id="unavail_date" name="date" required>
+    </div>
+    <div class="form-group">
+      <label for="unavail_reason">Reason (optional)</label>
+      <input type="text" id="unavail_reason" name="reason" placeholder="e.g. Vacation, Work trip">
+    </div>
+    <button type="submit" class="btn btn-primary btn-small">Add Unavailability</button>
+  </form>
+
+  <% if (unavailabilities.length > 0) { %>
+    <div class="unavail-list">
+      <% for (const u of unavailabilities) { %>
+        <div class="unavail-item">
+          <span class="unavail-date"><%= formatDate(u.date + 'T00:00:00', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', showTime: false }) %></span>
+          <% if (u.reason) { %>
+            <span class="unavail-reason">&mdash; <%= u.reason %></span>
+          <% } %>
+          <form action="/settings/unavailability/<%= u.id %>/delete" method="POST" class="inline-form">
+            <button type="submit" class="btn btn-small btn-danger">&times;</button>
+          </form>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
+</div>
+
+<div class="settings-section card">
+  <h2>Calendar Feed</h2>
+  <p class="form-hint">Subscribe to your D&D sessions in your favorite calendar app. The feed includes confirmed sessions and your unavailability days.</p>
+  <% if (user.calendar_token) { %>
+    <div class="form-group">
+      <label>Your Calendar Feed URL</label>
+      <input type="text" value="<%= `${req.protocol}://${req.get('host')}/calendar/${user.calendar_token}/feed.ics` %>" readonly onclick="this.select()" class="calendar-url-input">
+    </div>
+  <% } %>
+  <form action="/settings/generate-calendar-token" method="POST">
+    <button type="submit" class="btn btn-outline btn-small"><%= user.calendar_token ? 'Regenerate Token' : 'Generate Calendar URL' %></button>
+  </form>
+</div>
+
+<%- include('partials/foot') %>
