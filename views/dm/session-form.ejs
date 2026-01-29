@@ -1,0 +1,36 @@
+<%- include('../partials/head', { pageTitle: 'New Quest Session' }) %>
+
+<div class="page-header">
+  <h1>Summon the Party</h1>
+  <a href="/" class="btn btn-outline">Back to Chamber</a>
+</div>
+
+<div class="card">
+  <form action="/sessions" method="POST" id="session-form">
+    <div class="form-group">
+      <label for="title">Quest Title</label>
+      <input type="text" id="title" name="title" required placeholder="e.g. The Mines of Phandelver - Session 5">
+    </div>
+    <div class="form-group">
+      <label for="description">Quest Description (optional)</label>
+      <textarea id="description" name="description" rows="3" placeholder="Brief description of the session..."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>Proposed Time Slots</label>
+      <p class="form-hint">Add possible dates and times for the party to vote on.</p>
+      <div id="slots-container">
+        <div class="slot-row">
+          <input type="datetime-local" name="slot_dates" required>
+          <input type="text" name="slot_labels" placeholder="Label (optional, e.g. Evening)">
+          <button type="button" class="btn btn-small btn-danger remove-slot" title="Remove slot">&times;</button>
+        </div>
+      </div>
+      <button type="button" id="add-slot" class="btn btn-outline btn-small">+ Add Another Slot</button>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Post to Tavern Board</button>
+  </form>
+</div>
+
+<%- include('../partials/foot') %>

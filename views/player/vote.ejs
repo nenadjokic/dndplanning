@@ -1,0 +1,85 @@
+<%- include('../partials/head', { pageTitle: session.title }) %>
+
+<div class="page-header">
+  <h1><%= session.title %></h1>
+  <a href="/" class="btn btn-outline">Back to Quest Board</a>
+</div>
+
+<div class="card">
+  <div class="session-status-badge session-status-badge-lg"><%= session.status %></div>
+  <% if (session.description) { %>
+    <p class="session-desc"><%= session.description %></p>
+  <% } %>
+
+  <% if (session.status === 'confirmed') { %>
+    <% const confirmedSlot = slots.find(s => s.id === session.confirmed_slot_id); %>
+    <% if (confirmedSlot) { %>
+      <div class="confirmed-banner">
+        <h3>Quest Date Proclaimed!</h3>
+        <p>
+          <%= new Date(confirmedSlot.date_time).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) %>
+          at <%= new Date(confirmedSlot.date_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %>
+          <% if (confirmedSlot.label) { %> &mdash; <%= confirmedSlot.label %><% } %>
+        </p>
+      </div>
+    <% } %>
+  <% } %>
+
+  <% if (session.status === 'open') { %>
+    <h2>Cast Your Availability</h2>
+    <form action="/votes/<%= session.id %>" method="POST">
+      <div class="vote-slots">
+        <% for (const slot of slots) { %>
+          <div class="vote-slot-card">
+            <div class="vote-slot-header">
+              <div class="slot-date"><%= new Date(slot.date_time).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) %></div>
+              <div class="slot-time"><%= new Date(slot.date_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %></div>
+              <% if (slot.label) { %><div class="slot-label"><%= slot.label %></div><% } %>
+            </div>
+            <div class="vote-options">
+              <label class="vote-option vote-available">
+                <input type="radio" name="vote_<%= slot.id %>" value="available" <%= myVotes[slot.id] === 'available' ? 'checked' : '' %>>
+                <span class="vote-icon">&#10003;</span> Available
+              </label>
+              <label class="vote-option vote-maybe">
+                <input type="radio" name="vote_<%= slot.id %>" value="maybe" <%= myVotes[slot.id] === 'maybe' ? 'checked' : '' %>>
+                <span class="vote-icon">?</span> Maybe
+              </label>
+              <label class="vote-option vote-unavailable">
+                <input type="radio" name="vote_<%= slot.id %>" value="unavailable" <%= myVotes[slot.id] === 'unavailable' ? 'checked' : '' %>>
+                <span class="vote-icon">&#10007;</span> Unavailable
+              </label>
+            </div>
+          </div>
+        <% } %>
+      </div>
+      <button type="submit" class="btn btn-primary">Submit Availability</button>
+    </form>
+  <% } else { %>
+    <h2>Your Votes</h2>
+    <div class="vote-slots">
+      <% for (const slot of slots) { %>
+        <div class="vote-slot-card">
+          <div class="vote-slot-header">
+            <div class="slot-date"><%= new Date(slot.date_time).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) %></div>
+            <div class="slot-time"><%= new Date(slot.date_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %></div>
+            <% if (slot.label) { %><div class="slot-label"><%= slot.label %></div><% } %>
+          </div>
+          <div class="vote-result vote-<%= myVotes[slot.id] || 'none' %>">
+            <% if (myVotes[slot.id] === 'available') { %>
+              &#10003; Available
+            <% } else if (myVotes[slot.id] === 'maybe') { %>
+              ? Maybe
+            <% } else if (myVotes[slot.id] === 'unavailable') { %>
+              &#10007; Unavailable
+            <% } else { %>
+              &mdash; No vote
+            <% } %>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
+</div>
+
+<%- include('../partials/foot') %>

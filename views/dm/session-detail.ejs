@@ -1,0 +1,68 @@
+<%- include('../partials/head', { pageTitle: session.title }) %>
+
+<div class="page-header">
+  <h1><%= session.title %></h1>
+  <a href="/" class="btn btn-outline">Back to Chamber</a>
+</div>
+
+<div class="card">
+  <div class="session-status-badge session-status-badge-lg"><%= session.status %></div>
+  <% if (session.description) { %>
+    <p class="session-desc"><%= session.description %></p>
+  <% } %>
+
+  <% if (session.status === 'confirmed') { %>
+    <% const confirmedSlot = slots.find(s => s.id === session.confirmed_slot_id); %>
+    <% if (confirmedSlot) { %>
+      <div class="confirmed-banner">
+        <h3>Quest Date Proclaimed!</h3>
+        <p>
+          <%= new Date(confirmedSlot.date_time).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) %>
+          at <%= new Date(confirmedSlot.date_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %>
+          <% if (confirmedSlot.label) { %> &mdash; <%= confirmedSlot.label %><% } %>
+        </p>
+      </div>
+    <% } %>
+  <% } %>
+
+  <h2>Party Availability</h2>
+  <% if (players.length === 0) { %>
+    <p class="empty-state-text">No adventurers have joined the guild yet.</p>
+  <% } else { %>
+    <%- include('../partials/slot-grid', { slots, players, voteMap, slotSummary }) %>
+  <% } %>
+
+  <% if (session.status === 'open') { %>
+    <div class="dm-actions">
+      <h3>Proclaim a Quest Date</h3>
+      <form action="/sessions/<%= session.id %>/confirm" method="POST" class="confirm-form">
+        <div class="form-group">
+          <label for="slot_id">Choose the time slot:</label>
+          <select name="slot_id" id="slot_id" required>
+            <option value="">-- Select a slot --</option>
+            <% for (const slot of slots) { %>
+              <option value="<%= slot.id %>">
+                <%= new Date(slot.date_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) %>
+                <%= new Date(slot.date_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %>
+                <% if (slot.label) { %> - <%= slot.label %><% } %>
+                (<%=slotSummary[slot.id].available %> available)
+              </option>
+            <% } %>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Proclaim This Date</button>
+      </form>
+      <form action="/sessions/<%= session.id %>/cancel" method="POST" class="inline-form" style="margin-top: 1rem;">
+        <button type="submit" class="btn btn-danger" onclick="return confirm('Cancel this quest?')">Cancel Quest</button>
+      </form>
+    </div>
+  <% } else { %>
+    <div class="dm-actions">
+      <form action="/sessions/<%= session.id %>/reopen" method="POST" class="inline-form">
+        <button type="submit" class="btn btn-outline">Reopen Quest Board</button>
+      </form>
+    </div>
+  <% } %>
+</div>
+
+<%- include('../partials/foot') %>

@@ -1,0 +1,39 @@
+<%- include('../partials/head', { pageTitle: 'Adventurer\'s Board' }) %>
+
+<div class="page-header">
+  <h1>Adventurer's Quest Board</h1>
+</div>
+
+<% if (sessions.length === 0) { %>
+  <div class="card empty-state">
+    <p>No quests have been posted to the tavern board yet. Check back later!</p>
+  </div>
+<% } else { %>
+  <div class="session-grid">
+    <% for (const s of sessions) { %>
+      <a href="/sessions/<%= s.id %>" class="card session-card session-<%= s.status %>">
+        <div class="session-status-badge"><%= s.status %></div>
+        <h2><%= s.title %></h2>
+        <% if (s.description) { %>
+          <p class="session-desc"><%= s.description %></p>
+        <% } %>
+        <% if (s.status === 'confirmed' && s.confirmed_date) { %>
+          <div class="session-confirmed-date">
+            <%= new Date(s.confirmed_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) %>
+            at <%= new Date(s.confirmed_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %>
+          </div>
+        <% } %>
+        <div class="session-meta">
+          DM: <%= s.dm_name %>
+          <% if (votedSessionIds.includes(s.id)) { %>
+            <span class="voted-badge">Voted</span>
+          <% } else if (s.status === 'open') { %>
+            <span class="needs-vote-badge">Needs your vote</span>
+          <% } %>
+        </div>
+      </a>
+    <% } %>
+  </div>
+<% } %>
+
+<%- include('../partials/foot') %>

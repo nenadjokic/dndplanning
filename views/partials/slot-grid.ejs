@@ -1,0 +1,51 @@
+<%# Expects: slots, players, voteMap, slotSummary %>
+<div class="slot-grid-wrapper">
+  <table class="slot-grid">
+    <thead>
+      <tr>
+        <th class="grid-corner">Adventurer</th>
+        <% for (const slot of slots) { %>
+          <th class="grid-slot-header">
+            <div class="slot-date"><%= new Date(slot.date_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) %></div>
+            <div class="slot-time"><%= new Date(slot.date_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %></div>
+            <% if (slot.label) { %><div class="slot-label"><%= slot.label %></div><% } %>
+          </th>
+        <% } %>
+      </tr>
+    </thead>
+    <tbody>
+      <% for (const player of players) { %>
+        <tr>
+          <td class="grid-player"><%= player.username %></td>
+          <% for (const slot of slots) { %>
+            <% const status = (voteMap[slot.id] && voteMap[slot.id][player.id]) || 'none'; %>
+            <td class="grid-cell vote-<%= status %>">
+              <% if (status === 'available') { %>
+                &#10003;
+              <% } else if (status === 'maybe') { %>
+                ?
+              <% } else if (status === 'unavailable') { %>
+                &#10007;
+              <% } else { %>
+                &mdash;
+              <% } %>
+            </td>
+          <% } %>
+        </tr>
+      <% } %>
+    </tbody>
+    <tfoot>
+      <tr class="summary-row">
+        <td class="grid-player"><strong>Available</strong></td>
+        <% for (const slot of slots) { %>
+          <td class="grid-cell summary-cell">
+            <span class="summary-available"><%= slotSummary[slot.id].available %></span>
+            <% if (slotSummary[slot.id].maybe > 0) { %>
+              / <span class="summary-maybe"><%= slotSummary[slot.id].maybe %>?</span>
+            <% } %>
+          </td>
+        <% } %>
+      </tr>
+    </tfoot>
+  </table>
+</div>

@@ -1,0 +1,13 @@
+<nav class="nav">
+  <div class="nav-inner container">
+    <a href="/" class="nav-brand">Quest Planner</a>
+    <% if (user) { %>
+      <div class="nav-links">
+        <span class="nav-user"><%= user.username %> (<%= user.role === 'dm' ? 'Dungeon Master' : 'Adventurer' %>)</span>
+        <form action="/logout" method="POST" class="inline-form">
+          <button type="submit" class="btn btn-small btn-outline">Leave Tavern</button>
+        </form>
+      </div>
+    <% } %>
+  </div>
+</nav>

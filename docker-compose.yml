@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    container_name: quest-planner
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - PORT=3000
+      - SESSION_SECRET=${SESSION_SECRET:-change-me-to-a-random-string}
+    volumes:
+      - quest-planner-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  quest-planner-data:

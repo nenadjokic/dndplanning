@@ -1,0 +1,22 @@
+<%- include('../partials/head', { pageTitle: 'Enter the Tavern' }) %>
+
+<div class="auth-page">
+  <div class="card auth-card">
+    <h1>Enter the Tavern</h1>
+    <p class="subtitle">Sign in to join the quest planning</p>
+    <form action="/login" method="POST">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required autofocus>
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Enter</button>
+    </form>
+    <p class="auth-link">New adventurer? <a href="/register">Join the Guild</a></p>
+  </div>
+</div>
+
+<%- include('../partials/foot') %>
