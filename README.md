@@ -59,7 +59,7 @@ sudo usermod -aG docker $USER
 
 ```bash
 cd /opt
-git clone https://github.com/YOUR_USERNAME/dndplanning.git
+git clone https://github.com/nenadjokic/dndplanning.git
 cd dndplanning
 ```
 
