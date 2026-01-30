@@ -1,11 +1,13 @@
 const db = require('../db/connection');
 const { formatDate, formatTime } = require('../helpers/time');
+const { marked } = require('marked');
 
 function attachUser(req, res, next) {
   res.locals.user = null;
   res.locals.timeFormat = '24h';
   res.locals.formatDate = (iso, opts) => formatDate(iso, '24h', opts);
   res.locals.formatTime = (iso) => formatTime(iso, '24h');
+  res.locals.renderMarkdown = (text) => text ? marked(text) : '';
 
   if (req.session.userId) {
     const user = db.prepare('SELECT id, username, role, avatar, time_format, calendar_token, theme, week_start FROM users WHERE id = ?').get(req.session.userId);

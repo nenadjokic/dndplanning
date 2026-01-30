@@ -28,7 +28,7 @@
   <% if (session.status === 'completed' && session.summary) { %>
     <div class="recap-card">
       <h3>Session Recap</h3>
-      <div class="recap-text"><%= session.summary %></div>
+      <div class="recap-text recap-rendered"><%- renderMarkdown(session.summary) %></div>
     </div>
   <% } %>
 

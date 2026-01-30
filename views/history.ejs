@@ -24,7 +24,7 @@
         <h2><a href="/sessions/<%= s.id %>"><%= s.title %></a></h2>
         <p class="session-meta">DM: <%= s.dm_name %></p>
         <% if (s.summary) { %>
-          <div class="history-summary"><%= s.summary %></div>
+          <div class="history-summary recap-rendered"><%- renderMarkdown(s.summary) %></div>
         <% } %>
       </div>
     <% } %>

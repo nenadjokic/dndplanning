@@ -1489,6 +1489,52 @@ h3 { font-size: 1.25rem; }
   margin-bottom: 0.75rem;
 }
 
+.recap-rendered {
+  white-space: normal;
+}
+
+.recap-rendered h1,
+.recap-rendered h2,
+.recap-rendered h3 {
+  color: var(--gold);
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.recap-rendered h1:first-child,
+.recap-rendered h2:first-child,
+.recap-rendered h3:first-child {
+  margin-top: 0;
+}
+
+.recap-rendered p {
+  margin-bottom: 0.75rem;
+}
+
+.recap-rendered ul,
+.recap-rendered ol {
+  margin-bottom: 0.75rem;
+  padding-left: 1.5rem;
+}
+
+.recap-rendered li {
+  margin-bottom: 0.25rem;
+}
+
+.recap-rendered hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1rem 0;
+}
+
+.recap-rendered strong {
+  color: var(--text-primary);
+}
+
+.recap-rendered em {
+  color: var(--text-secondary);
+}
+
 /* === Session History === */
 .history-list {
   display: grid;
@@ -1519,7 +1565,6 @@ h3 { font-size: 1.25rem; }
 }
 
 .history-summary {
-  white-space: pre-wrap;
   line-height: 1.6;
   color: var(--text-secondary);
   margin-top: 0.5rem;
