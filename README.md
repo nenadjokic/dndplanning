@@ -46,7 +46,7 @@ If you enjoy Quest Planner, consider buying me a coffee:
 - **Availability Grid** — Visual overview of who can play when (available / maybe / unavailable)
 - **DM Preferences** — DMs and admins can mark their preferred slot with a star
 - **Session Lifecycle** — Open -> Confirmed -> Completed / Cancelled / Reopened
-- **Session Recap** — DMs write a recap/summary when completing a session; players see it read-only
+- **Session Recap** — DMs write a recap/summary when completing a session; supports full Markdown (headings, bold, lists, etc.); players see it read-only
 - **Session History** — Dedicated `/history` page showing all completed D&D/RPG sessions in reverse chronological order
 - **Date + Time Picker** — Separate date and time select (30-min increments, 12h/24h)
 - **Dynamic Unavailability Warnings** — Inline warnings when a selected date conflicts with player unavailability
@@ -516,6 +516,7 @@ The admin can also check for updates from the **Guild Settings** page using the 
 - **Player recap view** — players see the recap as a read-only styled card
 - **Session History page** — `/history` shows all completed D&D/RPG sessions in reverse chronological order
 - **Hamburger menu** — added "Session History" link with book icon between Bulletin Board and Feedback
+- **Markdown recaps** — recap text supports full Markdown rendering (headings, bold, italic, lists, horizontal rules) via `marked`
 - **DB migration** — idempotent SQLite table rebuild to add `completed` to CHECK constraint and `summary` column
 
 ### v0.4.0 (2026-01-30)
