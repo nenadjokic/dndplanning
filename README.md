@@ -1,6 +1,6 @@
-# Quest Planner v0.3.2 — D&D Session Scheduler
+# Quest Planner v0.5.0 — D&D Session Scheduler
 
-> **Latest release:** v0.3.2 (2026-01-30)
+> **Latest release:** v0.5.0 (2026-01-30)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -45,7 +45,9 @@ If you enjoy Quest Planner, consider buying me a coffee:
 - **Session Scheduling** — DM posts proposed time slots, players vote on availability
 - **Availability Grid** — Visual overview of who can play when (available / maybe / unavailable)
 - **DM Preferences** — DMs and admins can mark their preferred slot with a star
-- **Session Lifecycle** — Open -> Confirmed -> Cancelled / Reopened
+- **Session Lifecycle** — Open -> Confirmed -> Completed / Cancelled / Reopened
+- **Session Recap** — DMs write a recap/summary when completing a session; players see it read-only
+- **Session History** — Dedicated `/history` page showing all completed D&D/RPG sessions in reverse chronological order
 - **Date + Time Picker** — Separate date and time select (30-min increments, 12h/24h)
 - **Dynamic Unavailability Warnings** — Inline warnings when a selected date conflicts with player unavailability
 - **Bulletin Board** — Global post/reply board for tavern gossip and announcements
@@ -362,6 +364,8 @@ For access with a custom domain, add to `/etc/hosts` on the client machine:
 5. Review player votes in the availability grid
 6. Select a slot and click **"Proclaim This Date"** to confirm
 7. All voters receive a notification when the session is confirmed
+8. After the session, write a recap and click **"Save & Complete Quest"** to mark it as completed
+9. Completed sessions appear on the **Session History** page
 
 ### Player Workflow
 
@@ -433,7 +437,8 @@ dndplanning/
 │   ├── calendar.js        # Personal iCal feed + public sessions-only feed
 │   ├── dashboard.js       # Role-based redirect (DM/Player), welcome popup
 │   ├── notifications.js   # Notification API (fetch, mark read)
-│   ├── sessions.js        # Session CRUD, slot confirmation, comments, replies
+│   ├── history.js          # Session history page (completed D&D/RPG sessions)
+│   ├── sessions.js        # Session CRUD, slot confirmation, recap, comments, replies
 │   ├── settings.js        # User settings (avatar, theme, time, password, unavailability, calendar)
 │   └── votes.js           # Player voting
 ├── views/                 # EJS templates
@@ -442,6 +447,7 @@ dndplanning/
 │   ├── dm/                # DM dashboard, session form (date+time picker), session detail
 │   ├── player/            # Player dashboard, voting
 │   ├── board.ejs          # Bulletin board page
+│   ├── history.ejs        # Session history page
 │   └── settings.ejs       # User settings page (avatar, theme, time, password, unavailability, calendar)
 ├── public/
 │   ├── css/style.css      # Dark + light theme, notifications, mentions, board styles
@@ -501,6 +507,23 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.5.0 (2026-01-30)
+
+- **Session Recap** — DMs can write a recap/summary on confirmed sessions; saving completes the quest
+- **Completed status** — new `completed` session status with blue/teal badge styling
+- **Editable recap** — DMs can toggle between read-only and edit mode on completed sessions (no page reload)
+- **Player recap view** — players see the recap as a read-only styled card
+- **Session History page** — `/history` shows all completed D&D/RPG sessions in reverse chronological order
+- **Hamburger menu** — added "Session History" link with book icon between Bulletin Board and Feedback
+- **DB migration** — idempotent SQLite table rebuild to add `completed` to CHECK constraint and `summary` column
+
+### v0.4.0 (2026-01-30)
+
+- **Hamburger menu** — collapsible navigation menu with profile, settings, guild settings, bulletin board, feedback, and logout
+- **Session categories** — D&D, RPG, Game Night, Casual with color-coded left border on cards
+- **User delete** — admin can delete users from Guild Settings
+- **Mention autocomplete** — typing `@` in text fields shows a dropdown of matching usernames
 
 ### v0.3.2 (2026-01-30)
 
