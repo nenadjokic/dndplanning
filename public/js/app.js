@@ -88,6 +88,90 @@ function checkSlotUnavailability(dateInput) {
   }
 }
 
+// === Notifications ===
+(function() {
+  var bell = document.getElementById('notif-bell');
+  var dropdown = document.getElementById('notif-dropdown');
+  var badge = document.getElementById('notif-badge');
+  var list = document.getElementById('notif-list');
+  if (!bell || !dropdown) return;
+
+  var isOpen = false;
+
+  function formatTimeAgo(isoStr) {
+    var d = new Date(isoStr + 'Z');
+    var now = new Date();
+    var diff = Math.floor((now - d) / 1000);
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    return Math.floor(diff / 86400) + 'd ago';
+  }
+
+  function renderNotifications(data) {
+    if (data.unreadCount > 0) {
+      badge.style.display = '';
+    } else {
+      badge.style.display = 'none';
+    }
+
+    if (data.notifications.length === 0) {
+      list.innerHTML = '<div class="notif-empty">No notifications</div>';
+      return;
+    }
+
+    var html = '';
+    for (var i = 0; i < data.notifications.length; i++) {
+      var n = data.notifications[i];
+      var cls = n.is_read ? '' : ' unread';
+      var href = n.link || '#';
+      html += '<a href="' + href + '" class="notif-item' + cls + '">' +
+        n.message +
+        '<span class="notif-item-time">' + formatTimeAgo(n.created_at) + '</span>' +
+        '</a>';
+    }
+    list.innerHTML = html;
+  }
+
+  function fetchNotifications() {
+    fetch('/notifications/api')
+      .then(function(res) { return res.json(); })
+      .then(renderNotifications)
+      .catch(function() {});
+  }
+
+  function markRead() {
+    fetch('/notifications/read', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+      .then(function() {
+        badge.style.display = 'none';
+        var items = list.querySelectorAll('.unread');
+        items.forEach(function(el) { el.classList.remove('unread'); });
+      })
+      .catch(function() {});
+  }
+
+  bell.addEventListener('click', function(e) {
+    e.stopPropagation();
+    isOpen = !isOpen;
+    dropdown.style.display = isOpen ? '' : 'none';
+    if (isOpen) {
+      fetchNotifications();
+      markRead();
+    }
+  });
+
+  document.addEventListener('click', function(e) {
+    if (isOpen && !dropdown.contains(e.target) && e.target !== bell) {
+      isOpen = false;
+      dropdown.style.display = 'none';
+    }
+  });
+
+  // Poll for new notifications every 30 seconds
+  fetchNotifications();
+  setInterval(fetchNotifications, 30000);
+})();
+
 // === DOM Ready ===
 document.addEventListener('DOMContentLoaded', function() {
   var addSlotBtn = document.getElementById('add-slot');

@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db/connection');
 const { requireLogin } = require('../middleware/auth');
+const { notifyMentions } = require('../helpers/notifications');
 const router = express.Router();
 
 router.get('/', requireLogin, (req, res) => {
@@ -31,7 +32,8 @@ router.get('/', requireLogin, (req, res) => {
     }
   }
 
-  res.render('board', { posts, replyMap });
+  const allUsers = db.prepare('SELECT username FROM users ORDER BY username').all();
+  res.render('board', { posts, replyMap, allUsers });
 });
 
 router.post('/', requireLogin, (req, res) => {
@@ -41,6 +43,7 @@ router.post('/', requireLogin, (req, res) => {
     return res.redirect('/board');
   }
   db.prepare('INSERT INTO posts (user_id, content) VALUES (?, ?)').run(req.user.id, content.trim());
+  notifyMentions(content.trim(), req.user.id, req.user.username, '/board');
   req.flash('success', 'Message posted to the board.');
   res.redirect('/board');
 });
@@ -57,6 +60,7 @@ router.post('/:id/reply', requireLogin, (req, res) => {
     return res.redirect('/board');
   }
   db.prepare('INSERT INTO replies (post_id, user_id, content) VALUES (?, ?, ?)').run(post.id, req.user.id, content.trim());
+  notifyMentions(content.trim(), req.user.id, req.user.username, '/board');
   req.flash('success', 'Reply posted.');
   res.redirect('/board');
 });

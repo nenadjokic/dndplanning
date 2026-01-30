@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db/connection');
 const { requireLogin, requireDM, requireAdmin } = require('../middleware/auth');
+const { notifyMentions, notifySessionConfirmed } = require('../helpers/notifications');
 const router = express.Router();
 
 router.get('/new', requireLogin, requireDM, (req, res) => {
@@ -210,6 +211,7 @@ router.post('/:id/comment', requireLogin, (req, res) => {
     return res.redirect('/sessions/' + session.id);
   }
   db.prepare('INSERT INTO posts (user_id, session_id, content) VALUES (?, ?, ?)').run(req.user.id, session.id, content.trim());
+  notifyMentions(content.trim(), req.user.id, req.user.username, '/sessions/' + session.id);
   req.flash('success', 'Comment posted.');
   res.redirect('/sessions/' + session.id);
 });
@@ -226,6 +228,7 @@ router.post('/:id/comment/:postId/reply', requireLogin, (req, res) => {
     return res.redirect('/sessions/' + req.params.id);
   }
   db.prepare('INSERT INTO replies (post_id, user_id, content) VALUES (?, ?, ?)').run(post.id, req.user.id, content.trim());
+  notifyMentions(content.trim(), req.user.id, req.user.username, '/sessions/' + req.params.id);
   req.flash('success', 'Reply posted.');
   res.redirect('/sessions/' + req.params.id);
 });
@@ -241,6 +244,8 @@ router.post('/:id/confirm', requireLogin, requireDM, (req, res) => {
 
   db.prepare('UPDATE sessions SET status = ?, confirmed_slot_id = ? WHERE id = ?')
     .run('confirmed', slot_id, session.id);
+
+  notifySessionConfirmed(session.id, session.title, req.user.username);
 
   req.flash('success', 'The quest date has been proclaimed!');
   res.redirect('/sessions/' + session.id);

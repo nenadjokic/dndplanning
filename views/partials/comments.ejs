@@ -3,7 +3,7 @@
 
   <form action="/sessions/<%= session.id %>/comment" method="POST" style="margin-bottom: 1.5rem;">
     <div class="form-group">
-      <textarea name="content" rows="2" placeholder="Add a comment..." required></textarea>
+      <textarea name="content" rows="2" placeholder="Add a comment... Use @username to mention someone" required></textarea>
     </div>
     <button type="submit" class="btn btn-primary btn-small">Post Comment</button>
   </form>
@@ -20,7 +20,7 @@
           <strong><%= post.username %></strong>
           <span class="text-muted" style="font-size: 0.8rem;"><%= formatDate(post.created_at, { month: 'short', day: 'numeric', year: 'numeric' }) %></span>
         </div>
-        <div class="board-post-content"><%= post.content %></div>
+        <div class="board-post-content mention-content"><%- post.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/@([\w.]+)/g, '<span class="mention">@$1</span>') %></div>
 
         <% if (sessionReplyMap[post.id] && sessionReplyMap[post.id].length > 0) { %>
           <div class="board-replies">
@@ -35,14 +35,14 @@
                   <strong><%= reply.username %></strong>
                   <span class="text-muted" style="font-size: 0.8rem;"><%= formatDate(reply.created_at, { month: 'short', day: 'numeric', year: 'numeric' }) %></span>
                 </div>
-                <div class="board-post-content"><%= reply.content %></div>
+                <div class="board-post-content mention-content"><%- reply.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/@([\w.]+)/g, '<span class="mention">@$1</span>') %></div>
               </div>
             <% } %>
           </div>
         <% } %>
 
         <form action="/sessions/<%= session.id %>/comment/<%= post.id %>/reply" method="POST" class="board-reply-form">
-          <input type="text" name="content" placeholder="Reply..." required>
+          <input type="text" name="content" placeholder="Reply... Use @username to mention" required>
           <button type="submit" class="btn btn-small btn-outline">Reply</button>
         </form>
       </div>
