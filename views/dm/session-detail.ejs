@@ -12,11 +12,11 @@
     <p class="session-desc"><%= session.description %></p>
   <% } %>
 
-  <% if (session.status === 'confirmed') { %>
+  <% if (session.status === 'confirmed' || session.status === 'completed') { %>
     <% const confirmedSlot = slots.find(s => s.id === session.confirmed_slot_id); %>
     <% if (confirmedSlot) { %>
       <div class="confirmed-banner">
-        <h3>Quest Date Proclaimed!</h3>
+        <h3><%= session.status === 'completed' ? 'Quest Completed!' : 'Quest Date Proclaimed!' %></h3>
         <p>
           <%= formatDate(confirmedSlot.date_time, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) %>
           <% if (confirmedSlot.label) { %> &mdash; <%= confirmedSlot.label %><% } %>
@@ -99,6 +99,37 @@
       <form action="/sessions/<%= session.id %>/reopen" method="POST" class="inline-form">
         <button type="submit" class="btn btn-outline">Reopen Quest Board</button>
       </form>
+    </div>
+  <% } %>
+
+  <% if (session.status === 'confirmed') { %>
+    <div class="dm-actions">
+      <h3>Session Recap</h3>
+      <form action="/sessions/<%= session.id %>/summary" method="POST">
+        <div class="form-group">
+          <label for="summary">Write a recap of this session:</label>
+          <textarea name="summary" id="summary" rows="5" placeholder="Describe what happened during this session..."><%= session.summary || '' %></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Save &amp; Complete Quest</button>
+      </form>
+    </div>
+  <% } else if (session.status === 'completed') { %>
+    <div class="dm-actions">
+      <h3>Session Recap</h3>
+      <div id="recap-display">
+        <div class="recap-text"><%= session.summary %></div>
+        <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('recap-display').style.display='none';document.getElementById('recap-edit').style.display='block';">Edit Recap</button>
+      </div>
+      <div id="recap-edit" style="display:none;">
+        <form action="/sessions/<%= session.id %>/summary" method="POST">
+          <div class="form-group">
+            <label for="summary">Edit session recap:</label>
+            <textarea name="summary" id="summary" rows="5"><%= session.summary %></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary">Save Recap</button>
+          <button type="button" class="btn btn-outline" onclick="document.getElementById('recap-edit').style.display='none';document.getElementById('recap-display').style.display='block';">Cancel</button>
+        </form>
+      </div>
     </div>
   <% } %>
 

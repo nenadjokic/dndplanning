@@ -12,17 +12,24 @@
     <p class="session-desc"><%= session.description %></p>
   <% } %>
 
-  <% if (session.status === 'confirmed') { %>
+  <% if (session.status === 'confirmed' || session.status === 'completed') { %>
     <% const confirmedSlot = slots.find(s => s.id === session.confirmed_slot_id); %>
     <% if (confirmedSlot) { %>
       <div class="confirmed-banner">
-        <h3>Quest Date Proclaimed!</h3>
+        <h3><%= session.status === 'completed' ? 'Quest Completed!' : 'Quest Date Proclaimed!' %></h3>
         <p>
           <%= formatDate(confirmedSlot.date_time, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) %>
           <% if (confirmedSlot.label) { %> &mdash; <%= confirmedSlot.label %><% } %>
         </p>
       </div>
     <% } %>
+  <% } %>
+
+  <% if (session.status === 'completed' && session.summary) { %>
+    <div class="recap-card">
+      <h3>Session Recap</h3>
+      <div class="recap-text"><%= session.summary %></div>
+    </div>
   <% } %>
 
   <% if (session.status === 'open') { %>

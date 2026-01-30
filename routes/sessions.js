@@ -310,6 +310,33 @@ router.post('/:id/reopen', requireLogin, requireDM, (req, res) => {
   res.redirect('/sessions/' + session.id);
 });
 
+router.post('/:id/summary', requireLogin, requireDM, (req, res) => {
+  const { summary } = req.body;
+  const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(req.params.id);
+
+  if (!session) {
+    req.flash('error', 'Session not found.');
+    return res.redirect('/');
+  }
+
+  if (!summary || !summary.trim()) {
+    req.flash('error', 'Recap content is required.');
+    return res.redirect('/sessions/' + session.id);
+  }
+
+  if (session.status === 'confirmed') {
+    db.prepare('UPDATE sessions SET summary = ?, status = ? WHERE id = ?')
+      .run(summary.trim(), 'completed', session.id);
+    req.flash('success', 'Session recap saved and quest completed!');
+  } else {
+    db.prepare('UPDATE sessions SET summary = ? WHERE id = ?')
+      .run(summary.trim(), session.id);
+    req.flash('success', 'Session recap updated.');
+  }
+
+  res.redirect('/sessions/' + session.id);
+});
+
 router.post('/:id/delete', requireLogin, requireAdmin, (req, res) => {
   const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(req.params.id);
 
