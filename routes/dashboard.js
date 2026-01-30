@@ -4,6 +4,9 @@ const { requireLogin } = require('../middleware/auth');
 const router = express.Router();
 
 router.get('/', requireLogin, (req, res) => {
+  const firstLogin = !!req.session.firstLogin;
+  if (req.session.firstLogin) delete req.session.firstLogin;
+
   if (req.user.role === 'dm' || req.user.role === 'admin') {
     const sessions = db.prepare(`
       SELECT s.*, sl.date_time as confirmed_date, sl.label as confirmed_label
@@ -12,7 +15,7 @@ router.get('/', requireLogin, (req, res) => {
       ORDER BY s.created_at DESC
     `).all();
 
-    return res.render('dm/dashboard', { sessions });
+    return res.render('dm/dashboard', { sessions, firstLogin });
   }
 
   // Player dashboard
@@ -33,7 +36,7 @@ router.get('/', requireLogin, (req, res) => {
     WHERE v.user_id = ?
   `).all(req.user.id).map(r => r.session_id);
 
-  res.render('player/dashboard', { sessions, votedSessionIds });
+  res.render('player/dashboard', { sessions, votedSessionIds, firstLogin });
 });
 
 module.exports = router;

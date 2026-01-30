@@ -1,7 +1,48 @@
   </main>
   <footer class="app-footer">
-    <div class="container">v<%= appVersion %></div>
+    <div class="container">
+      <div class="footer-about">
+        <strong>Quest Planner</strong> v<%= appVersion %> &mdash; Open-source D&D session scheduler
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/nenadjokic/dndplanning" target="_blank">GitHub</a>
+        <span class="footer-sep">&middot;</span>
+        <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank">GPL-3.0 License</a>
+        <span class="footer-sep">&middot;</span>
+        <a href="https://buymeacoffee.com/nenadjokic" target="_blank">Buy Me a Coffee</a>
+        <span class="footer-sep">&middot;</span>
+        <a href="https://paypal.me/nenadjokicRS" target="_blank">PayPal</a>
+      </div>
+      <div class="footer-copy">
+        Made with &hearts; by Nenad Jokic
+      </div>
+    </div>
   </footer>
+
+  <% if (typeof firstLogin !== 'undefined' && firstLogin) { %>
+    <div class="welcome-overlay" id="welcome-overlay">
+      <div class="welcome-modal">
+        <h2>Welcome to Quest Planner!</h2>
+        <p>Thank you for using this software! Quest Planner is free and open-source, licensed under the GPL-3.0.</p>
+        <p>If you enjoy it and would like to support development, consider buying me a coffee:</p>
+        <div class="welcome-links">
+          <a href="https://buymeacoffee.com/nenadjokic" target="_blank" class="btn btn-primary btn-small">Buy Me a Coffee</a>
+          <a href="https://paypal.me/nenadjokicRS" target="_blank" class="btn btn-outline btn-small">PayPal</a>
+        </div>
+        <p class="form-hint">You can always find these links in the footer.</p>
+        <button class="btn btn-outline" id="welcome-close">Enter the Tavern</button>
+      </div>
+    </div>
+    <script>
+      document.getElementById('welcome-close').addEventListener('click', function() {
+        document.getElementById('welcome-overlay').remove();
+      });
+      document.getElementById('welcome-overlay').addEventListener('click', function(e) {
+        if (e.target === this) this.remove();
+      });
+    </script>
+  <% } %>
+
   <script src="/js/app.js"></script>
 </body>
 </html>

@@ -58,6 +58,7 @@ router.post('/register', async (req, res) => {
   const result = db.prepare('INSERT INTO users (username, password, role) VALUES (?, ?, ?)').run(username, hash, role);
 
   req.session.userId = result.lastInsertRowid;
+  req.session.firstLogin = true;
   const roleLabel = role === 'admin' ? 'Guild Master' : 'Adventurer';
   req.flash('success', `Welcome, ${username}! You have joined as ${roleLabel}.`);
   res.redirect('/');
