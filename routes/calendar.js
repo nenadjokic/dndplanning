@@ -14,6 +14,51 @@ function formatICalDateOnly(dateStr) {
   return dateStr.replace(/-/g, '');
 }
 
+router.get('/sessions/feed.ics', (req, res) => {
+  const sessions = db.prepare(`
+    SELECT s.title, s.description, sl.date_time
+    FROM sessions s
+    JOIN slots sl ON s.confirmed_slot_id = sl.id
+    WHERE s.status = 'confirmed'
+    ORDER BY sl.date_time
+  `).all();
+
+  const now = new Date();
+  const stamp = formatICalDate(now);
+
+  let ical = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Quest Planner//D&D Sessions//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'X-WR-CALNAME:Quest Planner - Sessions'
+  ];
+
+  for (const s of sessions) {
+    const start = new Date(s.date_time);
+    const end = new Date(start.getTime() + 3 * 60 * 60 * 1000);
+    const uid = `session-${start.getTime()}@questplanner`;
+
+    ical.push('BEGIN:VEVENT');
+    ical.push(`UID:${uid}`);
+    ical.push(`DTSTAMP:${stamp}`);
+    ical.push(`DTSTART:${formatICalDate(start)}`);
+    ical.push(`DTEND:${formatICalDate(end)}`);
+    ical.push(`SUMMARY:${icalEscape(s.title)}`);
+    if (s.description) {
+      ical.push(`DESCRIPTION:${icalEscape(s.description)}`);
+    }
+    ical.push('END:VEVENT');
+  }
+
+  ical.push('END:VCALENDAR');
+
+  res.set('Content-Type', 'text/calendar; charset=utf-8');
+  res.set('Content-Disposition', 'inline; filename="sessions.ics"');
+  res.send(ical.join('\r\n'));
+});
+
 router.get('/:token/feed.ics', (req, res) => {
   const user = db.prepare('SELECT id, username, calendar_token FROM users WHERE calendar_token = ?').get(req.params.token);
 

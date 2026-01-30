@@ -35,7 +35,7 @@ const upload = multer({
 
 router.get('/', requireLogin, (req, res) => {
   // Re-read user to get latest data (e.g. after token generation)
-  const freshUser = db.prepare('SELECT id, username, role, avatar, time_format, calendar_token FROM users WHERE id = ?').get(req.user.id);
+  const freshUser = db.prepare('SELECT id, username, role, avatar, time_format, calendar_token, theme FROM users WHERE id = ?').get(req.user.id);
   const unavailabilities = db.prepare(
     'SELECT * FROM unavailability WHERE user_id = ? ORDER BY date'
   ).all(req.user.id);
@@ -45,7 +45,9 @@ router.get('/', requireLogin, (req, res) => {
     calendarUrl = `${req.protocol}://${req.get('host')}/calendar/${freshUser.calendar_token}/feed.ics`;
   }
 
-  res.render('settings', { unavailabilities, calendarUrl, settingsUser: freshUser });
+  const publicCalendarUrl = `${req.protocol}://${req.get('host')}/calendar/sessions/feed.ics`;
+
+  res.render('settings', { unavailabilities, calendarUrl, publicCalendarUrl, settingsUser: freshUser });
 });
 
 router.post('/time-format', requireLogin, (req, res) => {
@@ -56,6 +58,17 @@ router.post('/time-format', requireLogin, (req, res) => {
   }
   db.prepare('UPDATE users SET time_format = ? WHERE id = ?').run(time_format, req.user.id);
   req.flash('success', 'Time format updated.');
+  res.redirect('/settings');
+});
+
+router.post('/theme', requireLogin, (req, res) => {
+  const { theme } = req.body;
+  if (!['dark', 'light', 'auto'].includes(theme)) {
+    req.flash('error', 'Invalid theme.');
+    return res.redirect('/settings');
+  }
+  db.prepare('UPDATE users SET theme = ? WHERE id = ?').run(theme, req.user.id);
+  req.flash('success', 'Theme updated.');
   res.redirect('/settings');
 });
 

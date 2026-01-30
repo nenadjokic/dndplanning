@@ -1,9 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="<%= (typeof user !== 'undefined' && user && user.theme === 'light') ? 'light' : (typeof user !== 'undefined' && user && user.theme === 'auto') ? 'auto' : 'dark' %>" data-raw-theme="<%= (typeof user !== 'undefined' && user && user.theme) ? user.theme : 'dark' %>">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quest Planner<%= typeof pageTitle !== 'undefined' ? ' - ' + pageTitle : '' %></title>
+  <script>
+    (function() {
+      var raw = document.documentElement.getAttribute('data-raw-theme');
+      if (raw === 'auto') {
+        var h = new Date().getHours();
+        document.documentElement.setAttribute('data-theme', (h >= 6 && h < 19) ? 'light' : 'dark');
+      }
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">

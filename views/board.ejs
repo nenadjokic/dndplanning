@@ -1,0 +1,68 @@
+<%- include('partials/head', { pageTitle: 'Bulletin Board' }) %>
+
+<div class="page-header">
+  <h1>Bulletin Board</h1>
+  <a href="/" class="btn btn-outline">Back to Quest Board</a>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem;">
+  <form action="/board" method="POST">
+    <div class="form-group">
+      <label for="board-content">Post a Message</label>
+      <textarea id="board-content" name="content" rows="3" placeholder="Share news, plans, or tavern gossip..." required></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary btn-small">Post to Board</button>
+  </form>
+</div>
+
+<% if (posts.length > 0) { %>
+  <% for (const post of posts) { %>
+    <div class="card board-post">
+      <div class="board-post-header">
+        <% if (post.avatar) { %>
+          <img src="/avatars/<%= post.avatar %>" alt="" class="avatar-tiny">
+        <% } else { %>
+          <span class="avatar-letter avatar-letter-sm"><%= post.username.charAt(0).toUpperCase() %></span>
+        <% } %>
+        <strong><%= post.username %></strong>
+        <span class="text-muted" style="font-size: 0.8rem;"><%= formatDate(post.created_at, { month: 'short', day: 'numeric', year: 'numeric' }) %></span>
+        <% if (post.user_id === user.id || user.role === 'admin') { %>
+          <form action="/board/<%= post.id %>/delete" method="POST" class="inline-form" style="margin-left: auto;">
+            <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this post?')">&times;</button>
+          </form>
+        <% } %>
+      </div>
+      <div class="board-post-content"><%= post.content %></div>
+
+      <% if (replyMap[post.id] && replyMap[post.id].length > 0) { %>
+        <div class="board-replies">
+          <% for (const reply of replyMap[post.id]) { %>
+            <div class="board-reply">
+              <div class="board-post-header">
+                <% if (reply.avatar) { %>
+                  <img src="/avatars/<%= reply.avatar %>" alt="" class="avatar-tiny">
+                <% } else { %>
+                  <span class="avatar-letter avatar-letter-sm"><%= reply.username.charAt(0).toUpperCase() %></span>
+                <% } %>
+                <strong><%= reply.username %></strong>
+                <span class="text-muted" style="font-size: 0.8rem;"><%= formatDate(reply.created_at, { month: 'short', day: 'numeric', year: 'numeric' }) %></span>
+              </div>
+              <div class="board-post-content"><%= reply.content %></div>
+            </div>
+          <% } %>
+        </div>
+      <% } %>
+
+      <form action="/board/<%= post.id %>/reply" method="POST" class="board-reply-form">
+        <input type="text" name="content" placeholder="Reply..." required>
+        <button type="submit" class="btn btn-small btn-outline">Reply</button>
+      </form>
+    </div>
+  <% } %>
+<% } else { %>
+  <div class="card">
+    <p class="empty-state-text">The bulletin board is empty. Be the first to post!</p>
+  </div>
+<% } %>
+
+<%- include('partials/foot') %>

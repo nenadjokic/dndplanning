@@ -19,14 +19,33 @@ router.get('/new', requireLogin, requireDM, (req, res) => {
 
 router.post('/', requireLogin, requireDM, (req, res) => {
   const { title, description, slot_dates, slot_labels } = req.body;
+  const slotDatesDate = req.body['slot_dates_date'];
+  const slotDatesTime = req.body['slot_dates_time'];
 
-  if (!title || !slot_dates || slot_dates.length === 0) {
+  // Support both legacy datetime-local (slot_dates) and new split date+time inputs
+  let dates, labels;
+  if (slotDatesDate) {
+    const dArr = Array.isArray(slotDatesDate) ? slotDatesDate : [slotDatesDate];
+    const tArr = Array.isArray(slotDatesTime) ? slotDatesTime : [slotDatesTime || ''];
+    dates = dArr.map((d, i) => {
+      if (!d || !d.trim()) return '';
+      const time = (tArr[i] && tArr[i].trim()) || '00:00';
+      return d.trim() + 'T' + time;
+    });
+    labels = Array.isArray(slot_labels) ? slot_labels : [slot_labels];
+  } else {
+    if (!slot_dates || slot_dates.length === 0) {
+      req.flash('error', 'Title and at least one time slot are required.');
+      return res.redirect('/sessions/new');
+    }
+    dates = Array.isArray(slot_dates) ? slot_dates : [slot_dates];
+    labels = Array.isArray(slot_labels) ? slot_labels : [slot_labels];
+  }
+
+  if (!title) {
     req.flash('error', 'Title and at least one time slot are required.');
     return res.redirect('/sessions/new');
   }
-
-  const dates = Array.isArray(slot_dates) ? slot_dates : [slot_dates];
-  const labels = Array.isArray(slot_labels) ? slot_labels : [slot_labels];
 
   const validDates = dates.filter(d => d && d.trim());
   if (validDates.length === 0) {
@@ -138,9 +157,35 @@ router.get('/:id', requireLogin, (req, res) => {
     preferenceMap[p.user_id] = { slot_id: p.slot_id, username: p.username };
   }
 
+  // Load session comments
+  const sessionPosts = db.prepare(`
+    SELECT p.*, u.username, u.avatar
+    FROM posts p
+    JOIN users u ON p.user_id = u.id
+    WHERE p.session_id = ?
+    ORDER BY p.created_at ASC
+  `).all(session.id);
+
+  const sessionPostIds = sessionPosts.map(p => p.id);
+  const sessionReplyMap = {};
+  if (sessionPostIds.length > 0) {
+    const ph = sessionPostIds.map(() => '?').join(',');
+    const replies = db.prepare(`
+      SELECT r.*, u.username, u.avatar
+      FROM replies r
+      JOIN users u ON r.user_id = u.id
+      WHERE r.post_id IN (${ph})
+      ORDER BY r.created_at ASC
+    `).all(...sessionPostIds);
+    for (const r of replies) {
+      if (!sessionReplyMap[r.post_id]) sessionReplyMap[r.post_id] = [];
+      sessionReplyMap[r.post_id].push(r);
+    }
+  }
+
   if (isDM) {
     const myPreference = preferenceMap[req.user.id] || null;
-    res.render('dm/session-detail', { session, slots, players, voteMap, slotSummary, preferences, preferenceMap, myPreference, allUsersMap, unavailabilityMap });
+    res.render('dm/session-detail', { session, slots, players, voteMap, slotSummary, preferences, preferenceMap, myPreference, allUsersMap, unavailabilityMap, sessionPosts, sessionReplyMap });
   } else {
     // Get this player's votes
     const myVotes = {};
@@ -149,8 +194,40 @@ router.get('/:id', requireLogin, (req, res) => {
         myVotes[v.slot_id] = v.status;
       }
     }
-    res.render('player/vote', { session, slots, myVotes });
+    res.render('player/vote', { session, slots, myVotes, sessionPosts, sessionReplyMap });
   }
+});
+
+router.post('/:id/comment', requireLogin, (req, res) => {
+  const { content } = req.body;
+  const session = db.prepare('SELECT id FROM sessions WHERE id = ?').get(req.params.id);
+  if (!session) {
+    req.flash('error', 'Session not found.');
+    return res.redirect('/');
+  }
+  if (!content || !content.trim()) {
+    req.flash('error', 'Comment content is required.');
+    return res.redirect('/sessions/' + session.id);
+  }
+  db.prepare('INSERT INTO posts (user_id, session_id, content) VALUES (?, ?, ?)').run(req.user.id, session.id, content.trim());
+  req.flash('success', 'Comment posted.');
+  res.redirect('/sessions/' + session.id);
+});
+
+router.post('/:id/comment/:postId/reply', requireLogin, (req, res) => {
+  const { content } = req.body;
+  const post = db.prepare('SELECT id FROM posts WHERE id = ? AND session_id = ?').get(req.params.postId, req.params.id);
+  if (!post) {
+    req.flash('error', 'Comment not found.');
+    return res.redirect('/sessions/' + req.params.id);
+  }
+  if (!content || !content.trim()) {
+    req.flash('error', 'Reply content is required.');
+    return res.redirect('/sessions/' + req.params.id);
+  }
+  db.prepare('INSERT INTO replies (post_id, user_id, content) VALUES (?, ?, ?)').run(post.id, req.user.id, content.trim());
+  req.flash('success', 'Reply posted.');
+  res.redirect('/sessions/' + req.params.id);
 });
 
 router.post('/:id/confirm', requireLogin, requireDM, (req, res) => {

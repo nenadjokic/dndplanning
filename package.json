@@ -1,6 +1,6 @@
 {
   "name": "dndplanning",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "D&D Quest Planner - Session scheduling for your adventuring party",
   "main": "server.js",
   "scripts": {

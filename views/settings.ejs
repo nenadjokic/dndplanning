@@ -26,6 +26,24 @@
 </div>
 
 <div class="settings-section card">
+  <h2>Theme</h2>
+  <form action="/settings/theme" method="POST">
+    <div class="form-group">
+      <label>
+        <input type="radio" name="theme" value="dark" <%= (settingsUser.theme || 'dark') === 'dark' ? 'checked' : '' %>> Dark (Dungeon)
+      </label>
+      <label style="margin-left: 1.5rem;">
+        <input type="radio" name="theme" value="light" <%= settingsUser.theme === 'light' ? 'checked' : '' %>> Light (Parchment)
+      </label>
+      <label style="margin-left: 1.5rem;">
+        <input type="radio" name="theme" value="auto" <%= settingsUser.theme === 'auto' ? 'checked' : '' %>> Auto (Light 6AM&ndash;7PM)
+      </label>
+    </div>
+    <button type="submit" class="btn btn-primary btn-small">Save Theme</button>
+  </form>
+</div>
+
+<div class="settings-section card">
   <h2>Time Format</h2>
   <form action="/settings/time-format" method="POST">
     <div class="form-group">
@@ -96,13 +114,19 @@
   <p class="form-hint">Subscribe to your D&D sessions in your favorite calendar app. The feed includes confirmed sessions and your unavailability days.</p>
   <% if (calendarUrl) { %>
     <div class="form-group">
-      <label>Your Calendar Feed URL</label>
+      <label>Your Personal Calendar Feed URL</label>
       <input type="text" value="<%= calendarUrl %>" readonly onclick="this.select()" class="calendar-url-input">
     </div>
   <% } %>
   <form action="/settings/generate-calendar-token" method="POST">
     <button type="submit" class="btn btn-outline btn-small"><%= calendarUrl ? 'Regenerate Token' : 'Generate Calendar URL' %></button>
   </form>
+
+  <div class="form-group" style="margin-top: 1rem;">
+    <label>Sessions-Only Feed (Public)</label>
+    <input type="text" value="<%= publicCalendarUrl %>" readonly onclick="this.select()" class="calendar-url-input">
+  </div>
+  <p class="form-hint">This public feed includes only confirmed sessions (no personal unavailability). Share with anyone.</p>
 </div>
 
 <%- include('partials/foot') %>

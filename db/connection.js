@@ -19,7 +19,8 @@ db.exec(schema);
 const alterStatements = [
   "ALTER TABLE users ADD COLUMN time_format TEXT NOT NULL DEFAULT '24h'",
   "ALTER TABLE users ADD COLUMN avatar TEXT",
-  "ALTER TABLE users ADD COLUMN calendar_token TEXT"
+  "ALTER TABLE users ADD COLUMN calendar_token TEXT",
+  "ALTER TABLE users ADD COLUMN theme TEXT NOT NULL DEFAULT 'dark'"
 ];
 
 for (const sql of alterStatements) {

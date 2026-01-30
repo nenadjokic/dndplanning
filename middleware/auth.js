@@ -8,7 +8,7 @@ function attachUser(req, res, next) {
   res.locals.formatTime = (iso) => formatTime(iso, '24h');
 
   if (req.session.userId) {
-    const user = db.prepare('SELECT id, username, role, avatar, time_format, calendar_token FROM users WHERE id = ?').get(req.session.userId);
+    const user = db.prepare('SELECT id, username, role, avatar, time_format, calendar_token, theme FROM users WHERE id = ?').get(req.session.userId);
     if (user) {
       req.user = user;
       res.locals.user = user;

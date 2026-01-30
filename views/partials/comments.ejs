@@ -1,0 +1,53 @@
+<div class="card" style="margin-top: 1.5rem;">
+  <h2>Quest Discussion</h2>
+
+  <form action="/sessions/<%= session.id %>/comment" method="POST" style="margin-bottom: 1.5rem;">
+    <div class="form-group">
+      <textarea name="content" rows="2" placeholder="Add a comment..." required></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary btn-small">Post Comment</button>
+  </form>
+
+  <% if (sessionPosts.length > 0) { %>
+    <% for (const post of sessionPosts) { %>
+      <div class="board-post">
+        <div class="board-post-header">
+          <% if (post.avatar) { %>
+            <img src="/avatars/<%= post.avatar %>" alt="" class="avatar-tiny">
+          <% } else { %>
+            <span class="avatar-letter avatar-letter-sm"><%= post.username.charAt(0).toUpperCase() %></span>
+          <% } %>
+          <strong><%= post.username %></strong>
+          <span class="text-muted" style="font-size: 0.8rem;"><%= formatDate(post.created_at, { month: 'short', day: 'numeric', year: 'numeric' }) %></span>
+        </div>
+        <div class="board-post-content"><%= post.content %></div>
+
+        <% if (sessionReplyMap[post.id] && sessionReplyMap[post.id].length > 0) { %>
+          <div class="board-replies">
+            <% for (const reply of sessionReplyMap[post.id]) { %>
+              <div class="board-reply">
+                <div class="board-post-header">
+                  <% if (reply.avatar) { %>
+                    <img src="/avatars/<%= reply.avatar %>" alt="" class="avatar-tiny">
+                  <% } else { %>
+                    <span class="avatar-letter avatar-letter-sm"><%= reply.username.charAt(0).toUpperCase() %></span>
+                  <% } %>
+                  <strong><%= reply.username %></strong>
+                  <span class="text-muted" style="font-size: 0.8rem;"><%= formatDate(reply.created_at, { month: 'short', day: 'numeric', year: 'numeric' }) %></span>
+                </div>
+                <div class="board-post-content"><%= reply.content %></div>
+              </div>
+            <% } %>
+          </div>
+        <% } %>
+
+        <form action="/sessions/<%= session.id %>/comment/<%= post.id %>/reply" method="POST" class="board-reply-form">
+          <input type="text" name="content" placeholder="Reply..." required>
+          <button type="submit" class="btn btn-small btn-outline">Reply</button>
+        </form>
+      </div>
+    <% } %>
+  <% } else { %>
+    <p class="empty-state-text">No comments yet. Start the discussion!</p>
+  <% } %>
+</div>

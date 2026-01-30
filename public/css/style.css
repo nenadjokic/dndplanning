@@ -26,6 +26,77 @@
   --font-body: 'Crimson Text', serif;
 }
 
+/* === Light Theme === */
+[data-theme="light"] {
+  --bg-dark: #f5f0e8;
+  --bg-darker: #ebe4d6;
+  --bg-card: #faf7f0;
+  --bg-card-hover: #f0ece3;
+  --text-primary: #2c2416;
+  --text-secondary: #6b5e4f;
+  --gold: #8b6914;
+  --gold-bright: #a07818;
+  --gold-dim: #c4a55a;
+  --border: #d4c9b5;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .nav {
+  background: #e0d8c8;
+  border-bottom-color: #c4a55a;
+}
+
+[data-theme="light"] .btn-primary {
+  color: #fff;
+}
+
+[data-theme="light"] .btn-primary:hover {
+  color: #fff;
+}
+
+[data-theme="light"] .btn-outline {
+  border-color: #c4a55a;
+}
+
+[data-theme="light"] .form-group input[type="text"],
+[data-theme="light"] .form-group input[type="password"],
+[data-theme="light"] .form-group input[type="datetime-local"],
+[data-theme="light"] .form-group input[type="date"],
+[data-theme="light"] .form-group textarea,
+[data-theme="light"] .form-group select,
+[data-theme="light"] .time-select,
+[data-theme="light"] .board-reply-form input[type="text"] {
+  background: #fff;
+  border-color: #d4c9b5;
+  color: #2c2416;
+}
+
+[data-theme="light"] .slot-grid thead th,
+[data-theme="light"] .summary-row td {
+  background: #e0d8c8;
+}
+
+[data-theme="light"] .vote-slot-card {
+  background: #fff;
+  border-color: #d4c9b5;
+}
+
+[data-theme="light"] .avatar-letter {
+  background: #c4a55a;
+  color: #fff;
+}
+
+[data-theme="light"] .avatar-placeholder {
+  background: #c4a55a;
+  color: #fff;
+}
+
+[data-theme="light"] .role-select {
+  background: #fff;
+  color: #2c2416;
+  border-color: #d4c9b5;
+}
+
 /* === Reset & Base === */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -289,10 +360,16 @@ h3 { font-size: 1.25rem; }
   gap: 0.5rem;
   margin-bottom: 0.5rem;
   align-items: center;
+  flex-wrap: wrap;
 }
 
-.slot-row input[type="datetime-local"] {
+.slot-row input[type="datetime-local"],
+.slot-row input[type="date"] {
   flex: 1;
+}
+
+.slot-row .time-select {
+  flex: 0.5;
 }
 
 .slot-row input[type="text"] {
@@ -923,6 +1000,124 @@ h3 { font-size: 1.25rem; }
   margin-top: 0;
 }
 
+/* === Nav Clock === */
+.nav-clock {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  font-family: var(--font-body);
+}
+
+/* === Nav Link === */
+.nav-link {
+  color: var(--gold);
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  text-decoration: none;
+}
+
+.nav-link:hover {
+  color: var(--gold-bright);
+}
+
+/* === Time Select === */
+.time-select {
+  padding: 0.6rem 0.8rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  min-width: 120px;
+}
+
+.time-select:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(212, 168, 67, 0.25);
+}
+
+/* === Slot Unavailability Warning === */
+.slot-unavail-warning {
+  width: 100%;
+  color: var(--yellow-light);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.25rem 0;
+  display: none;
+}
+
+.slot-unavail-warning.visible {
+  display: block;
+}
+
+/* === Bulletin Board === */
+.board-post {
+  margin-bottom: 1rem;
+}
+
+.board-post:last-child {
+  margin-bottom: 0;
+}
+
+.board-post-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.board-post-content {
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.board-replies {
+  margin-left: 1.5rem;
+  border-left: 2px solid var(--border);
+  padding-left: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.board-reply {
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.board-reply:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.board-reply-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.board-reply-form input[type="text"] {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+}
+
+.board-reply-form input[type="text"]:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(212, 168, 67, 0.25);
+}
+
 /* === Responsive === */
 @media (max-width: 640px) {
   body { font-size: 16px; }
@@ -942,7 +1137,9 @@ h3 { font-size: 1.25rem; }
   }
 
   .slot-row input[type="datetime-local"],
-  .slot-row input[type="text"] {
+  .slot-row input[type="date"],
+  .slot-row input[type="text"],
+  .slot-row .time-select {
     flex: 1 1 100%;
   }
 
