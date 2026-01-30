@@ -1,7 +1,20 @@
-# Quest Planner — D&D Session Scheduler
+# Quest Planner v0.3.2 — D&D Session Scheduler
 
-A web application where the Dungeon Master creates session time slots and players vote on their availability.
-Dark fantasy theme, Node.js + SQLite backend, EJS server-side rendering.
+> **Latest release:** v0.3.2 (2026-01-30)
+
+A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
+Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
+
+---
+
+### Support the Project
+
+If you enjoy Quest Planner, consider buying me a coffee:
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/nenadjokic)
+[![PayPal](https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/nenadjokicRS)
+
+---
 
 ## Table of Contents
 
@@ -23,6 +36,7 @@ Dark fantasy theme, Node.js + SQLite backend, EJS server-side rendering.
 - [Database Backup](#database-backup)
 - [Updating](#updating)
 - [Changelog](#changelog)
+- [License](#license)
 
 ---
 
@@ -31,13 +45,23 @@ Dark fantasy theme, Node.js + SQLite backend, EJS server-side rendering.
 - **Session Scheduling** — DM posts proposed time slots, players vote on availability
 - **Availability Grid** — Visual overview of who can play when (available / maybe / unavailable)
 - **DM Preferences** — DMs and admins can mark their preferred slot with a star
-- **Session Lifecycle** — Open → Confirmed → Cancelled / Reopened
-- **User Settings** — Avatar upload, 12h/24h time format toggle, password change
+- **Session Lifecycle** — Open -> Confirmed -> Cancelled / Reopened
+- **Date + Time Picker** — Separate date and time select (30-min increments, 12h/24h)
+- **Dynamic Unavailability Warnings** — Inline warnings when a selected date conflicts with player unavailability
+- **Bulletin Board** — Global post/reply board for tavern gossip and announcements
+- **Session Comments** — Per-session "Quest Discussion" threads with replies
+- **@Mentions** — Tag users with `@username`; mentioned names highlighted in gold
+- **Notifications** — Bell icon in nav bar with unread badge, dropdown history, auto-polling
+  - Triggered by: session confirmation, @mentions in posts/replies/comments
+- **Light / Dark / Auto Theme** — Dark (Dungeon), Light (Parchment), Auto (switches at 6AM/7PM)
+- **Live Clock** — Current date and time in the nav bar, updates every second
+- **User Settings** — Avatar upload, time format toggle, theme toggle, password change
 - **Unavailability Days** — Players mark dates they can't play; DM sees these when creating sessions
-- **Calendar Feed (iCal)** — Subscribe to confirmed sessions and unavailability in any calendar app
+- **Calendar Feed (iCal)** — Personal feed (sessions + unavailability) and public sessions-only feed
 - **Auto-Update Check** — Admin can check for new releases from the Guild Settings page
+- **Welcome Popup** — First-login modal thanking users with support links
 - **Role System** — Guild Master (admin), Dungeon Master, Adventurer (player)
-- **Dark Fantasy Theme** — Medieval-inspired UI with custom fonts
+- **Open Source** — GPL-3.0 licensed, footer with GitHub/license/support links
 - **SQLite Database** — Zero-config, file-based, easy to back up
 - **Docker Ready** — Dockerfile and docker-compose.yml included
 
@@ -325,17 +349,19 @@ For access with a custom domain, add to `/etc/hosts` on the client machine:
 1. Open `http://localhost:3000` (or your server address)
 2. Click **"Join the Guild"** to register
 3. **The first registered user automatically becomes Guild Master (Admin)**
-4. All subsequent users become Players (Adventurers)
-5. The admin can assign the DM role to other users through the **Guild Settings** page
+4. A welcome popup appears thanking you for using the software (shown only once)
+5. All subsequent users become Players (Adventurers)
+6. The admin can assign the DM role to other users through the **Guild Settings** page
 
 ### DM Workflow
 
 1. On the dashboard, click **"Post to Tavern Board"**
-2. Enter a session title, description, and proposed time slots
-3. Review any player unavailability dates shown above the form
+2. Enter a session title, description, and proposed time slots (date + time select)
+3. Yellow warnings appear if any player is unavailable on a selected date
 4. Click **"Post to Tavern Board"** to publish
 5. Review player votes in the availability grid
 6. Select a slot and click **"Proclaim This Date"** to confirm
+7. All voters receive a notification when the session is confirmed
 
 ### Player Workflow
 
@@ -343,15 +369,33 @@ For access with a custom domain, add to `/etc/hosts` on the client machine:
 2. Click on a session with the **"Needs your vote"** badge
 3. For each slot, choose: **Available** / **Maybe** / **Unavailable**
 4. Click **"Submit Availability"**
+5. Add comments in the **Quest Discussion** section
+
+### Bulletin Board
+
+- Click **"Bulletin Board"** in the nav bar
+- Post messages, reply to others, delete your own posts (admins can delete any)
+- Use `@username` to mention someone (e.g., `@nenad.jokic`) — they'll receive a notification
 
 ### Settings
 
 All users can access **Settings** (pencil icon in the nav bar) to:
-- Upload an avatar (displayed in the nav, availability grid, and preferences)
+- Upload an avatar (displayed in nav, grid, posts, and preferences)
+- Switch theme: Dark (Dungeon), Light (Parchment), or Auto (6AM-7PM)
 - Toggle between 12-hour and 24-hour time format
 - Change their password
 - Mark unavailability days with optional reasons
-- Generate a calendar feed URL (iCal) for subscribing in external calendar apps
+- Generate a personal calendar feed URL (iCal) with sessions + unavailability
+- View the public sessions-only calendar feed URL (shareable, no auth required)
+
+### Notifications
+
+- The **bell icon** in the nav bar shows a red dot when you have unread notifications
+- Click the bell to see your last 5 notifications
+- Notifications are triggered by:
+  - A session being confirmed (all voters + session creator notified)
+  - Being mentioned with `@yourusername` in any post, reply, or comment
+- Notifications auto-poll every 30 seconds
 
 ### Admin Features
 
@@ -367,36 +411,41 @@ The Guild Master can access **Guild Settings** (cogwheel icon) to:
 dndplanning/
 ├── server.js              # Express entry point
 ├── package.json
+├── LICENSE                # GPL-3.0 license
 ├── .env                   # Environment variables (not in git)
 ├── .env.example           # Example env file
 ├── Dockerfile
 ├── docker-compose.yml
 ├── .dockerignore
 ├── db/
-│   ├── schema.sql         # DDL for SQLite tables
+│   ├── schema.sql         # DDL for SQLite tables (users, sessions, slots, votes, preferences, unavailability, posts, replies, notifications)
 │   └── connection.js      # SQLite connection and initialization
 ├── helpers/
-│   └── time.js            # Date/time formatting helpers (12h/24h)
+│   ├── time.js            # Date/time formatting helpers (12h/24h)
+│   └── notifications.js   # Notification creation, @mention parsing
 ├── middleware/
-│   ├── auth.js            # Auth middleware (login, DM check, user data)
+│   ├── auth.js            # Auth middleware (login, DM check, user data, theme)
 │   └── flash.js           # Flash messages
 ├── routes/
-│   ├── auth.js            # Register, login, logout
+│   ├── auth.js            # Register, login, logout (first-login flag)
 │   ├── admin.js           # User management, update check
-│   ├── calendar.js        # iCal feed endpoint
-│   ├── dashboard.js       # Role-based redirect (DM/Player)
-│   ├── sessions.js        # Session CRUD, slot confirmation
-│   ├── settings.js        # User settings (avatar, time, password, unavailability)
+│   ├── board.js           # Bulletin board posts, replies, delete
+│   ├── calendar.js        # Personal iCal feed + public sessions-only feed
+│   ├── dashboard.js       # Role-based redirect (DM/Player), welcome popup
+│   ├── notifications.js   # Notification API (fetch, mark read)
+│   ├── sessions.js        # Session CRUD, slot confirmation, comments, replies
+│   ├── settings.js        # User settings (avatar, theme, time, password, unavailability, calendar)
 │   └── votes.js           # Player voting
 ├── views/                 # EJS templates
-│   ├── partials/          # Header, footer, nav, flash, slot grid
+│   ├── partials/          # Header (theme), footer (about/GPL/support), nav (bell/clock), flash, slot grid, comments
 │   ├── auth/              # Login, register pages
-│   ├── dm/                # DM dashboard, form, session detail
+│   ├── dm/                # DM dashboard, session form (date+time picker), session detail
 │   ├── player/            # Player dashboard, voting
-│   └── settings.ejs       # User settings page
+│   ├── board.ejs          # Bulletin board page
+│   └── settings.ejs       # User settings page (avatar, theme, time, password, unavailability, calendar)
 ├── public/
-│   ├── css/style.css      # Dark fantasy theme
-│   └── js/app.js          # Slot picker, flash dismiss, update check
+│   ├── css/style.css      # Dark + light theme, notifications, mentions, board styles
+│   └── js/app.js          # Clock, notifications, time picker, unavailability warnings, theme recheck
 └── data/                  # SQLite files + avatars (not in git)
     └── avatars/           # User avatar uploads
 ```
@@ -453,7 +502,32 @@ The admin can also check for updates from the **Guild Settings** page using the 
 
 ## Changelog
 
-### v0.2.0
+### v0.3.2 (2026-01-30)
+
+- **Notifications** — bell icon in nav with unread badge, dropdown with last 5 notifications, auto-polls every 30s
+- **Session confirmation notifications** — all voters and the session creator are notified when a quest date is confirmed
+- **@Mentions** — type `@username` in board posts, replies, or session comments to tag users
+- **Mention highlighting** — mentioned usernames rendered in gold accent with background
+- **Mention notifications** — tagged users receive a notification linking to the relevant page
+
+### v0.3.1 (2026-01-30)
+
+- **GPL-3.0 License** — LICENSE file added, project is now officially open source
+- **Redesigned footer** — about section, GitHub link, GPL-3.0 link, Buy Me a Coffee, PayPal
+- **First-login welcome popup** — thanks users and shows support links (only shown once per account)
+- **Author and license fields** in package.json
+
+### v0.3.0 (2026-01-30)
+
+- **Light / Dark / Auto theme** — three modes stored per user; CSS custom property overrides; auto switches at 6AM/7PM
+- **Live clock in nav bar** — updates every second, respects 12h/24h format
+- **Bulletin Board** — global post/reply board at `/board` with delete (author + admin)
+- **Session comments** — "Quest Discussion" threads on every session detail page with replies
+- **Public sessions-only iCal feed** — `/calendar/sessions/feed.ics`, no auth required
+- **Date + time picker** — replaced `datetime-local` with separate date input and time select (30-min increments)
+- **Dynamic unavailability warnings** — inline yellow warnings on session form when a date conflicts with player availability
+
+### v0.2.0 (2026-01-29)
 
 - **User Settings page** — accessible to all logged-in users via the pencil icon in the nav bar
 - **Avatar uploads** — displayed in the nav, availability grid, and DM preference display
@@ -471,7 +545,7 @@ The admin can also check for updates from the **Guild Settings** page using the 
 - Player availability voting (available / maybe / unavailable)
 - Availability grid with vote summary
 - DM/Admin date preference with star display
-- Session lifecycle: open → confirmed → cancelled / reopened
+- Session lifecycle: open -> confirmed -> cancelled / reopened
 - Role system: Guild Master (admin), Dungeon Master, Adventurer (player)
 - First registered user becomes admin automatically
 - Admin user management (role assignment)
@@ -479,3 +553,22 @@ The admin can also check for updates from the **Guild Settings** page using the 
 - Dark fantasy themed UI
 - SQLite database with Docker volume persistence
 - Docker and Docker Compose support
+
+---
+
+## License
+
+Quest Planner is free software: you can redistribute it and/or modify it under the terms of the **GNU General Public License v3.0** as published by the Free Software Foundation.
+
+See the [LICENSE](LICENSE) file for details, or visit https://www.gnu.org/licenses/gpl-3.0.html.
+
+---
+
+## Support
+
+If you find Quest Planner useful, consider supporting the project:
+
+- [Buy Me a Coffee](https://buymeacoffee.com/nenadjokic)
+- [PayPal](https://paypal.me/nenadjokicRS)
+
+Made with love by [Nenad Jokic](https://github.com/nenadjokic)
