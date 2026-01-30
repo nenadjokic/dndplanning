@@ -159,7 +159,7 @@ function checkForUpdate() {
           '<strong>Update available!</strong> v' + data.currentVersion + ' &rarr; v' + data.latestVersion +
           (data.releaseName ? ' &mdash; ' + data.releaseName : '') +
           '<br><br>To update, run:<br>' +
-          '<code style="background: var(--bg-darker); padding: 0.3rem 0.6rem; border-radius: 4px;">docker compose pull && docker compose up -d</code>' +
+          '<code style="background: var(--bg-darker); padding: 0.3rem 0.6rem; border-radius: 4px;">git pull && docker compose up -d --build</code>' +
           (data.releaseUrl ? '<br><br><a href="' + data.releaseUrl + '" target="_blank">View release notes</a>' : '') +
           '</div>';
       } else {

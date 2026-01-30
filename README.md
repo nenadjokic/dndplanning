@@ -434,8 +434,8 @@ docker cp quest-planner:/app/data/dndplanning.db ./backup-dndplanning.db
 ### With Docker (recommended)
 
 ```bash
-docker compose pull
-docker compose up -d
+git pull
+docker compose up -d --build
 ```
 
 ### Without Docker
