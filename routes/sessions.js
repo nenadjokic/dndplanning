@@ -19,7 +19,9 @@ router.get('/new', requireLogin, requireDM, (req, res) => {
 });
 
 router.post('/', requireLogin, requireDM, (req, res) => {
-  const { title, description, slot_dates, slot_labels } = req.body;
+  const { title, description, slot_dates, slot_labels, category } = req.body;
+  const validCategories = ['dnd', 'rpg', 'gamenight', 'casual'];
+  const sessionCategory = validCategories.includes(category) ? category : 'dnd';
   const slotDatesDate = req.body['slot_dates_date'];
   const slotDatesTime = req.body['slot_dates_time'];
 
@@ -54,11 +56,11 @@ router.post('/', requireLogin, requireDM, (req, res) => {
     return res.redirect('/sessions/new');
   }
 
-  const insertSession = db.prepare('INSERT INTO sessions (title, description, created_by) VALUES (?, ?, ?)');
+  const insertSession = db.prepare('INSERT INTO sessions (title, description, created_by, category) VALUES (?, ?, ?, ?)');
   const insertSlot = db.prepare('INSERT INTO slots (session_id, date_time, label) VALUES (?, ?, ?)');
 
   const createSession = db.transaction(() => {
-    const result = insertSession.run(title, description || null, req.user.id);
+    const result = insertSession.run(title, description || null, req.user.id, sessionCategory);
     const sessionId = result.lastInsertRowid;
 
     for (let i = 0; i < dates.length; i++) {

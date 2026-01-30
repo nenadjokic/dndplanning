@@ -44,6 +44,21 @@
 </div>
 
 <div class="settings-section card">
+  <h2>First Day of Week</h2>
+  <form action="/settings/week-start" method="POST">
+    <div class="form-group">
+      <label>
+        <input type="radio" name="week_start" value="monday" <%= (settingsUser.week_start || 'monday') === 'monday' ? 'checked' : '' %>> Monday
+      </label>
+      <label style="margin-left: 1.5rem;">
+        <input type="radio" name="week_start" value="sunday" <%= settingsUser.week_start === 'sunday' ? 'checked' : '' %>> Sunday
+      </label>
+    </div>
+    <button type="submit" class="btn btn-primary btn-small">Save First Day</button>
+  </form>
+</div>
+
+<div class="settings-section card">
   <h2>Time Format</h2>
   <form action="/settings/time-format" method="POST">
     <div class="form-group">

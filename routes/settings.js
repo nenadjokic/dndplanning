@@ -35,7 +35,7 @@ const upload = multer({
 
 router.get('/', requireLogin, (req, res) => {
   // Re-read user to get latest data (e.g. after token generation)
-  const freshUser = db.prepare('SELECT id, username, role, avatar, time_format, calendar_token, theme FROM users WHERE id = ?').get(req.user.id);
+  const freshUser = db.prepare('SELECT id, username, role, avatar, time_format, calendar_token, theme, week_start FROM users WHERE id = ?').get(req.user.id);
   const unavailabilities = db.prepare(
     'SELECT * FROM unavailability WHERE user_id = ? ORDER BY date'
   ).all(req.user.id);
@@ -58,6 +58,17 @@ router.post('/time-format', requireLogin, (req, res) => {
   }
   db.prepare('UPDATE users SET time_format = ? WHERE id = ?').run(time_format, req.user.id);
   req.flash('success', 'Time format updated.');
+  res.redirect('/settings');
+});
+
+router.post('/week-start', requireLogin, (req, res) => {
+  const { week_start } = req.body;
+  if (!['monday', 'sunday'].includes(week_start)) {
+    req.flash('error', 'Invalid first day of week.');
+    return res.redirect('/settings');
+  }
+  db.prepare('UPDATE users SET week_start = ? WHERE id = ?').run(week_start, req.user.id);
+  req.flash('success', 'First day of week updated.');
   res.redirect('/settings');
 });
 

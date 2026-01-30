@@ -3,7 +3,7 @@
 
   <form action="/sessions/<%= session.id %>/comment" method="POST" style="margin-bottom: 1.5rem;">
     <div class="form-group">
-      <textarea name="content" rows="2" placeholder="Add a comment... Use @username to mention someone" required></textarea>
+      <textarea name="content" rows="2" class="mention-input" placeholder="Add a comment... Use @username to mention someone" required></textarea>
     </div>
     <button type="submit" class="btn btn-primary btn-small">Post Comment</button>
   </form>
@@ -42,7 +42,7 @@
         <% } %>
 
         <form action="/sessions/<%= session.id %>/comment/<%= post.id %>/reply" method="POST" class="board-reply-form">
-          <input type="text" name="content" placeholder="Reply... Use @username to mention" required>
+          <input type="text" name="content" class="mention-input" placeholder="Reply... Use @username to mention" required>
           <button type="submit" class="btn btn-small btn-outline">Reply</button>
         </form>
       </div>

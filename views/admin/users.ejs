@@ -38,6 +38,9 @@
                   </select>
                   <button type="submit" class="btn btn-small btn-primary">Save</button>
                 </form>
+                <form action="/admin/users/<%= u.id %>/delete" method="POST" class="inline-form" style="margin-left: 0.5rem;">
+                  <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this user and ALL their data? This cannot be undone.')">&times;</button>
+                </form>
               <% } %>
             </td>
           </tr>

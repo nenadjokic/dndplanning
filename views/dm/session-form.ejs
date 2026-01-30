@@ -26,6 +26,15 @@
 <div class="card">
   <form action="/sessions" method="POST" id="session-form">
     <div class="form-group">
+      <label for="category">Category</label>
+      <select id="category" name="category">
+        <option value="dnd">D&D</option>
+        <option value="rpg">RPG</option>
+        <option value="gamenight">Game Night</option>
+        <option value="casual">Casual</option>
+      </select>
+    </div>
+    <div class="form-group">
       <label for="title">Quest Title</label>
       <input type="text" id="title" name="title" required placeholder="e.g. The Mines of Phandelver - Session 5">
     </div>

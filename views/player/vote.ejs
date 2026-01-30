@@ -6,6 +6,7 @@
 </div>
 
 <div class="card">
+  <span class="session-category"><%= session.category === 'gamenight' ? 'Game Night' : session.category === 'rpg' ? 'RPG' : session.category === 'casual' ? 'Casual' : 'D&D' %></span>
   <div class="session-status-badge session-status-badge-lg"><%= session.status %></div>
   <% if (session.description) { %>
     <p class="session-desc"><%= session.description %></p>

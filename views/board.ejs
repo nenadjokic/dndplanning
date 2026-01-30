@@ -9,7 +9,7 @@
   <form action="/board" method="POST">
     <div class="form-group">
       <label for="board-content">Post a Message</label>
-      <textarea id="board-content" name="content" rows="3" placeholder="Share news, plans, or tavern gossip... Use @username to mention someone" required></textarea>
+      <textarea id="board-content" name="content" rows="3" class="mention-input" placeholder="Share news, plans, or tavern gossip... Use @username to mention someone" required></textarea>
     </div>
     <button type="submit" class="btn btn-primary btn-small">Post to Board</button>
   </form>
@@ -54,7 +54,7 @@
       <% } %>
 
       <form action="/board/<%= post.id %>/reply" method="POST" class="board-reply-form">
-        <input type="text" name="content" placeholder="Reply... Use @username to mention" required>
+        <input type="text" name="content" class="mention-input" placeholder="Reply... Use @username to mention" required>
         <button type="submit" class="btn btn-small btn-outline">Reply</button>
       </form>
     </div>

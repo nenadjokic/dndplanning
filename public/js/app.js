@@ -38,6 +38,24 @@
   }, 60000);
 })();
 
+// === Hamburger Menu Toggle ===
+(function() {
+  var btn = document.getElementById('hamburger-btn');
+  var menu = document.getElementById('hamburger-menu');
+  if (!btn || !menu) return;
+
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    menu.classList.toggle('open');
+  });
+
+  document.addEventListener('click', function(e) {
+    if (!menu.contains(e.target) && e.target !== btn) {
+      menu.classList.remove('open');
+    }
+  });
+})();
+
 // === Time Select Populator ===
 function populateTimeSelect(select) {
   var fmt = window.__timeFormat || '24h';
@@ -170,6 +188,171 @@ function checkSlotUnavailability(dateInput) {
   // Poll for new notifications every 30 seconds
   fetchNotifications();
   setInterval(fetchNotifications, 30000);
+})();
+
+// === @Mention Autocomplete ===
+(function() {
+  var allUsers = window.__allUsers;
+  if (!allUsers || allUsers.length === 0) return;
+
+  var activeEl = null;
+  var dropdown = null;
+  var activeIndex = -1;
+  var mentionStart = -1;
+
+  function createDropdown() {
+    var el = document.createElement('div');
+    el.className = 'mention-autocomplete';
+    el.style.display = 'none';
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function closeDropdown() {
+    if (dropdown) {
+      dropdown.style.display = 'none';
+      dropdown.innerHTML = '';
+    }
+    activeIndex = -1;
+    mentionStart = -1;
+  }
+
+  function getCaretCoords(element) {
+    // For textarea, create a mirror div
+    if (element.tagName === 'TEXTAREA') {
+      var rect = element.getBoundingClientRect();
+      return {
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX
+      };
+    }
+    // For input
+    var rect = element.getBoundingClientRect();
+    return {
+      top: rect.bottom + window.scrollY,
+      left: rect.left + window.scrollX
+    };
+  }
+
+  function showDropdown(el, matches) {
+    if (!dropdown) dropdown = createDropdown();
+    if (matches.length === 0) {
+      closeDropdown();
+      return;
+    }
+
+    var coords = getCaretCoords(el);
+    dropdown.style.position = 'absolute';
+    dropdown.style.top = coords.top + 'px';
+    dropdown.style.left = coords.left + 'px';
+    dropdown.style.display = '';
+    activeIndex = 0;
+
+    var html = '';
+    for (var i = 0; i < matches.length; i++) {
+      html += '<div class="mention-ac-item' + (i === 0 ? ' active' : '') + '" data-username="' + matches[i] + '">@' + matches[i] + '</div>';
+    }
+    dropdown.innerHTML = html;
+
+    // Click handlers
+    var items = dropdown.querySelectorAll('.mention-ac-item');
+    items.forEach(function(item) {
+      item.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        selectMention(el, item.getAttribute('data-username'));
+      });
+    });
+  }
+
+  function selectMention(el, username) {
+    var val = el.value;
+    var before = val.substring(0, mentionStart);
+    var after = val.substring(el.selectionStart);
+    el.value = before + '@' + username + ' ' + after;
+    var newPos = before.length + username.length + 2;
+    el.setSelectionRange(newPos, newPos);
+    el.focus();
+    closeDropdown();
+  }
+
+  function handleInput(e) {
+    var el = e.target;
+    var val = el.value;
+    var pos = el.selectionStart;
+
+    // Find @ before cursor
+    var textBefore = val.substring(0, pos);
+    var atIdx = textBefore.lastIndexOf('@');
+    if (atIdx === -1) {
+      closeDropdown();
+      return;
+    }
+
+    // Check that @ is at start or preceded by whitespace
+    if (atIdx > 0 && !/\s/.test(textBefore.charAt(atIdx - 1))) {
+      closeDropdown();
+      return;
+    }
+
+    var query = textBefore.substring(atIdx + 1);
+    // If query contains space, close
+    if (/\s/.test(query)) {
+      closeDropdown();
+      return;
+    }
+
+    mentionStart = atIdx;
+    activeEl = el;
+
+    var matches = allUsers.filter(function(u) {
+      return u.toLowerCase().indexOf(query.toLowerCase()) === 0;
+    }).slice(0, 5);
+
+    showDropdown(el, matches);
+  }
+
+  function handleKeydown(e) {
+    if (!dropdown || dropdown.style.display === 'none') return;
+    var items = dropdown.querySelectorAll('.mention-ac-item');
+    if (items.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      items[activeIndex].classList.remove('active');
+      activeIndex = (activeIndex + 1) % items.length;
+      items[activeIndex].classList.add('active');
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      items[activeIndex].classList.remove('active');
+      activeIndex = (activeIndex - 1 + items.length) % items.length;
+      items[activeIndex].classList.add('active');
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      if (activeIndex >= 0 && activeIndex < items.length) {
+        e.preventDefault();
+        selectMention(e.target, items[activeIndex].getAttribute('data-username'));
+      }
+    } else if (e.key === 'Escape') {
+      closeDropdown();
+    }
+  }
+
+  document.addEventListener('input', function(e) {
+    if (e.target.classList && e.target.classList.contains('mention-input')) {
+      handleInput(e);
+    }
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.target.classList && e.target.classList.contains('mention-input')) {
+      handleKeydown(e);
+    }
+  });
+
+  document.addEventListener('click', function(e) {
+    if (dropdown && !dropdown.contains(e.target)) {
+      closeDropdown();
+    }
+  });
 })();
 
 // === DOM Ready ===

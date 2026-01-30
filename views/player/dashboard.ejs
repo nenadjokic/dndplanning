@@ -11,7 +11,8 @@
 <% } else { %>
   <div class="session-grid">
     <% for (const s of sessions) { %>
-      <a href="/sessions/<%= s.id %>" class="card session-card session-<%= s.status %>">
+      <a href="/sessions/<%= s.id %>" class="card session-card session-<%= s.status %> session-cat-<%= s.category || 'dnd' %>">
+        <div class="session-category"><%= s.category === 'gamenight' ? 'Game Night' : s.category === 'rpg' ? 'RPG' : s.category === 'casual' ? 'Casual' : 'D&D' %></div>
         <div class="session-status-badge"><%= s.status %></div>
         <h2><%= s.title %></h2>
         <% if (s.description) { %>

@@ -8,13 +8,17 @@ function attachUser(req, res, next) {
   res.locals.formatTime = (iso) => formatTime(iso, '24h');
 
   if (req.session.userId) {
-    const user = db.prepare('SELECT id, username, role, avatar, time_format, calendar_token, theme FROM users WHERE id = ?').get(req.session.userId);
+    const user = db.prepare('SELECT id, username, role, avatar, time_format, calendar_token, theme, week_start FROM users WHERE id = ?').get(req.session.userId);
     if (user) {
       req.user = user;
       res.locals.user = user;
       res.locals.timeFormat = user.time_format || '24h';
       res.locals.formatDate = (iso, opts) => formatDate(iso, user.time_format || '24h', opts);
       res.locals.formatTime = (iso) => formatTime(iso, user.time_format || '24h');
+
+      // Load all usernames for @mention autocomplete
+      const allUsernames = db.prepare('SELECT username FROM users ORDER BY username').all().map(u => u.username);
+      res.locals.allUsernames = allUsernames;
     } else {
       delete req.session.userId;
     }
