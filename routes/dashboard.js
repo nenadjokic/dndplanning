@@ -12,7 +12,15 @@ router.get('/', requireLogin, (req, res) => {
       SELECT s.*, sl.date_time as confirmed_date, sl.label as confirmed_label
       FROM sessions s
       LEFT JOIN slots sl ON s.confirmed_slot_id = sl.id
-      ORDER BY s.created_at DESC
+      ORDER BY
+        CASE s.status
+          WHEN 'open' THEN 0
+          WHEN 'cancelled' THEN 1
+          WHEN 'confirmed' THEN 2
+          WHEN 'completed' THEN 3
+        END,
+        CASE WHEN s.status IN ('confirmed', 'completed') THEN sl.date_time END DESC,
+        s.created_at DESC
     `).all();
 
     return res.render('dm/dashboard', { sessions, firstLogin });
@@ -25,7 +33,15 @@ router.get('/', requireLogin, (req, res) => {
     FROM sessions s
     JOIN users u ON s.created_by = u.id
     LEFT JOIN slots sl ON s.confirmed_slot_id = sl.id
-    ORDER BY s.created_at DESC
+    ORDER BY
+      CASE s.status
+        WHEN 'open' THEN 0
+        WHEN 'cancelled' THEN 1
+        WHEN 'confirmed' THEN 2
+        WHEN 'completed' THEN 3
+      END,
+      CASE WHEN s.status IN ('confirmed', 'completed') THEN sl.date_time END DESC,
+      s.created_at DESC
   `).all();
 
   // Check which sessions the player has voted on
