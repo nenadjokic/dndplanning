@@ -133,18 +133,39 @@ class MessengerService {
       throw new Error('Discord bot token and channel ID are required');
     }
 
-    if (!this._discordClient || !this._discordReady) {
-      if (this._discordClient) {
-        this._discordClient.destroy();
+    try {
+      if (!this._discordClient || !this._discordReady) {
+        if (this._discordClient) {
+          this._discordClient.destroy();
+        }
+        this._discordClient = new Client({ intents: [GatewayIntentBits.Guilds] });
+        await this._discordClient.login(this.config.discord_bot_token);
+        this._discordReady = true;
       }
-      this._discordClient = new Client({ intents: [GatewayIntentBits.Guilds] });
-      await this._discordClient.login(this.config.discord_bot_token);
-      this._discordReady = true;
+    } catch (err) {
+      this._discordClient = null;
+      this._discordReady = false;
+      if (err.code === 'TokenInvalid' || (err.message && err.message.includes('TOKEN_INVALID'))) {
+        throw new Error('Invalid bot token. Go to discord.com/developers/applications → your app → Bot → Reset Token and paste the new token.');
+      }
+      throw err;
     }
 
-    const channel = await this._discordClient.channels.fetch(this.config.discord_channel_id);
+    let channel;
+    try {
+      channel = await this._discordClient.channels.fetch(this.config.discord_channel_id);
+    } catch (err) {
+      if (err.code === 50001 || (err.message && err.message.includes('Missing Access'))) {
+        throw new Error('Missing Access — the bot is not in your server or cannot see this channel. Go to discord.com/developers/applications → your app → OAuth2 → URL Generator → check "bot" scope + "Send Messages" & "Embed Links" permissions → copy the URL → open it to invite the bot to your server.');
+      }
+      if (err.code === 10003) {
+        throw new Error('Unknown Channel — the channel ID is incorrect. Right-click the channel in Discord (with Developer Mode enabled) → Copy Channel ID.');
+      }
+      throw err;
+    }
+
     if (!channel) {
-      throw new Error('Discord channel not found');
+      throw new Error('Discord channel not found. Check that the channel ID is correct.');
     }
 
     const embed = new EmbedBuilder()
@@ -161,7 +182,14 @@ class MessengerService {
       embed.setURL(message.link);
     }
 
-    await channel.send({ embeds: [embed] });
+    try {
+      await channel.send({ embeds: [embed] });
+    } catch (err) {
+      if (err.code === 50013) {
+        throw new Error('Missing Permissions — the bot can see the channel but cannot send messages. Make sure the bot role has "Send Messages" and "Embed Links" permissions in that channel.');
+      }
+      throw err;
+    }
   }
 
   async _sendTelegram(message) {

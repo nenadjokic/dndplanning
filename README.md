@@ -1,6 +1,6 @@
-# Quest Planner v0.7.2 — D&D Session Scheduler
+# Quest Planner v0.7.3 — D&D Session Scheduler
 
-> **Latest release:** v0.7.2 (2026-01-31)
+> **Latest release:** v0.7.3 (2026-01-31)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -577,6 +577,12 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.7.3 (2026-01-31)
+
+- **Discord setup guide** — replaced one-line tooltip with a full 11-step walkthrough embedded in the Guild Settings page, covering app creation, token copy, OAuth2 bot invite with correct permissions, and channel ID retrieval
+- **Better Discord error messages** — "Missing Access" now explains that the bot needs to be invited via OAuth2 URL; "Unknown Channel" suggests checking the channel ID; "Missing Permissions" lists which permissions are needed; invalid token errors direct to the Reset Token page
+- **Actionable error diagnostics** — all Discord errors now include specific fix instructions instead of raw API error codes
 
 ### v0.7.2 (2026-01-31)
 

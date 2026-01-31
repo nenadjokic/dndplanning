@@ -73,15 +73,31 @@
     </div>
 
     <div class="provider-fieldset" id="fields-discord">
+      <div class="discord-setup-guide" style="margin-bottom: 1rem; padding: 1rem; background: rgba(88, 101, 242, 0.08); border: 1px solid rgba(88, 101, 242, 0.3); border-radius: var(--radius);">
+        <h3 style="color: #5865F2; margin-bottom: 0.5rem; font-size: 1rem;">Discord Bot Setup Guide</h3>
+        <ol style="margin: 0; padding-left: 1.25rem; font-size: 0.88rem; color: var(--text-secondary); line-height: 1.7;">
+          <li>Go to <a href="https://discord.com/developers/applications" target="_blank" rel="noopener noreferrer">discord.com/developers/applications</a></li>
+          <li>Click <strong>"New Application"</strong> &rarr; give it a name (e.g. "Quest Planner") &rarr; Create</li>
+          <li>In the left sidebar, click <strong>"Bot"</strong></li>
+          <li>Click <strong>"Reset Token"</strong> &rarr; confirm &rarr; <strong>copy the token</strong> and paste it below</li>
+          <li>In the left sidebar, click <strong>"OAuth2"</strong></li>
+          <li>Scroll down to <strong>"OAuth2 URL Generator"</strong></li>
+          <li>Under <em>Scopes</em>, check <strong>"bot"</strong></li>
+          <li>Under <em>Bot Permissions</em>, check: <strong>"Send Messages"</strong> and <strong>"Embed Links"</strong></li>
+          <li><strong>Copy the generated URL</strong> at the bottom and open it in your browser</li>
+          <li>Select your Discord server and click <strong>"Authorize"</strong></li>
+          <li>The bot is now in your server! Copy the channel ID below</li>
+        </ol>
+      </div>
       <div class="form-group">
         <label for="discord_bot_token">Bot Token</label>
-        <input type="text" name="discord_bot_token" id="discord_bot_token" class="form-input" placeholder="Discord bot token">
-        <small class="form-hint">Create a bot at discord.com/developers/applications &rarr; Bot &rarr; Copy Token</small>
+        <input type="text" name="discord_bot_token" id="discord_bot_token" class="form-input" placeholder="Paste bot token from Step 4">
+        <small class="form-hint">From the Bot page &rarr; Reset Token &rarr; Copy</small>
       </div>
       <div class="form-group">
         <label for="discord_channel_id">Channel ID</label>
-        <input type="text" name="discord_channel_id" id="discord_channel_id" class="form-input" placeholder="Discord channel ID">
-        <small class="form-hint">Enable Developer Mode in Discord Settings &rarr; right-click channel &rarr; Copy Channel ID</small>
+        <input type="text" name="discord_channel_id" id="discord_channel_id" class="form-input" placeholder="e.g. 1234567890123456789">
+        <small class="form-hint">In Discord: Settings &rarr; Advanced &rarr; enable <strong>Developer Mode</strong>. Then right-click the channel &rarr; <strong>Copy Channel ID</strong>.</small>
       </div>
     </div>
 
