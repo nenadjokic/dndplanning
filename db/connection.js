@@ -63,4 +63,20 @@ if (tableInfo && tableInfo.sql && !tableInfo.sql.includes('completed')) {
   db.pragma('foreign_keys = ON');
 }
 
+// Notification config table (single-row)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS notification_config (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    active_provider TEXT NOT NULL DEFAULT 'none',
+    discord_bot_token TEXT,
+    discord_channel_id TEXT,
+    telegram_bot_token TEXT,
+    telegram_chat_id TEXT,
+    viber_auth_token TEXT,
+    viber_admin_id TEXT,
+    public_url TEXT
+  );
+  INSERT OR IGNORE INTO notification_config (id) VALUES (1);
+`);
+
 module.exports = db;

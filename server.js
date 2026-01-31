@@ -45,6 +45,11 @@ app.use(session({
   cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 }
 }));
 
+// Viber webhook — must be before attachUser (no session cookies)
+app.post('/webhooks/viber', express.json(), (req, res) => {
+  res.sendStatus(200);
+});
+
 app.use(flashMiddleware);
 app.use(attachUser);
 

@@ -1738,6 +1738,62 @@ h3 { font-size: 1.25rem; }
   font-size: 1.3rem;
 }
 
+/* === Communications Center === */
+.comms-section .form-group {
+  margin-bottom: 1rem;
+}
+
+.comms-section label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.comms-section .form-input {
+  width: 100%;
+  padding: 0.5rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+}
+
+.provider-fieldset {
+  display: none;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.provider-fieldset.active {
+  display: block;
+}
+
+.comms-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.comms-test-result {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.comms-test-success {
+  color: var(--green-light);
+}
+
+.comms-test-error {
+  color: var(--red-light);
+}
+
 /* === Responsive === */
 @media (max-width: 640px) {
   body { font-size: 16px; }

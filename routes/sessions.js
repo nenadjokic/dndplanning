@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../db/connection');
 const { requireLogin, requireDM, requireAdmin } = require('../middleware/auth');
 const { notifyMentions, notifySessionConfirmed } = require('../helpers/notifications');
+const messenger = require('../helpers/messenger');
 const router = express.Router();
 
 router.get('/new', requireLogin, requireDM, (req, res) => {
@@ -73,6 +74,7 @@ router.post('/', requireLogin, requireDM, (req, res) => {
   });
 
   const sessionId = createSession();
+  messenger.send('session_created', { title, category: sessionCategory, link: '/sessions/' + sessionId, actorName: req.user.username }).catch(() => {});
   req.flash('success', 'Quest session posted to the tavern board!');
   res.redirect('/sessions/' + sessionId);
 });
@@ -249,6 +251,16 @@ router.post('/:id/confirm', requireLogin, requireDM, (req, res) => {
 
   notifySessionConfirmed(session.id, session.title, req.user.username);
 
+  const confirmedSlot = db.prepare('SELECT * FROM slots WHERE id = ?').get(slot_id);
+  const slotDateTime = confirmedSlot ? confirmedSlot.date_time : '';
+  const slotDate = slotDateTime ? slotDateTime.split('T')[0] : '';
+  const slotTime = slotDateTime && slotDateTime.includes('T') ? slotDateTime.split('T')[1] : '';
+  messenger.send('session_confirmed', {
+    title: session.title, date: slotDate, time: slotTime,
+    label: confirmedSlot ? confirmedSlot.label : '',
+    link: '/sessions/' + session.id, actorName: req.user.username
+  }).catch(() => {});
+
   req.flash('success', 'The quest date has been proclaimed!');
   res.redirect('/sessions/' + session.id);
 });
@@ -263,6 +275,8 @@ router.post('/:id/cancel', requireLogin, requireDM, (req, res) => {
 
   db.prepare('UPDATE sessions SET status = ?, confirmed_slot_id = NULL WHERE id = ?')
     .run('cancelled', session.id);
+
+  messenger.send('session_cancelled', { title: session.title, link: '/sessions/' + session.id, actorName: req.user.username }).catch(() => {});
 
   req.flash('success', 'The quest has been cancelled.');
   res.redirect('/sessions/' + session.id);
@@ -305,6 +319,8 @@ router.post('/:id/reopen', requireLogin, requireDM, (req, res) => {
 
   db.prepare('UPDATE sessions SET status = ?, confirmed_slot_id = NULL WHERE id = ?')
     .run('open', session.id);
+
+  messenger.send('session_reopened', { title: session.title, link: '/sessions/' + session.id, actorName: req.user.username }).catch(() => {});
 
   req.flash('success', 'The quest board has been reopened!');
   res.redirect('/sessions/' + session.id);

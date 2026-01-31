@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db/connection');
 const { requireLogin, requireAdmin } = require('../middleware/auth');
+const messenger = require('../helpers/messenger');
 const router = express.Router();
 
 router.get('/users', requireLogin, requireAdmin, (req, res) => {
@@ -106,6 +107,97 @@ router.get('/check-update', requireLogin, requireAdmin, async (req, res) => {
     });
   } catch (e) {
     res.json({ error: 'Could not check for updates.' });
+  }
+});
+
+// --- Notification Config ---
+
+router.get('/notifications/config', requireLogin, requireAdmin, (req, res) => {
+  const config = db.prepare('SELECT * FROM notification_config WHERE id = 1').get();
+  if (!config) return res.json({});
+
+  // Mask tokens for display
+  const mask = (val) => val ? val.slice(0, 4) + '****' + val.slice(-4) : '';
+  res.json({
+    active_provider: config.active_provider,
+    discord_bot_token: mask(config.discord_bot_token),
+    discord_channel_id: config.discord_channel_id || '',
+    telegram_bot_token: mask(config.telegram_bot_token),
+    telegram_chat_id: config.telegram_chat_id || '',
+    viber_auth_token: mask(config.viber_auth_token),
+    viber_admin_id: config.viber_admin_id || '',
+    public_url: config.public_url || ''
+  });
+});
+
+router.post('/notifications', requireLogin, requireAdmin, async (req, res) => {
+  const { active_provider, discord_bot_token, discord_channel_id, telegram_bot_token, telegram_chat_id, viber_auth_token, viber_admin_id, public_url } = req.body;
+
+  const validProviders = ['none', 'discord', 'telegram', 'viber'];
+  if (!validProviders.includes(active_provider)) {
+    req.flash('error', 'Invalid provider.');
+    return res.redirect('/admin/users');
+  }
+
+  // Get current config to detect provider switch
+  const current = db.prepare('SELECT * FROM notification_config WHERE id = 1').get();
+  const prevProvider = current ? current.active_provider : 'none';
+
+  // If switching away from Discord, destroy the client
+  if (prevProvider === 'discord' && active_provider !== 'discord') {
+    messenger.destroy();
+  }
+
+  // Only update token fields if they don't look like masked values
+  const isMasked = (val) => val && val.includes('****');
+
+  const discordToken = isMasked(discord_bot_token) ? current.discord_bot_token : (discord_bot_token || null);
+  const telegramToken = isMasked(telegram_bot_token) ? current.telegram_bot_token : (telegram_bot_token || null);
+  const viberToken = isMasked(viber_auth_token) ? current.viber_auth_token : (viber_auth_token || null);
+
+  db.prepare(`
+    UPDATE notification_config SET
+      active_provider = ?,
+      discord_bot_token = ?,
+      discord_channel_id = ?,
+      telegram_bot_token = ?,
+      telegram_chat_id = ?,
+      viber_auth_token = ?,
+      viber_admin_id = ?,
+      public_url = ?
+    WHERE id = 1
+  `).run(
+    active_provider,
+    discordToken,
+    discord_channel_id || null,
+    telegramToken,
+    telegram_chat_id || null,
+    viberToken,
+    viber_admin_id || null,
+    public_url || null
+  );
+
+  messenger.reload();
+
+  // If Viber selected and public_url set, register webhook
+  if (active_provider === 'viber' && public_url) {
+    try {
+      await messenger.registerViberWebhook(public_url);
+    } catch (err) {
+      console.error('[Admin] Viber webhook registration failed:', err.message);
+    }
+  }
+
+  req.flash('success', 'Communications settings saved.');
+  res.redirect('/admin/users');
+});
+
+router.post('/notifications/test', requireLogin, requireAdmin, async (req, res) => {
+  try {
+    await messenger.test();
+    res.json({ success: true });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
   }
 });
 

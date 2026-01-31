@@ -1,6 +1,6 @@
 {
   "name": "dndplanning",
-  "version": "0.5.5",
+  "version": "0.6.0",
   "description": "D&D Quest Planner - Session scheduling for your adventuring party",
   "license": "GPL-3.0",
   "author": "Nenad Jokic",
@@ -10,15 +10,18 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "axios": "^1.13.4",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^11.7.0",
     "connect-sqlite3": "^0.9.15",
+    "discord.js": "^14.25.1",
     "dotenv": "^16.4.7",
     "ejs": "^3.1.10",
     "express": "^4.21.1",
     "express-session": "^1.18.1",
     "marked": "^17.0.1",
-    "multer": "^1.4.5-lts.1"
+    "multer": "^1.4.5-lts.1",
+    "node-telegram-bot-api": "^0.67.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.7"

@@ -57,4 +57,126 @@
   <div id="update-result" style="margin-top: 1rem;"></div>
 </div>
 
+<div class="card comms-section" style="margin-top: 1.5rem;">
+  <h2>Communications Center</h2>
+  <p class="text-muted" style="margin-bottom: 1rem;">Configure a messaging provider to broadcast session events to your guild.</p>
+
+  <form action="/admin/notifications" method="POST" id="comms-form">
+    <div class="form-group">
+      <label for="comms-provider">Provider</label>
+      <select name="active_provider" id="comms-provider" class="role-select" style="width: 100%; padding: 0.5rem;" onchange="toggleProviderFields()">
+        <option value="none">None</option>
+        <option value="discord">Discord</option>
+        <option value="telegram">Telegram</option>
+        <option value="viber">Viber</option>
+      </select>
+    </div>
+
+    <div class="provider-fieldset" id="fields-discord">
+      <div class="form-group">
+        <label for="discord_bot_token">Bot Token</label>
+        <input type="text" name="discord_bot_token" id="discord_bot_token" class="form-input" placeholder="Discord bot token">
+      </div>
+      <div class="form-group">
+        <label for="discord_channel_id">Channel ID</label>
+        <input type="text" name="discord_channel_id" id="discord_channel_id" class="form-input" placeholder="Discord channel ID">
+      </div>
+    </div>
+
+    <div class="provider-fieldset" id="fields-telegram">
+      <div class="form-group">
+        <label for="telegram_bot_token">Bot Token</label>
+        <input type="text" name="telegram_bot_token" id="telegram_bot_token" class="form-input" placeholder="Telegram bot token">
+      </div>
+      <div class="form-group">
+        <label for="telegram_chat_id">Chat ID</label>
+        <input type="text" name="telegram_chat_id" id="telegram_chat_id" class="form-input" placeholder="Telegram chat or group ID">
+      </div>
+    </div>
+
+    <div class="provider-fieldset" id="fields-viber">
+      <div class="form-group">
+        <label for="viber_auth_token">Auth Token</label>
+        <input type="text" name="viber_auth_token" id="viber_auth_token" class="form-input" placeholder="Viber auth token">
+      </div>
+      <div class="form-group">
+        <label for="viber_admin_id">Admin / Subscriber ID</label>
+        <input type="text" name="viber_admin_id" id="viber_admin_id" class="form-input" placeholder="Viber receiver ID">
+      </div>
+    </div>
+
+    <div class="provider-fieldset" id="fields-public-url" style="display: none;">
+      <div class="form-group">
+        <label for="public_url">Public URL</label>
+        <input type="text" name="public_url" id="public_url" class="form-input" placeholder="https://quest.example.com">
+        <small class="text-muted">Used for message links and Viber webhook registration</small>
+      </div>
+    </div>
+
+    <div class="comms-actions">
+      <button type="submit" class="btn btn-primary">Save</button>
+      <button type="button" class="btn btn-outline" onclick="testConnection()">Test Connection</button>
+    </div>
+  </form>
+
+  <div id="comms-test-result" class="comms-test-result"></div>
+</div>
+
+<script>
+function toggleProviderFields() {
+  var provider = document.getElementById('comms-provider').value;
+  document.querySelectorAll('.provider-fieldset').forEach(function(el) {
+    el.classList.remove('active');
+  });
+  if (provider !== 'none') {
+    var fields = document.getElementById('fields-' + provider);
+    if (fields) fields.classList.add('active');
+    document.getElementById('fields-public-url').classList.add('active');
+  }
+}
+
+function loadCommsConfig() {
+  fetch('/admin/notifications/config')
+    .then(function(r) { return r.json(); })
+    .then(function(cfg) {
+      if (cfg.active_provider) {
+        document.getElementById('comms-provider').value = cfg.active_provider;
+      }
+      if (cfg.discord_bot_token) document.getElementById('discord_bot_token').value = cfg.discord_bot_token;
+      if (cfg.discord_channel_id) document.getElementById('discord_channel_id').value = cfg.discord_channel_id;
+      if (cfg.telegram_bot_token) document.getElementById('telegram_bot_token').value = cfg.telegram_bot_token;
+      if (cfg.telegram_chat_id) document.getElementById('telegram_chat_id').value = cfg.telegram_chat_id;
+      if (cfg.viber_auth_token) document.getElementById('viber_auth_token').value = cfg.viber_auth_token;
+      if (cfg.viber_admin_id) document.getElementById('viber_admin_id').value = cfg.viber_admin_id;
+      if (cfg.public_url) document.getElementById('public_url').value = cfg.public_url;
+      toggleProviderFields();
+    })
+    .catch(function() {});
+}
+
+function testConnection() {
+  var resultDiv = document.getElementById('comms-test-result');
+  resultDiv.textContent = 'Testing...';
+  resultDiv.className = 'comms-test-result';
+
+  fetch('/admin/notifications/test', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        resultDiv.textContent = 'Connection successful! Test message sent.';
+        resultDiv.className = 'comms-test-result comms-test-success';
+      } else {
+        resultDiv.textContent = 'Connection failed: ' + (data.error || 'Unknown error');
+        resultDiv.className = 'comms-test-result comms-test-error';
+      }
+    })
+    .catch(function() {
+      resultDiv.textContent = 'Connection test failed.';
+      resultDiv.className = 'comms-test-result comms-test-error';
+    });
+}
+
+document.addEventListener('DOMContentLoaded', loadCommsConfig);
+</script>
+
 <%- include('../partials/foot') %>

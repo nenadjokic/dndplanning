@@ -1,6 +1,6 @@
-# Quest Planner v0.5.5 — D&D Session Scheduler
+# Quest Planner v0.6.0 — D&D Session Scheduler
 
-> **Latest release:** v0.5.5 (2026-01-31)
+> **Latest release:** v0.6.0 (2026-01-31)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -63,6 +63,7 @@ If you enjoy Quest Planner, consider buying me a coffee:
 - **User Settings** — Time format toggle, theme toggle, password change
 - **Unavailability Days** — Players mark dates they can't play; DM sees these when creating sessions
 - **Calendar Feed (iCal)** — Personal feed (sessions + unavailability) and public sessions-only feed
+- **Omni-Channel Notifications** — Broadcast session events (created, confirmed, cancelled, reopened) to Discord, Telegram, or Viber; configured per-guild in Guild Settings
 - **Auto-Update Check** — Admin can check for new releases from the Guild Settings page
 - **Welcome Popup** — First-login modal thanking users with support links
 - **Role System** — Guild Master (admin), Dungeon Master, Adventurer (player)
@@ -409,6 +410,12 @@ All users can access **Settings** (pencil icon in the nav bar) to:
 The Guild Master can access **Guild Settings** (cogwheel icon) to:
 - Manage user roles (promote/demote between DM and Player)
 - Check for application updates
+- **Communications Setup** — configure Discord, Telegram, or Viber to receive session event broadcasts:
+  1. Select a provider from the dropdown
+  2. Enter the required credentials (bot token, channel/chat ID)
+  3. Optionally set a Public URL for clickable links in messages
+  4. Click **Save**, then **Test Connection** to verify
+  5. Session events (create, confirm, cancel, reopen) will be broadcast automatically
 
 ---
 
@@ -429,7 +436,8 @@ dndplanning/
 │   └── connection.js      # SQLite connection and initialization
 ├── helpers/
 │   ├── time.js            # Date/time formatting helpers (12h/24h)
-│   └── notifications.js   # Notification creation, @mention parsing
+│   ├── notifications.js   # Notification creation, @mention parsing
+│   └── messenger.js       # Omni-channel messaging (Discord, Telegram, Viber)
 ├── middleware/
 │   ├── auth.js            # Auth middleware (login, DM check, user data, theme)
 │   └── flash.js           # Flash messages
@@ -515,6 +523,19 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.6.0 (2026-01-31)
+
+- **Omni-Channel Notifications** — broadcast session lifecycle events to Discord, Telegram, or Viber
+- **Communications Center** — new admin UI section in Guild Settings to configure messaging provider
+- **Discord integration** — rich embed messages with color-coded session events via discord.js bot
+- **Telegram integration** — HTML-formatted messages with clickable links via Telegram Bot API
+- **Viber integration** — rich media messages with action buttons via Viber REST API; automatic webhook registration
+- **Messenger service** — strategy-pattern `helpers/messenger.js` dispatches to active provider; fire-and-forget (never blocks requests)
+- **Session lifecycle hooks** — session create, confirm, cancel, and reopen events trigger broadcasts
+- **Test connection** — admin can send a test message to verify provider configuration
+- **Token masking** — saved tokens are masked in the UI for security
+- **Viber webhook endpoint** — `/webhooks/viber` route responds to Viber validation pings
 
 ### v0.5.5 (2026-01-31)
 
