@@ -1972,10 +1972,68 @@ h3 { font-size: 1.25rem; }
 }
 
 /* === DM Tools === */
+.dm-tools-size-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.dm-tools-size-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-right: 0.25rem;
+}
+
+.dm-tools-size-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.dm-tools-size-btn:hover {
+  border-color: var(--gold-dim);
+  color: var(--gold);
+}
+
+.dm-tools-size-btn.active {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(212, 168, 67, 0.1);
+}
+
 .dm-tools-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 1rem;
+}
+
+/* Default = 64 */
+.dm-tools-grid,
+.dm-tools-grid.dm-tools-size-64 {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+}
+
+.dm-tools-grid.dm-tools-size-16 {
+  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  gap: 0.5rem;
+}
+
+.dm-tools-grid.dm-tools-size-32 {
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 0.65rem;
+}
+
+.dm-tools-grid.dm-tools-size-128 {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1.25rem;
 }
 
 .dm-tool-card {
@@ -1996,10 +2054,10 @@ h3 { font-size: 1.25rem; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 1.25rem 0.75rem 0.75rem;
+  padding: 1rem 0.5rem 0.5rem;
   text-decoration: none;
   color: var(--text-primary);
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .dm-tool-icon {
@@ -2007,26 +2065,107 @@ h3 { font-size: 1.25rem; }
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
   border-radius: 12px;
   background: rgba(212, 168, 67, 0.1);
 }
 
+.dm-tool-icon svg {
+  display: block;
+}
+
 .dm-tool-name {
   font-family: var(--font-heading);
-  font-size: 0.95rem;
   text-align: center;
   line-height: 1.2;
   word-break: break-word;
 }
 
 .dm-tool-thumb {
-  width: 48px;
-  height: 48px;
   object-fit: cover;
   border-radius: 12px;
   border: 1px solid var(--border);
+}
+
+/* Size-specific icon/thumb/name dimensions */
+/* 64px (default) */
+.dm-tools-grid .dm-tool-icon,
+.dm-tools-grid.dm-tools-size-64 .dm-tool-icon {
+  width: 64px; height: 64px;
+}
+.dm-tools-grid .dm-tool-icon svg,
+.dm-tools-grid.dm-tools-size-64 .dm-tool-icon svg {
+  width: 28px; height: 28px;
+}
+.dm-tools-grid .dm-tool-thumb,
+.dm-tools-grid.dm-tools-size-64 .dm-tool-thumb {
+  width: 64px; height: 64px;
+}
+.dm-tools-grid .dm-tool-name,
+.dm-tools-grid.dm-tools-size-64 .dm-tool-name {
+  font-size: 0.85rem;
+}
+
+/* 16px */
+.dm-tools-size-16 .dm-tool-link {
+  padding: 0.5rem 0.25rem 0.25rem;
+  gap: 0.2rem;
+}
+.dm-tools-size-16 .dm-tool-icon {
+  width: 16px; height: 16px; border-radius: 4px;
+}
+.dm-tools-size-16 .dm-tool-icon svg {
+  width: 10px; height: 10px;
+}
+.dm-tools-size-16 .dm-tool-thumb {
+  width: 16px; height: 16px; border-radius: 4px;
+}
+.dm-tools-size-16 .dm-tool-name {
+  font-size: 0.65rem;
+}
+.dm-tools-size-16 .dm-tool-actions {
+  padding: 0 0.25rem 0.25rem;
+}
+.dm-tools-size-16 .dm-tool-actions .btn {
+  font-size: 0.65rem; padding: 0.1rem 0.4rem;
+}
+
+/* 32px */
+.dm-tools-size-32 .dm-tool-link {
+  padding: 0.6rem 0.35rem 0.35rem;
+  gap: 0.25rem;
+}
+.dm-tools-size-32 .dm-tool-icon {
+  width: 32px; height: 32px; border-radius: 8px;
+}
+.dm-tools-size-32 .dm-tool-icon svg {
+  width: 16px; height: 16px;
+}
+.dm-tools-size-32 .dm-tool-thumb {
+  width: 32px; height: 32px; border-radius: 8px;
+}
+.dm-tools-size-32 .dm-tool-name {
+  font-size: 0.75rem;
+}
+.dm-tools-size-32 .dm-tool-actions .btn {
+  font-size: 0.7rem; padding: 0.15rem 0.5rem;
+}
+
+/* 128px */
+.dm-tools-size-128 .dm-tool-link {
+  padding: 1.25rem 0.75rem 0.75rem;
+  gap: 0.5rem;
+}
+.dm-tools-size-128 .dm-tool-icon {
+  width: 128px; height: 128px; border-radius: 16px;
+}
+.dm-tools-size-128 .dm-tool-icon svg {
+  width: 56px; height: 56px;
+}
+.dm-tools-size-128 .dm-tool-thumb {
+  width: 128px; height: 128px; border-radius: 16px;
+}
+.dm-tools-size-128 .dm-tool-name {
+  font-size: 1.05rem;
 }
 
 .dm-tool-actions {

@@ -1,6 +1,6 @@
-# Quest Planner v0.7.1 — D&D Session Scheduler
+# Quest Planner v0.7.2 — D&D Session Scheduler
 
-> **Latest release:** v0.7.1 (2026-01-31)
+> **Latest release:** v0.7.2 (2026-01-31)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -577,6 +577,13 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.7.2 (2026-01-31)
+
+- **Thumbnail center-crop** — uploaded thumbnails are now automatically center-cropped and resized to 128x128px using sharp (server-side)
+- **Grid size selector** — DM Tools page now has a grid size picker (16x16, 32x32, 64x64, 128x128) that controls icon/thumbnail and card size; preference saved to localStorage
+- **Scalable SVG icons** — tool icons now use viewBox-only SVGs so they scale correctly at all grid sizes
+- **New dependency** — `sharp` for server-side image processing (center-crop thumbnails on upload)
 
 ### v0.7.1 (2026-01-31)
 
