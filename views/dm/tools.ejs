@@ -11,7 +11,7 @@
 <div id="add-tool-form" style="display: none; margin-bottom: 1.5rem;">
   <div class="card">
     <h3>Add New Tool</h3>
-    <form action="/dm-tools" method="POST">
+    <form action="/dm-tools" method="POST" enctype="multipart/form-data">
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
         <div class="form-group">
           <label for="tool-name">Button Name</label>
@@ -42,6 +42,11 @@
       <div class="form-group">
         <label for="tool-url">URL</label>
         <input type="url" name="url" id="tool-url" required placeholder="https://www.dndbeyond.com">
+      </div>
+      <div class="form-group">
+        <label for="tool-thumb">Thumbnail (optional, replaces icon)</label>
+        <input type="file" name="thumbnail" id="tool-thumb" accept="image/*">
+        <small class="form-hint">JPG, PNG, GIF, WebP &mdash; max 2MB</small>
       </div>
       <div style="display: flex; gap: 0.5rem;">
         <button type="submit" class="btn btn-primary btn-small">Add Tool</button>
@@ -77,11 +82,15 @@
     <% for (const tool of tools) { %>
       <div class="dm-tool-card">
         <a href="<%= tool.url %>" target="_blank" rel="noopener noreferrer" class="dm-tool-link">
-          <div class="dm-tool-icon"><%- toolIcons[tool.icon] || toolIcons.link %></div>
+          <% if (tool.thumbnail) { %>
+            <img src="/thumbnails/<%= tool.thumbnail %>" alt="" class="dm-tool-thumb">
+          <% } else { %>
+            <div class="dm-tool-icon"><%- toolIcons[tool.icon] || toolIcons.link %></div>
+          <% } %>
           <div class="dm-tool-name"><%= tool.name %></div>
         </a>
         <div class="dm-tool-actions">
-          <button type="button" class="btn btn-small btn-outline" onclick="openEditTool(<%= tool.id %>, '<%= tool.name.replace(/'/g, "\\'") %>', '<%= tool.url.replace(/'/g, "\\'") %>', '<%= tool.icon %>')">Edit</button>
+          <button type="button" class="btn btn-small btn-outline" data-edit-tool="<%= tool.id %>">Edit</button>
           <form action="/dm-tools/<%= tool.id %>/delete" method="POST" class="inline-form">
             <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Remove this tool?')">&times;</button>
           </form>
@@ -98,7 +107,7 @@
 <div id="edit-tool-modal" class="map-add-form" style="display:none;">
   <div class="card" style="max-width: 400px; margin: 0 auto;">
     <h3>Edit Tool</h3>
-    <form id="edit-tool-form" method="POST">
+    <form id="edit-tool-form" method="POST" enctype="multipart/form-data">
       <div class="form-group">
         <label for="edit-tool-name">Button Name</label>
         <input type="text" name="name" id="edit-tool-name" required>
@@ -128,6 +137,17 @@
         <label for="edit-tool-url">URL</label>
         <input type="url" name="url" id="edit-tool-url" required>
       </div>
+      <div class="form-group">
+        <label for="edit-tool-thumb">Thumbnail</label>
+        <div id="edit-thumb-preview" style="display:none; margin-bottom:0.5rem;">
+          <img id="edit-thumb-img" src="" alt="" style="width:48px; height:48px; object-fit:cover; border-radius:8px; border:1px solid var(--border);">
+          <label style="display:inline-flex; align-items:center; gap:0.25rem; margin-left:0.5rem; font-weight:normal; font-size:0.85rem; cursor:pointer;">
+            <input type="checkbox" name="remove_thumbnail" value="1" id="edit-remove-thumb"> Remove
+          </label>
+        </div>
+        <input type="file" name="thumbnail" id="edit-tool-thumb" accept="image/*">
+        <small class="form-hint">Upload new image to replace, or check "Remove" to use icon instead</small>
+      </div>
       <div style="display: flex; gap: 0.5rem;">
         <button type="submit" class="btn btn-primary btn-small">Save</button>
         <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('edit-tool-modal').style.display='none'">Cancel</button>
@@ -137,13 +157,30 @@
 </div>
 
 <script>
-function openEditTool(id, name, url, icon) {
-  document.getElementById('edit-tool-form').action = '/dm-tools/' + id + '/edit';
-  document.getElementById('edit-tool-name').value = name;
-  document.getElementById('edit-tool-url').value = url;
-  document.getElementById('edit-tool-icon').value = icon;
-  document.getElementById('edit-tool-modal').style.display = 'block';
-}
+var toolsData = <%- JSON.stringify(tools.map(function(t) { return { id: t.id, name: t.name, url: t.url, icon: t.icon, thumbnail: t.thumbnail }; })) %>;
+var toolsById = {};
+toolsData.forEach(function(t) { toolsById[t.id] = t; });
+
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('[data-edit-tool]');
+  if (btn) {
+    var id = parseInt(btn.getAttribute('data-edit-tool'), 10);
+    var t = toolsById[id];
+    if (!t) return;
+    document.getElementById('edit-tool-form').action = '/dm-tools/' + id + '/edit';
+    document.getElementById('edit-tool-name').value = t.name;
+    document.getElementById('edit-tool-url').value = t.url;
+    document.getElementById('edit-tool-icon').value = t.icon;
+    document.getElementById('edit-remove-thumb').checked = false;
+    if (t.thumbnail) {
+      document.getElementById('edit-thumb-preview').style.display = 'block';
+      document.getElementById('edit-thumb-img').src = '/thumbnails/' + t.thumbnail;
+    } else {
+      document.getElementById('edit-thumb-preview').style.display = 'none';
+    }
+    document.getElementById('edit-tool-modal').style.display = 'block';
+  }
+});
 </script>
 
 <%- include('../partials/foot') %>

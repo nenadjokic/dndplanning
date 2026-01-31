@@ -93,7 +93,7 @@
             <% if (isDM) { %>
               <td>
                 <div style="display: flex; gap: 0.25rem;">
-                  <button type="button" class="btn btn-small btn-outline" onclick="openEditLocation(<%= loc.id %>, '<%= loc.name.replace(/'/g, "\\'") %>', '<%= (loc.description || '').replace(/'/g, "\\'") %>', '<%= loc.icon %>')">Edit</button>
+                  <button type="button" class="btn btn-small btn-outline" data-table-edit-loc="<%= loc.id %>">Edit</button>
                   <form action="/map/locations/<%= loc.id %>/delete" method="POST" class="inline-form">
                     <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this location?')">&times;</button>
                   </form>
@@ -207,6 +207,10 @@
     return d.innerHTML;
   }
 
+  // Build a lookup for edit by ID (avoids string escaping issues in popups)
+  var locById = {};
+  locations.forEach(function(loc) { locById[loc.id] = loc; });
+
   // Add location markers
   locations.forEach(function(loc) {
     var ll = pctToLatLng(loc.x, loc.y);
@@ -215,12 +219,22 @@
     if (loc.description) popupContent += '<br>' + escHtml(loc.description);
     if (isDM) {
       popupContent += '<div style="margin-top:0.5rem; display:flex; gap:0.25rem;">'
-        + '<button type="button" class="btn btn-small btn-outline" onclick="openEditLocation(' + loc.id + ', \'' + loc.name.replace(/'/g, "\\'") + '\', \'' + (loc.description || '').replace(/'/g, "\\'") + '\', \'' + loc.icon + '\')" style="font-size:0.75rem;padding:0.2rem 0.5rem;">Edit</button>'
+        + '<button type="button" class="btn btn-small btn-outline" data-edit-loc="' + loc.id + '" style="font-size:0.75rem;padding:0.2rem 0.5rem;">Edit</button>'
         + '<form action="/map/locations/' + loc.id + '/delete" method="POST">'
-        + '<button type="submit" class="btn btn-small btn-danger" onclick="return confirm(\'Delete?\')" style="font-size:0.75rem;padding:0.2rem 0.5rem;">Delete</button></form>'
+        + '<button type="submit" class="btn btn-small btn-danger" onclick="return confirm(\'Delete this location?\')" style="font-size:0.75rem;padding:0.2rem 0.5rem;">Delete</button></form>'
         + '</div>';
     }
-    marker.bindPopup(popupContent);
+    var popup = L.popup().setContent(popupContent);
+    marker.bindPopup(popup);
+    marker.on('popupopen', function() {
+      var editBtn = document.querySelector('[data-edit-loc="' + loc.id + '"]');
+      if (editBtn) {
+        editBtn.addEventListener('click', function() {
+          var l = locById[loc.id];
+          openEditLocation(l.id, l.name, l.description || '', l.icon);
+        });
+      }
+    });
   });
 
   // Add party marker
@@ -277,6 +291,16 @@
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape' && isFullscreen) {
       fsBtn.click();
+    }
+  });
+
+  // Table edit buttons — use event delegation to avoid inline escaping issues
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-table-edit-loc]');
+    if (btn) {
+      var id = parseInt(btn.getAttribute('data-table-edit-loc'), 10);
+      var l = locById[id];
+      if (l) openEditLocation(l.id, l.name, l.description || '', l.icon);
     }
   });
 })();

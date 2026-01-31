@@ -38,6 +38,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/avatars', express.static(path.join(__dirname, 'data', 'avatars')));
 app.use('/maps', express.static(path.join(__dirname, 'data', 'maps')));
+app.use('/thumbnails', express.static(path.join(__dirname, 'data', 'thumbnails')));
 
 app.use(session({
   store: new SQLiteStore({

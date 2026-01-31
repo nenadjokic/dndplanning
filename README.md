@@ -1,6 +1,6 @@
-# Quest Planner v0.7.0 — D&D Session Scheduler
+# Quest Planner v0.7.1 — D&D Session Scheduler
 
-> **Latest release:** v0.7.0 (2026-01-31)
+> **Latest release:** v0.7.1 (2026-01-31)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -577,6 +577,13 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.7.1 (2026-01-31)
+
+- **Fix: Map fullscreen** — fullscreen now properly overrides card padding and box-shadow for true full-viewport display
+- **Fix: Pin editing** — all map pins (including default "pin" type) are now fully editable and deletable; replaced fragile string escaping with data-driven event handlers
+- **DM Tools thumbnails** — option to upload custom thumbnail images for tool buttons; thumbnails replace the SVG icon when set
+- **Thumbnail management** — edit modal shows current thumbnail with option to remove or replace; old files are cleaned up on replacement or deletion
 
 ### v0.7.0 (2026-01-31)
 

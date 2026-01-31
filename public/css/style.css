@@ -1957,7 +1957,9 @@ h3 { font-size: 1.25rem; }
   border-radius: 0 !important;
   border: none !important;
   margin: 0;
-  padding: 0;
+  padding: 0 !important;
+  box-shadow: none !important;
+  background: var(--bg-darker);
 }
 
 .map-fullscreen .map-container {
@@ -2017,6 +2019,14 @@ h3 { font-size: 1.25rem; }
   text-align: center;
   line-height: 1.2;
   word-break: break-word;
+}
+
+.dm-tool-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid var(--border);
 }
 
 .dm-tool-actions {
