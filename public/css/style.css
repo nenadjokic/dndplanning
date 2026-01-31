@@ -1794,6 +1794,158 @@ h3 { font-size: 1.25rem; }
   color: var(--red-light);
 }
 
+/* === Map Styles === */
+.map-container {
+  height: 500px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-darker);
+}
+
+.map-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  align-items: center;
+}
+
+.map-marker-icon {
+  background: none !important;
+  border: none !important;
+}
+
+.map-marker-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+
+.map-party-marker {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--gold-bright);
+  border: 2px solid #fff;
+  box-shadow: 0 0 8px rgba(212, 168, 67, 0.6);
+  animation: pulse-party 2s ease-in-out infinite;
+}
+
+@keyframes pulse-party {
+  0%, 100% { box-shadow: 0 0 8px rgba(212, 168, 67, 0.6); }
+  50% { box-shadow: 0 0 16px rgba(212, 168, 67, 0.9); }
+}
+
+.map-add-form {
+  margin-top: 1rem;
+}
+
+.map-marker-badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-family: var(--font-heading);
+}
+
+.map-marker-pin { background: rgba(192, 57, 43, 0.2); color: #e74c3c; }
+.map-marker-city { background: rgba(41, 128, 185, 0.2); color: #3498db; }
+.map-marker-dungeon { background: rgba(142, 68, 173, 0.2); color: #bb86fc; }
+.map-marker-tavern { background: rgba(39, 174, 96, 0.2); color: #2ecc71; }
+
+/* === Loot Styles === */
+.loot-quest-card {
+  border: 2px solid var(--gold-dim) !important;
+  background: rgba(212, 168, 67, 0.05);
+}
+
+.loot-quest-card:hover {
+  border-color: var(--gold) !important;
+}
+
+.loot-table {
+  font-size: 0.9rem;
+}
+
+.loot-category-badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-family: var(--font-heading);
+}
+
+.loot-cat-weapon { background: rgba(192, 57, 43, 0.2); color: #e74c3c; }
+.loot-cat-armor { background: rgba(41, 128, 185, 0.2); color: #3498db; }
+.loot-cat-potion { background: rgba(39, 174, 96, 0.2); color: #2ecc71; }
+.loot-cat-quest { background: rgba(212, 168, 67, 0.2); color: var(--gold); }
+.loot-cat-gold { background: rgba(243, 156, 18, 0.2); color: var(--yellow-light); }
+.loot-cat-item { background: rgba(142, 68, 173, 0.2); color: #bb86fc; }
+
+.loot-add-form form {
+  margin-top: 0.5rem;
+}
+
+.loot-holder {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* === Analytics Styles === */
+.analytics-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.analytics-stat-card {
+  text-align: center;
+  padding: 1rem;
+}
+
+.analytics-stat-number {
+  font-family: var(--font-heading);
+  font-size: 2.2rem;
+  color: var(--gold);
+  line-height: 1.2;
+}
+
+.analytics-stat-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+.analytics-chart-card {
+  padding: 1.25rem;
+}
+
+.analytics-chart-card h2 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+}
+
+.analytics-chart-card canvas {
+  max-height: 280px;
+}
+
+.analytics-streak {
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+}
+
+.analytics-charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
 /* === Responsive === */
 @media (max-width: 640px) {
   body { font-size: 16px; }
@@ -1836,5 +1988,21 @@ h3 { font-size: 1.25rem; }
     width: 100%;
     border-radius: 0;
     margin-top: 0;
+  }
+
+  .analytics-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .analytics-charts-row {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-chart-card canvas {
+    max-height: 220px;
+  }
+
+  .map-container {
+    height: 350px;
   }
 }

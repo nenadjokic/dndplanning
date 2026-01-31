@@ -1,0 +1,170 @@
+<%- include('partials/head', { pageTitle: 'Party Inventory' }) %>
+
+<div class="page-header">
+  <h1>Party Inventory</h1>
+  <a href="/" class="btn btn-outline">Back to Chamber</a>
+</div>
+
+<% if (isDM) { %>
+<div class="card loot-add-form" style="margin-bottom: 1.5rem;">
+  <h2>Add Loot</h2>
+  <form action="/loot" method="POST">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+      <div class="form-group">
+        <label for="loot-name">Item Name</label>
+        <input type="text" name="name" id="loot-name" required placeholder="Sword of Truth">
+      </div>
+      <div class="form-group">
+        <label for="loot-category">Category</label>
+        <select name="category" id="loot-category">
+          <option value="item">Item</option>
+          <option value="weapon">Weapon</option>
+          <option value="armor">Armor</option>
+          <option value="potion">Potion</option>
+          <option value="quest">Quest Item</option>
+          <option value="gold">Gold</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="loot-desc">Description (optional)</label>
+      <textarea name="description" id="loot-desc" rows="2" placeholder="A finely crafted blade..."></textarea>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
+      <div class="form-group">
+        <label for="loot-qty">Quantity</label>
+        <input type="text" name="quantity" id="loot-qty" value="1" placeholder="1">
+      </div>
+      <div class="form-group">
+        <label for="loot-held">Assign To</label>
+        <select name="held_by" id="loot-held">
+          <option value="">Party Bag</option>
+          <% for (const p of players) { %>
+            <option value="<%= p.id %>"><%= p.username %></option>
+          <% } %>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="loot-session">Found In</label>
+        <select name="session_id" id="loot-session">
+          <option value="">-- None --</option>
+          <% for (const s of sessions) { %>
+            <option value="<%= s.id %>"><%= s.title %></option>
+          <% } %>
+        </select>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Add to Inventory</button>
+  </form>
+</div>
+<% } %>
+
+<%
+  const questItems = items.filter(i => i.category === 'quest');
+  const otherItems = items.filter(i => i.category !== 'quest');
+  const categoryEmoji = { weapon: '\u2694\uFE0F', armor: '\uD83D\uDEE1\uFE0F', potion: '\uD83E\uDDEA', quest: '\uD83D\uDCDC', gold: '\uD83D\uDCB0', item: '\uD83D\uDC8E' };
+%>
+
+<% if (questItems.length > 0) { %>
+<div style="margin-bottom: 1.5rem;">
+  <h2>Quest Items</h2>
+  <div class="session-grid">
+    <% for (const item of questItems) { %>
+      <div class="card loot-quest-card">
+        <div style="display: flex; justify-content: space-between; align-items: start;">
+          <div>
+            <strong><%= categoryEmoji[item.category] || '' %> <%= item.name %></strong>
+            <% if (item.quantity > 1) { %><span class="text-muted"> x<%= item.quantity %></span><% } %>
+          </div>
+          <span class="loot-category-badge loot-cat-<%= item.category %>"><%= item.category %></span>
+        </div>
+        <% if (item.description) { %>
+          <p class="text-muted" style="margin: 0.5rem 0; font-size: 0.9rem;"><%= item.description %></p>
+        <% } %>
+        <div class="loot-holder">
+          Held by: <strong><%= item.holder_name || 'Party Bag' %></strong>
+        </div>
+        <% if (item.session_title) { %>
+          <div class="text-muted" style="font-size: 0.8rem;">Found in: <%= item.session_title %></div>
+        <% } %>
+        <% if (isDM) { %>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+            <form action="/loot/<%= item.id %>/assign" method="POST" style="display:flex; gap:0.25rem; align-items:center;">
+              <select name="held_by" class="role-select" style="font-size:0.8rem;">
+                <option value="">Party Bag</option>
+                <% for (const p of players) { %>
+                  <option value="<%= p.id %>" <%= item.held_by === p.id ? 'selected' : '' %>><%= p.username %></option>
+                <% } %>
+              </select>
+              <button type="submit" class="btn btn-small btn-outline">Assign</button>
+            </form>
+            <form action="/loot/<%= item.id %>/delete" method="POST" class="inline-form">
+              <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Remove this item?')">&times;</button>
+            </form>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+</div>
+<% } %>
+
+<% if (otherItems.length > 0) { %>
+<div class="card">
+  <h2>Bag of Holding</h2>
+  <div class="admin-table-wrapper">
+    <table class="admin-table loot-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Category</th>
+          <th>Qty</th>
+          <th>Held By</th>
+          <% if (isDM) { %><th>Actions</th><% } %>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const item of otherItems) { %>
+          <tr>
+            <td>
+              <strong><%= categoryEmoji[item.category] || '' %> <%= item.name %></strong>
+              <% if (item.description) { %><br><span class="text-muted" style="font-size: 0.85rem;"><%= item.description %></span><% } %>
+            </td>
+            <td><span class="loot-category-badge loot-cat-<%= item.category %>"><%= item.category %></span></td>
+            <td><%= item.quantity %></td>
+            <td class="loot-holder"><%= item.holder_name || 'Party Bag' %></td>
+            <% if (isDM) { %>
+              <td>
+                <div style="display: flex; gap: 0.25rem; align-items: center; flex-wrap: wrap;">
+                  <form action="/loot/<%= item.id %>/assign" method="POST" style="display:flex; gap:0.25rem; align-items:center;">
+                    <select name="held_by" class="role-select" style="font-size:0.8rem;">
+                      <option value="">Party Bag</option>
+                      <% for (const p of players) { %>
+                        <option value="<%= p.id %>" <%= item.held_by === p.id ? 'selected' : '' %>><%= p.username %></option>
+                      <% } %>
+                    </select>
+                    <button type="submit" class="btn btn-small btn-outline">Assign</button>
+                  </form>
+                  <form action="/loot/<%= item.id %>/delete" method="POST" class="inline-form">
+                    <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Remove this item?')">&times;</button>
+                  </form>
+                </div>
+              </td>
+            <% } %>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% } %>
+
+<% if (items.length === 0) { %>
+<div class="card">
+  <div class="empty-state">
+    <p class="empty-state-text">The party inventory is empty. <% if (isDM) { %>Add some loot above!<% } else { %>The DM will add items as you find them.<% } %></p>
+  </div>
+</div>
+<% } %>
+
+<%- include('partials/foot') %>

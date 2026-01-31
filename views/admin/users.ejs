@@ -76,10 +76,12 @@
       <div class="form-group">
         <label for="discord_bot_token">Bot Token</label>
         <input type="text" name="discord_bot_token" id="discord_bot_token" class="form-input" placeholder="Discord bot token">
+        <small class="form-hint">Create a bot at discord.com/developers/applications &rarr; Bot &rarr; Copy Token</small>
       </div>
       <div class="form-group">
         <label for="discord_channel_id">Channel ID</label>
         <input type="text" name="discord_channel_id" id="discord_channel_id" class="form-input" placeholder="Discord channel ID">
+        <small class="form-hint">Enable Developer Mode in Discord Settings &rarr; right-click channel &rarr; Copy Channel ID</small>
       </div>
     </div>
 
@@ -87,10 +89,12 @@
       <div class="form-group">
         <label for="telegram_bot_token">Bot Token</label>
         <input type="text" name="telegram_bot_token" id="telegram_bot_token" class="form-input" placeholder="Telegram bot token">
+        <small class="form-hint">Message @BotFather on Telegram &rarr; /newbot &rarr; copy the token</small>
       </div>
       <div class="form-group">
         <label for="telegram_chat_id">Chat ID</label>
         <input type="text" name="telegram_chat_id" id="telegram_chat_id" class="form-input" placeholder="Telegram chat or group ID">
+        <small class="form-hint">Add bot to your group, send a message, then visit api.telegram.org/bot{TOKEN}/getUpdates to find the chat_id</small>
       </div>
     </div>
 
@@ -98,10 +102,12 @@
       <div class="form-group">
         <label for="viber_auth_token">Auth Token</label>
         <input type="text" name="viber_auth_token" id="viber_auth_token" class="form-input" placeholder="Viber auth token">
+        <small class="form-hint">Create a bot at partners.viber.com &rarr; copy the Auth Token</small>
       </div>
       <div class="form-group">
         <label for="viber_admin_id">Admin / Subscriber ID</label>
         <input type="text" name="viber_admin_id" id="viber_admin_id" class="form-input" placeholder="Viber receiver ID">
+        <small class="form-hint">Your Viber user ID (subscribe to your bot, then check the Viber API for your ID)</small>
       </div>
     </div>
 
@@ -109,7 +115,7 @@
       <div class="form-group">
         <label for="public_url">Public URL</label>
         <input type="text" name="public_url" id="public_url" class="form-input" placeholder="https://quest.example.com">
-        <small class="text-muted">Used for message links and Viber webhook registration</small>
+        <small class="form-hint">Your app's public address (e.g. https://quest.example.com). Used for message links and Viber webhook.</small>
       </div>
     </div>
 

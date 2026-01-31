@@ -16,11 +16,13 @@ router.get('/new', requireLogin, requireDM, (req, res) => {
     ORDER BY u.date
   `).all(today);
 
-  res.render('dm/session-form', { session: null, slots: [], unavailabilities });
+  const mapLocations = db.prepare('SELECT id, name FROM map_locations ORDER BY name').all();
+
+  res.render('dm/session-form', { session: null, slots: [], unavailabilities, mapLocations });
 });
 
 router.post('/', requireLogin, requireDM, (req, res) => {
-  const { title, description, slot_dates, slot_labels, category } = req.body;
+  const { title, description, slot_dates, slot_labels, category, location_id } = req.body;
   const validCategories = ['dnd', 'rpg', 'gamenight', 'casual'];
   const sessionCategory = validCategories.includes(category) ? category : 'dnd';
   const slotDatesDate = req.body['slot_dates_date'];
@@ -57,11 +59,12 @@ router.post('/', requireLogin, requireDM, (req, res) => {
     return res.redirect('/sessions/new');
   }
 
-  const insertSession = db.prepare('INSERT INTO sessions (title, description, created_by, category) VALUES (?, ?, ?, ?)');
+  const locId = location_id ? parseInt(location_id, 10) : null;
+  const insertSession = db.prepare('INSERT INTO sessions (title, description, created_by, category, location_id) VALUES (?, ?, ?, ?, ?)');
   const insertSlot = db.prepare('INSERT INTO slots (session_id, date_time, label) VALUES (?, ?, ?)');
 
   const createSession = db.transaction(() => {
-    const result = insertSession.run(title, description || null, req.user.id, sessionCategory);
+    const result = insertSession.run(title, description || null, req.user.id, sessionCategory, locId);
     const sessionId = result.lastInsertRowid;
 
     for (let i = 0; i < dates.length; i++) {
@@ -147,6 +150,13 @@ router.get('/:id', requireLogin, (req, res) => {
     }
   }
 
+  // Load location name if set
+  let locationName = null;
+  if (session.location_id) {
+    const loc = db.prepare('SELECT name FROM map_locations WHERE id = ?').get(session.location_id);
+    if (loc) locationName = loc.name;
+  }
+
   const isDM = req.user.role === 'dm' || req.user.role === 'admin';
 
   // Load preferences for DM/admin users
@@ -190,7 +200,7 @@ router.get('/:id', requireLogin, (req, res) => {
 
   if (isDM) {
     const myPreference = preferenceMap[req.user.id] || null;
-    res.render('dm/session-detail', { session, slots, players, voteMap, slotSummary, preferences, preferenceMap, myPreference, allUsersMap, unavailabilityMap, sessionPosts, sessionReplyMap });
+    res.render('dm/session-detail', { session, slots, players, voteMap, slotSummary, preferences, preferenceMap, myPreference, allUsersMap, unavailabilityMap, sessionPosts, sessionReplyMap, locationName });
   } else {
     // Get this player's votes
     const myVotes = {};
@@ -199,7 +209,7 @@ router.get('/:id', requireLogin, (req, res) => {
         myVotes[v.slot_id] = v.status;
       }
     }
-    res.render('player/vote', { session, slots, myVotes, sessionPosts, sessionReplyMap });
+    res.render('player/vote', { session, slots, myVotes, sessionPosts, sessionReplyMap, locationName });
   }
 });
 

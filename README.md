@@ -1,6 +1,6 @@
-# Quest Planner v0.6.0 — D&D Session Scheduler
+# Quest Planner v0.6.1 — D&D Session Scheduler
 
-> **Latest release:** v0.6.0 (2026-01-31)
+> **Latest release:** v0.6.1 (2026-01-31)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -64,6 +64,10 @@ If you enjoy Quest Planner, consider buying me a coffee:
 - **Unavailability Days** — Players mark dates they can't play; DM sees these when creating sessions
 - **Calendar Feed (iCal)** — Personal feed (sessions + unavailability) and public sessions-only feed
 - **Omni-Channel Notifications** — Broadcast session events (created, confirmed, cancelled, reopened) to Discord, Telegram, or Viber; configured per-guild in Guild Settings
+- **World Map** — Interactive Leaflet.js map at `/map` with custom image upload, location pins (city, dungeon, tavern), draggable party marker, click-to-add locations
+- **Party Inventory (Loot Tracker)** — Shared inventory at `/loot` with categories (weapon, armor, potion, quest, gold, item), item assignment to players, quest item highlights
+- **Session Analytics** — Chart.js dashboard at `/analytics` with sessions-per-month, preferred day, player attendance %, streak counter, and summary stats
+- **Session Locations** — Optional location dropdown on session creation, linking sessions to map locations
 - **Auto-Update Check** — Admin can check for new releases from the Guild Settings page
 - **Welcome Popup** — First-login modal thanking users with support links
 - **Role System** — Guild Master (admin), Dungeon Master, Adventurer (player)
@@ -405,6 +409,35 @@ All users can access **Settings** (pencil icon in the nav bar) to:
   - Being mentioned with `@yourusername` in any post, reply, or comment
 - Notifications auto-poll every 30 seconds
 
+### World Map
+
+- Click **"World Map"** in the hamburger menu to view the interactive map
+- **DM/Admin**: click anywhere on the map to add a location (name, description, icon type)
+- **DM/Admin**: drag the gold party marker to update the party's current position
+- **Admin**: upload a custom map image (JPG, PNG, GIF, WebP, max 5MB)
+- Default: a parchment placeholder is shown until a map image is uploaded
+- Location pins are color-coded: red (pin), blue (city), purple (dungeon), green (tavern)
+- When creating a session, DMs can optionally link it to a map location
+
+### Party Inventory (Loot Tracker)
+
+- Click **"Party Loot"** in the hamburger menu to view the shared inventory
+- **DM/Admin**: add items with name, description, quantity, category, and optional player assignment
+- Categories: weapon, armor, potion, quest item, gold, general item
+- Quest items are displayed in highlighted gold-bordered cards at the top
+- Items can be assigned to specific players or kept in the "Party Bag"
+- **DM/Admin**: reassign, edit, or delete items at any time
+- Players see a read-only view of all inventory
+
+### Session Analytics
+
+- Click **"Analytics"** in the hamburger menu to view session statistics
+- **Summary cards**: total sessions, completed, cancelled, average players per session
+- **Sessions per Month**: bar chart showing session frequency over the last 12 months
+- **Preferred Day**: bar chart of which days of the week confirmed sessions fall on
+- **Player Attendance**: horizontal bar chart showing each player's attendance percentage
+- **Streak**: consecutive weeks with at least one confirmed/completed session
+
 ### Admin Features
 
 The Guild Master can access **Guild Settings** (cogwheel icon) to:
@@ -453,7 +486,10 @@ dndplanning/
 │   ├── profile.js         # User profile (avatar, birthday, about, character, public profiles)
 │   ├── sessions.js        # Session CRUD, slot confirmation, recap, comments, replies
 │   ├── settings.js        # User settings (theme, time, password, unavailability, calendar)
-│   └── votes.js           # Player voting
+│   ├── votes.js           # Player voting
+│   ├── map.js             # World map locations, party marker, image upload
+│   ├── loot.js            # Party inventory (loot tracker)
+│   └── analytics.js       # Session analytics and charts
 ├── views/                 # EJS templates
 │   ├── partials/          # Header (theme), footer (about/GPL/support), nav (bell/clock), flash, slot grid, comments
 │   ├── auth/              # Login, register pages
@@ -464,12 +500,16 @@ dndplanning/
 │   ├── players.ejs        # Guild members directory page
 │   ├── profile.ejs        # Edit own profile page
 │   ├── profile-public.ejs # Public read-only profile page
+│   ├── map.ejs            # World map page (Leaflet.js)
+│   ├── loot.ejs           # Party inventory page
+│   ├── analytics.ejs      # Session analytics page (Chart.js)
 │   └── settings.ejs       # User settings page (theme, time, password, unavailability, calendar)
 ├── public/
-│   ├── css/style.css      # Dark + light theme, notifications, mentions, board styles
+│   ├── css/style.css      # Dark + light theme, notifications, mentions, board, map, loot, analytics styles
 │   └── js/app.js          # Clock, notifications, time picker, unavailability warnings, theme recheck
-└── data/                  # SQLite files + avatars (not in git)
-    └── avatars/           # User avatar uploads
+└── data/                  # SQLite files + avatars + maps (not in git)
+    ├── avatars/           # User avatar uploads
+    └── maps/              # Uploaded world map images
 ```
 
 ---
@@ -523,6 +563,26 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.6.1 (2026-01-31)
+
+- **World Map** — interactive Leaflet.js map at `/map` with L.CRS.Simple coordinate system
+- **Map locations** — DM/admin can click to add locations with name, description, and icon type (pin, city, dungeon, tavern)
+- **Party marker** — draggable gold pulsing marker showing party position; auto-saves on drag
+- **Custom map upload** — admin can upload a world map image (max 5MB); default parchment SVG placeholder
+- **Session locations** — optional location dropdown on session creation form; location name shown in session detail
+- **Party Inventory (Loot Tracker)** — shared inventory at `/loot` with add, assign, edit, delete
+- **Loot categories** — weapon, armor, potion, quest item, gold, general item with color-coded badges
+- **Quest items** — highlighted gold-bordered cards displayed at top of inventory
+- **Item assignment** — DM can assign items to specific players or keep in party bag
+- **Session Analytics** — Chart.js dashboard at `/analytics` with four stat cards and three charts
+- **Sessions per month** — bar chart of session frequency over the last 12 months
+- **Preferred day** — bar chart of confirmed session day-of-week distribution
+- **Player attendance** — horizontal bar chart showing attendance percentage per player
+- **Streak counter** — consecutive weeks with sessions, displayed with fire emoji
+- **Comms tooltips** — help text added under each provider field in Communications Center
+- **Navigation update** — World Map, Party Loot, and Analytics links added to hamburger menu
+- **DB migration** — added `map_locations`, `map_config`, `loot_items` tables and `location_id` column on sessions
 
 ### v0.6.0 (2026-01-31)
 

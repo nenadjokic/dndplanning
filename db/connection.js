@@ -27,7 +27,8 @@ const alterStatements = [
   "ALTER TABLE users ADD COLUMN birthday TEXT",
   "ALTER TABLE users ADD COLUMN about TEXT",
   "ALTER TABLE users ADD COLUMN character_info TEXT",
-  "ALTER TABLE users ADD COLUMN character_avatar TEXT"
+  "ALTER TABLE users ADD COLUMN character_avatar TEXT",
+  "ALTER TABLE sessions ADD COLUMN location_id INTEGER REFERENCES map_locations(id)"
 ];
 
 for (const sql of alterStatements) {
@@ -62,6 +63,43 @@ if (tableInfo && tableInfo.sql && !tableInfo.sql.includes('completed')) {
   `);
   db.pragma('foreign_keys = ON');
 }
+
+// Map tables
+db.exec(`
+  CREATE TABLE IF NOT EXISTS map_locations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    x REAL NOT NULL DEFAULT 50,
+    y REAL NOT NULL DEFAULT 50,
+    icon TEXT NOT NULL DEFAULT 'pin',
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS map_config (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    image_path TEXT,
+    party_x REAL DEFAULT 50,
+    party_y REAL DEFAULT 50
+  );
+  INSERT OR IGNORE INTO map_config (id) VALUES (1);
+`);
+
+// Loot tracker table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS loot_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    quantity INTEGER NOT NULL DEFAULT 1,
+    category TEXT NOT NULL DEFAULT 'item',
+    held_by INTEGER REFERENCES users(id),
+    session_id INTEGER REFERENCES sessions(id),
+    created_by INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
 
 // Notification config table (single-row)
 db.exec(`

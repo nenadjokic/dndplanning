@@ -1,0 +1,119 @@
+<%- include('partials/head', { pageTitle: 'Session Analytics' }) %>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+<div class="page-header">
+  <h1>Session Analytics</h1>
+  <a href="/" class="btn btn-outline">Back to Chamber</a>
+</div>
+
+<% const data = analyticsData; %>
+
+<div class="analytics-stats">
+  <div class="card analytics-stat-card">
+    <div class="analytics-stat-number"><%= data.totalSessions %></div>
+    <div class="analytics-stat-label">Total Sessions</div>
+  </div>
+  <div class="card analytics-stat-card">
+    <div class="analytics-stat-number" style="color: var(--green-light);"><%= data.completedSessions %></div>
+    <div class="analytics-stat-label">Completed</div>
+  </div>
+  <div class="card analytics-stat-card">
+    <div class="analytics-stat-number" style="color: var(--red-light);"><%= data.cancelledSessions %></div>
+    <div class="analytics-stat-label">Cancelled</div>
+  </div>
+  <div class="card analytics-stat-card">
+    <div class="analytics-stat-number"><%= data.avgPlayers %></div>
+    <div class="analytics-stat-label">Avg Players</div>
+  </div>
+</div>
+
+<div class="analytics-streak card" style="margin-top: 1rem; text-align: center;">
+  <% if (data.streak > 0) { %>
+    <span style="font-size: 1.5rem;">&#128293;</span>
+    <strong style="font-size: 1.3rem; color: var(--gold);"><%= data.streak %></strong>
+    <span>week<%= data.streak !== 1 ? 's' : '' %> in a row!</span>
+  <% } else { %>
+    <span style="font-size: 1.2rem;">New streak starts now!</span>
+  <% } %>
+</div>
+
+<div class="analytics-charts-row">
+  <div class="card analytics-chart-card">
+    <h2>Sessions per Month</h2>
+    <canvas id="chart-monthly"></canvas>
+  </div>
+  <div class="card analytics-chart-card">
+    <h2>Preferred Day</h2>
+    <canvas id="chart-days"></canvas>
+  </div>
+</div>
+
+<% if (data.attendance.length > 0) { %>
+<div class="card analytics-chart-card" style="margin-top: 1rem;">
+  <h2>Player Attendance</h2>
+  <canvas id="chart-attendance"></canvas>
+</div>
+<% } %>
+
+<script>
+(function() {
+  var data = <%- JSON.stringify(analyticsData) %>;
+  var gold = '#d4a843';
+  var green = '#27ae60';
+  var red = '#c0392b';
+  var textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#a8a5a0';
+
+  var defaultOpts = {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: textColor }, grid: { color: 'rgba(255,255,255,0.05)' } },
+      y: { ticks: { color: textColor, precision: 0 }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+    }
+  };
+
+  // Monthly chart
+  new Chart(document.getElementById('chart-monthly'), {
+    type: 'bar',
+    data: {
+      labels: data.months.map(function(m) { return m.month; }),
+      datasets: [{ data: data.months.map(function(m) { return m.count; }), backgroundColor: gold, borderRadius: 4 }]
+    },
+    options: defaultOpts
+  });
+
+  // Day of week chart
+  new Chart(document.getElementById('chart-days'), {
+    type: 'bar',
+    data: {
+      labels: data.days.map(function(d) { return d.day; }),
+      datasets: [{ data: data.days.map(function(d) { return d.count; }), backgroundColor: green, borderRadius: 4 }]
+    },
+    options: defaultOpts
+  });
+
+  // Attendance chart
+  var attCanvas = document.getElementById('chart-attendance');
+  if (attCanvas && data.attendance.length > 0) {
+    new Chart(attCanvas, {
+      type: 'bar',
+      data: {
+        labels: data.attendance.map(function(a) { return a.username; }),
+        datasets: [{ data: data.attendance.map(function(a) { return a.pct; }), backgroundColor: gold, borderRadius: 4 }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: textColor, callback: function(v) { return v + '%'; } }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true, max: 100 },
+          y: { ticks: { color: textColor }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+      }
+    });
+  }
+})();
+</script>
+
+<%- include('partials/foot') %>

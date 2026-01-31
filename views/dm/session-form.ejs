@@ -43,6 +43,18 @@
       <textarea id="description" name="description" rows="3" placeholder="Brief description of the session..."></textarea>
     </div>
 
+    <% if (typeof mapLocations !== 'undefined' && mapLocations.length > 0) { %>
+    <div class="form-group">
+      <label for="location_id">Location (optional)</label>
+      <select id="location_id" name="location_id">
+        <option value="">-- No location --</option>
+        <% for (const loc of mapLocations) { %>
+          <option value="<%= loc.id %>"><%= loc.name %></option>
+        <% } %>
+      </select>
+    </div>
+    <% } %>
+
     <div class="form-group">
       <label>Proposed Time Slots</label>
       <p class="form-hint">Add possible dates and times for the party to vote on.</p>

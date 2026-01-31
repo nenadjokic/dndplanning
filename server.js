@@ -21,6 +21,9 @@ const notificationRoutes = require('./routes/notifications');
 const historyRoutes = require('./routes/history');
 const profileRoutes = require('./routes/profile');
 const playersRoutes = require('./routes/players');
+const mapRoutes = require('./routes/map');
+const lootRoutes = require('./routes/loot');
+const analyticsRoutes = require('./routes/analytics');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -33,6 +36,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/avatars', express.static(path.join(__dirname, 'data', 'avatars')));
+app.use('/maps', express.static(path.join(__dirname, 'data', 'maps')));
 
 app.use(session({
   store: new SQLiteStore({
@@ -65,6 +69,9 @@ app.use('/notifications', notificationRoutes);
 app.use('/history', historyRoutes);
 app.use('/profile', profileRoutes);
 app.use('/players', playersRoutes);
+app.use('/map', mapRoutes);
+app.use('/loot', lootRoutes);
+app.use('/analytics', analyticsRoutes);
 
 app.listen(PORT, () => {
   console.log(`Quest Planner running at http://localhost:${PORT}`);
