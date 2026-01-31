@@ -24,6 +24,7 @@ const playersRoutes = require('./routes/players');
 const mapRoutes = require('./routes/map');
 const lootRoutes = require('./routes/loot');
 const analyticsRoutes = require('./routes/analytics');
+const dmToolsRoutes = require('./routes/dm-tools');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -72,6 +73,7 @@ app.use('/players', playersRoutes);
 app.use('/map', mapRoutes);
 app.use('/loot', lootRoutes);
 app.use('/analytics', analyticsRoutes);
+app.use('/dm-tools', dmToolsRoutes);
 
 app.listen(PORT, () => {
   console.log(`Quest Planner running at http://localhost:${PORT}`);

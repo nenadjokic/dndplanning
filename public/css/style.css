@@ -1946,6 +1946,139 @@ h3 { font-size: 1.25rem; }
   margin-top: 1rem;
 }
 
+/* === Map Fullscreen === */
+.map-fullscreen {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 999;
+  border-radius: 0 !important;
+  border: none !important;
+  margin: 0;
+  padding: 0;
+}
+
+.map-fullscreen .map-container {
+  height: 100vh !important;
+  border-radius: 0;
+}
+
+.map-fullscreen .map-hint {
+  display: none;
+}
+
+/* === DM Tools === */
+.dm-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1rem;
+}
+
+.dm-tool-card {
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.15s;
+}
+
+.dm-tool-card:hover {
+  border-color: var(--gold-dim);
+  transform: translateY(-2px);
+}
+
+.dm-tool-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem 0.75rem 0.75rem;
+  text-decoration: none;
+  color: var(--text-primary);
+  gap: 0.5rem;
+}
+
+.dm-tool-icon {
+  color: var(--gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(212, 168, 67, 0.1);
+}
+
+.dm-tool-name {
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  text-align: center;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.dm-tool-actions {
+  display: flex;
+  gap: 0.25rem;
+  justify-content: center;
+  padding: 0 0.5rem 0.75rem;
+}
+
+/* === What's New Modal === */
+.whatsnew-modal {
+  max-width: 520px;
+  text-align: left;
+}
+
+.whatsnew-modal h2 {
+  text-align: center;
+}
+
+.whatsnew-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0;
+}
+
+.whatsnew-list li {
+  padding: 0.4rem 0;
+  padding-left: 1.25rem;
+  position: relative;
+  line-height: 1.4;
+}
+
+.whatsnew-list li::before {
+  content: '\2726';
+  position: absolute;
+  left: 0;
+  color: var(--gold);
+}
+
+.whatsnew-links {
+  display: flex;
+  justify-content: center;
+  margin: 0.75rem 0 0;
+}
+
+.whatsnew-support {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.whatsnew-support img {
+  height: 28px;
+  border-radius: 4px;
+}
+
+.whatsnew-content {
+  max-height: 220px;
+  overflow-y: auto;
+}
+
 /* === Responsive === */
 @media (max-width: 640px) {
   body { font-size: 16px; }

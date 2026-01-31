@@ -28,7 +28,8 @@ const alterStatements = [
   "ALTER TABLE users ADD COLUMN about TEXT",
   "ALTER TABLE users ADD COLUMN character_info TEXT",
   "ALTER TABLE users ADD COLUMN character_avatar TEXT",
-  "ALTER TABLE sessions ADD COLUMN location_id INTEGER REFERENCES map_locations(id)"
+  "ALTER TABLE sessions ADD COLUMN location_id INTEGER REFERENCES map_locations(id)",
+  "ALTER TABLE users ADD COLUMN last_seen_version TEXT"
 ];
 
 for (const sql of alterStatements) {
@@ -96,6 +97,19 @@ db.exec(`
     category TEXT NOT NULL DEFAULT 'item',
     held_by INTEGER REFERENCES users(id),
     session_id INTEGER REFERENCES sessions(id),
+    created_by INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+// DM Tools buttons
+db.exec(`
+  CREATE TABLE IF NOT EXISTS dm_tools (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    url TEXT NOT NULL,
+    icon TEXT NOT NULL DEFAULT 'link',
+    sort_order INTEGER NOT NULL DEFAULT 0,
     created_by INTEGER NOT NULL REFERENCES users(id),
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );

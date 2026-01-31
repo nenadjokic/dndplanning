@@ -1,6 +1,6 @@
-# Quest Planner v0.6.1 — D&D Session Scheduler
+# Quest Planner v0.7.0 — D&D Session Scheduler
 
-> **Latest release:** v0.6.1 (2026-01-31)
+> **Latest release:** v0.7.0 (2026-01-31)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -68,6 +68,10 @@ If you enjoy Quest Planner, consider buying me a coffee:
 - **Party Inventory (Loot Tracker)** — Shared inventory at `/loot` with categories (weapon, armor, potion, quest, gold, item), item assignment to players, quest item highlights
 - **Session Analytics** — Chart.js dashboard at `/analytics` with sessions-per-month, preferred day, player attendance %, streak counter, and summary stats
 - **Session Locations** — Optional location dropdown on session creation, linking sessions to map locations
+- **Map Fullscreen** — View the world map in immersive fullscreen mode (Escape or button to exit)
+- **Pin Editing** — DMs can edit any map location's name, description, and icon type directly from the map or table
+- **DM Tools** — Streamdeck-style customizable tool board at `/dm-tools` for quick access to external resources (generators, music, references)
+- **What's New Modal** — Post-update changelog popup shown to users on first login after a version update, with GitHub release link and support badges
 - **Auto-Update Check** — Admin can check for new releases from the Guild Settings page
 - **Welcome Popup** — First-login modal thanking users with support links
 - **Role System** — Guild Master (admin), Dungeon Master, Adventurer (player)
@@ -438,6 +442,15 @@ All users can access **Settings** (pencil icon in the nav bar) to:
 - **Player Attendance**: horizontal bar chart showing each player's attendance percentage
 - **Streak**: consecutive weeks with at least one confirmed/completed session
 
+### DM Tools
+
+- Click **"DM Tools"** in the hamburger menu (DM/admin only)
+- A streamdeck-style grid of customizable buttons linking to external tools
+- Click **"+ Add Tool"** to create a new button with a name, icon, and URL
+- Choose from 16 thematic icons: link, dice, scroll, book, music, map, sword, shield, potion, skull, dragon, wand, gem, crown, hammer, eye
+- Click any tool button to open it in a new tab
+- Edit or delete buttons at any time
+
 ### Admin Features
 
 The Guild Master can access **Guild Settings** (cogwheel icon) to:
@@ -489,7 +502,8 @@ dndplanning/
 │   ├── votes.js           # Player voting
 │   ├── map.js             # World map locations, party marker, image upload
 │   ├── loot.js            # Party inventory (loot tracker)
-│   └── analytics.js       # Session analytics and charts
+│   ├── analytics.js       # Session analytics and charts
+│   └── dm-tools.js        # DM Tools streamdeck page
 ├── views/                 # EJS templates
 │   ├── partials/          # Header (theme), footer (about/GPL/support), nav (bell/clock), flash, slot grid, comments
 │   ├── auth/              # Login, register pages
@@ -563,6 +577,19 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.7.0 (2026-01-31)
+
+- **Map fullscreen** — immersive fullscreen mode for the world map; toggle via button or Escape key
+- **Pin editing** — DMs can edit any map location's name, description, and icon type from map popups or the locations table
+- **DM Tools** — streamdeck-style customizable tool board at `/dm-tools` for quick access to external resources
+- **Tool CRUD** — add, edit, delete tool buttons with 16 thematic icons (dice, scroll, book, music, sword, etc.)
+- **What's New modal** — post-update changelog popup shown to users on first login after a version update
+- **Support badges** — Buy Me a Coffee and PayPal badges (shields.io) in the What's New modal
+- **GitHub release link** — direct link to full changelog on GitHub from the What's New modal
+- **Version tracking** — `last_seen_version` column on users table to track which version each user has seen
+- **Navigation update** — DM Tools link added to hamburger menu (DM/admin only)
+- **DB migration** — added `dm_tools` table and `last_seen_version` column on users
 
 ### v0.6.1 (2026-01-31)
 

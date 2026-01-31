@@ -7,6 +7,17 @@ router.get('/', requireLogin, (req, res) => {
   const firstLogin = !!req.session.firstLogin;
   if (req.session.firstLogin) delete req.session.firstLogin;
 
+  // Check if user needs to see "What's New"
+  const appVersion = require('../package.json').version;
+  let showWhatsNew = false;
+  if (!firstLogin && req.user.last_seen_version && req.user.last_seen_version !== appVersion) {
+    showWhatsNew = true;
+  }
+  // Update last_seen_version
+  if (!req.user.last_seen_version || req.user.last_seen_version !== appVersion) {
+    db.prepare('UPDATE users SET last_seen_version = ? WHERE id = ?').run(appVersion, req.user.id);
+  }
+
   const birthdayUsers = db.prepare(`
     SELECT username, avatar FROM users
     WHERE birthday IS NOT NULL
@@ -29,7 +40,7 @@ router.get('/', requireLogin, (req, res) => {
         s.created_at DESC
     `).all();
 
-    return res.render('dm/dashboard', { sessions, firstLogin, birthdayUsers });
+    return res.render('dm/dashboard', { sessions, firstLogin, birthdayUsers, showWhatsNew });
   }
 
   // Player dashboard
@@ -58,7 +69,7 @@ router.get('/', requireLogin, (req, res) => {
     WHERE v.user_id = ?
   `).all(req.user.id).map(r => r.session_id);
 
-  res.render('player/dashboard', { sessions, votedSessionIds, firstLogin, birthdayUsers });
+  res.render('player/dashboard', { sessions, votedSessionIds, firstLogin, birthdayUsers, showWhatsNew });
 });
 
 module.exports = router;

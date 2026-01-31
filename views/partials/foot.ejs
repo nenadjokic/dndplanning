@@ -19,6 +19,46 @@
     </div>
   </footer>
 
+  <% if (typeof showWhatsNew !== 'undefined' && showWhatsNew) { %>
+    <div class="welcome-overlay" id="whatsnew-overlay">
+      <div class="welcome-modal whatsnew-modal">
+        <h2>What's New in v<%= appVersion %></h2>
+        <div class="whatsnew-content">
+          <ul class="whatsnew-list">
+            <li><strong>Map Fullscreen</strong> &mdash; View the world map in fullscreen mode</li>
+            <li><strong>Pin Editing</strong> &mdash; Edit or delete any map location directly</li>
+            <li><strong>DM Tools</strong> &mdash; Customizable streamdeck-style tool board for DMs</li>
+            <li><strong>What's New</strong> &mdash; Post-update changelog shown on first login</li>
+          </ul>
+        </div>
+        <div class="whatsnew-links">
+          <a href="https://github.com/nenadjokic/dndplanning/releases" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-small">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+            Full Changelog
+          </a>
+        </div>
+        <p style="margin-top: 1rem; margin-bottom: 0.5rem; color: var(--text-secondary);">Enjoy Quest Planner? Support the project:</p>
+        <div class="whatsnew-support">
+          <a href="https://buymeacoffee.com/nenadjokic" target="_blank" rel="noopener noreferrer">
+            <img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me a Coffee">
+          </a>
+          <a href="https://paypal.me/nenadjokicRS" target="_blank" rel="noopener noreferrer">
+            <img src="https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white" alt="PayPal">
+          </a>
+        </div>
+        <button class="btn btn-outline" id="whatsnew-close" style="margin-top: 1rem;">Continue to Quest Planner</button>
+      </div>
+    </div>
+    <script>
+      document.getElementById('whatsnew-close').addEventListener('click', function() {
+        document.getElementById('whatsnew-overlay').remove();
+      });
+      document.getElementById('whatsnew-overlay').addEventListener('click', function(e) {
+        if (e.target === this) this.remove();
+      });
+    </script>
+  <% } %>
+
   <% if (typeof firstLogin !== 'undefined' && firstLogin) { %>
     <div class="welcome-overlay" id="welcome-overlay">
       <div class="welcome-modal">

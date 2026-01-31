@@ -50,6 +50,25 @@ router.post('/locations', requireLogin, requireDM, (req, res) => {
   res.redirect('/map');
 });
 
+router.post('/locations/:id/edit', requireLogin, requireDM, (req, res) => {
+  const { name, description, icon } = req.body;
+  const loc = db.prepare('SELECT id FROM map_locations WHERE id = ?').get(req.params.id);
+  if (!loc) {
+    req.flash('error', 'Location not found.');
+    return res.redirect('/map');
+  }
+  if (!name || !name.trim()) {
+    req.flash('error', 'Location name is required.');
+    return res.redirect('/map');
+  }
+  const validIcons = ['pin', 'city', 'dungeon', 'tavern', 'party'];
+  const locIcon = validIcons.includes(icon) ? icon : 'pin';
+  db.prepare('UPDATE map_locations SET name = ?, description = ?, icon = ? WHERE id = ?')
+    .run(name.trim(), (description && description.trim()) || null, locIcon, loc.id);
+  req.flash('success', 'Location updated.');
+  res.redirect('/map');
+});
+
 router.post('/locations/:id/delete', requireLogin, requireDM, (req, res) => {
   const loc = db.prepare('SELECT id FROM map_locations WHERE id = ?').get(req.params.id);
   if (!loc) {
