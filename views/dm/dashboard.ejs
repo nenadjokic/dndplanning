@@ -5,6 +5,12 @@
   <a href="/sessions/new" class="btn btn-primary">Post to Tavern Board</a>
 </div>
 
+<% if (birthdayUsers && birthdayUsers.length > 0) { %>
+  <div class="birthday-banner">
+    <span class="birthday-icon">&#127874;</span> Happy Birthday <%= birthdayUsers.map(u => u.username).join(', ') %>!
+  </div>
+<% } %>
+
 <% if (sessions.length === 0) { %>
   <div class="card empty-state">
     <p>No quests have been posted yet. Create your first session to summon the party!</p>

@@ -4,6 +4,12 @@
   <h1>Adventurer's Quest Board</h1>
 </div>
 
+<% if (birthdayUsers && birthdayUsers.length > 0) { %>
+  <div class="birthday-banner">
+    <span class="birthday-icon">&#127874;</span> Happy Birthday <%= birthdayUsers.map(u => u.username).join(', ') %>!
+  </div>
+<% } %>
+
 <% if (sessions.length === 0) { %>
   <div class="card empty-state">
     <p>No quests have been posted to the tavern board yet. Check back later!</p>

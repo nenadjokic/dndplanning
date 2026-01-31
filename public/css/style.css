@@ -1600,6 +1600,144 @@ h3 { font-size: 1.25rem; }
   background: #faf7f0;
 }
 
+/* === Profile === */
+.profile-card {
+  margin-bottom: 1.5rem;
+}
+
+.profile-card-header {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.profile-avatar-lg {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--gold-dim);
+  flex-shrink: 0;
+}
+
+.profile-avatar-lg-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: var(--gold-dim);
+  color: var(--bg-darker);
+  font-family: var(--font-heading);
+  font-size: 2.5rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.profile-section {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.profile-section h3 {
+  margin-bottom: 0.5rem;
+}
+
+.profile-section p {
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.character-avatar-preview {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius);
+  object-fit: cover;
+  border: 2px solid var(--gold-dim);
+}
+
+.profile-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.profile-link:hover {
+  color: var(--gold);
+}
+
+/* === Players Grid === */
+.players-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.player-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.player-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--gold);
+  color: var(--text-primary);
+}
+
+.player-card-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--gold-dim);
+  flex-shrink: 0;
+}
+
+.player-card-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--gold-dim);
+  color: var(--bg-darker);
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.player-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* === Birthday Banner === */
+.birthday-banner {
+  background: rgba(212, 168, 67, 0.15);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  color: var(--gold-bright);
+}
+
+.birthday-icon {
+  font-size: 1.3rem;
+}
+
 /* === Responsive === */
 @media (max-width: 640px) {
   body { font-size: 16px; }

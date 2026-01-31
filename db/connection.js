@@ -23,7 +23,11 @@ const alterStatements = [
   "ALTER TABLE users ADD COLUMN theme TEXT NOT NULL DEFAULT 'dark'",
   "ALTER TABLE users ADD COLUMN week_start TEXT NOT NULL DEFAULT 'monday'",
   "ALTER TABLE sessions ADD COLUMN category TEXT NOT NULL DEFAULT 'dnd'",
-  "ALTER TABLE sessions ADD COLUMN summary TEXT"
+  "ALTER TABLE sessions ADD COLUMN summary TEXT",
+  "ALTER TABLE users ADD COLUMN birthday TEXT",
+  "ALTER TABLE users ADD COLUMN about TEXT",
+  "ALTER TABLE users ADD COLUMN character_info TEXT",
+  "ALTER TABLE users ADD COLUMN character_avatar TEXT"
 ];
 
 for (const sql of alterStatements) {

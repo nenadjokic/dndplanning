@@ -1,28 +1,8 @@
 <%- include('partials/head', { pageTitle: 'Settings' }) %>
 
 <div class="page-header">
-  <h1>Adventurer Settings</h1>
+  <h1>Settings</h1>
   <a href="/" class="btn btn-outline">Back to Quest Board</a>
-</div>
-
-<div class="settings-section card">
-  <h2>Avatar</h2>
-  <div class="avatar-section">
-    <div class="avatar-preview">
-      <% if (user.avatar) { %>
-        <img src="/avatars/<%= user.avatar %>" alt="Avatar" class="avatar-preview-img">
-      <% } else { %>
-        <div class="avatar-placeholder"><%= user.username.charAt(0).toUpperCase() %></div>
-      <% } %>
-    </div>
-    <form action="/settings/avatar" method="POST" enctype="multipart/form-data">
-      <div class="form-group">
-        <label for="avatar">Upload new avatar (max 2MB, images only)</label>
-        <input type="file" id="avatar" name="avatar" accept="image/*">
-      </div>
-      <button type="submit" class="btn btn-primary btn-small">Upload Avatar</button>
-    </form>
-  </div>
 </div>
 
 <div class="settings-section card">
@@ -40,21 +20,6 @@
       </label>
     </div>
     <button type="submit" class="btn btn-primary btn-small">Save Theme</button>
-  </form>
-</div>
-
-<div class="settings-section card">
-  <h2>First Day of Week</h2>
-  <form action="/settings/week-start" method="POST">
-    <div class="form-group">
-      <label>
-        <input type="radio" name="week_start" value="monday" <%= (settingsUser.week_start || 'monday') === 'monday' ? 'checked' : '' %>> Monday
-      </label>
-      <label style="margin-left: 1.5rem;">
-        <input type="radio" name="week_start" value="sunday" <%= settingsUser.week_start === 'sunday' ? 'checked' : '' %>> Sunday
-      </label>
-    </div>
-    <button type="submit" class="btn btn-primary btn-small">Save First Day</button>
   </form>
 </div>
 

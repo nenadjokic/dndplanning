@@ -1,0 +1,76 @@
+<%- include('partials/head', { pageTitle: 'Profile' }) %>
+
+<div class="page-header">
+  <h1>My Profile</h1>
+  <a href="/" class="btn btn-outline">Back to Quest Board</a>
+</div>
+
+<div class="settings-section card">
+  <h2>Avatar</h2>
+  <div class="avatar-section">
+    <div class="avatar-preview">
+      <% if (profileUser.avatar) { %>
+        <img src="/avatars/<%= profileUser.avatar %>" alt="Avatar" class="avatar-preview-img">
+      <% } else { %>
+        <div class="avatar-placeholder"><%= profileUser.username.charAt(0).toUpperCase() %></div>
+      <% } %>
+    </div>
+    <form action="/profile/avatar" method="POST" enctype="multipart/form-data">
+      <div class="form-group">
+        <label for="avatar">Upload new avatar (max 2MB, images only)</label>
+        <input type="file" id="avatar" name="avatar" accept="image/*">
+      </div>
+      <button type="submit" class="btn btn-primary btn-small">Upload Avatar</button>
+    </form>
+  </div>
+</div>
+
+<div class="settings-section card">
+  <h2>Profile Info</h2>
+  <form action="/profile" method="POST">
+    <div class="form-group">
+      <label for="birthday">Birthday</label>
+      <input type="date" id="birthday" name="birthday" value="<%= profileUser.birthday || '' %>">
+    </div>
+    <div class="form-group">
+      <label for="about">About You</label>
+      <textarea id="about" name="about" rows="4" placeholder="Tell the party about yourself..."><%= profileUser.about || '' %></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary btn-small">Save Profile</button>
+  </form>
+</div>
+
+<div class="settings-section card">
+  <h2>My Character</h2>
+  <form action="/profile" method="POST">
+    <input type="hidden" name="birthday" value="<%= profileUser.birthday || '' %>">
+    <input type="hidden" name="about" value="<%= profileUser.about || '' %>">
+    <div class="form-group">
+      <label for="character_info">Character Info</label>
+      <textarea id="character_info" name="character_info" rows="4" placeholder="Describe your character, class, backstory..."><%= profileUser.character_info || '' %></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary btn-small">Save Character</button>
+  </form>
+
+  <div class="profile-section" style="margin-top: 1.5rem;">
+    <h3>Character Avatar</h3>
+    <div class="avatar-section">
+      <div class="avatar-preview">
+        <% if (profileUser.character_avatar) { %>
+          <img src="/avatars/<%= profileUser.character_avatar %>" alt="Character Avatar" class="character-avatar-preview">
+        <% } else { %>
+          <div class="avatar-placeholder">?</div>
+        <% } %>
+      </div>
+      <form action="/profile/character-avatar" method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+          <label for="character_avatar">Upload character avatar (max 2MB, images only)</label>
+          <input type="file" id="character_avatar" name="character_avatar" accept="image/*">
+        </div>
+        <button type="submit" class="btn btn-primary btn-small">Upload Character Avatar</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/foot') %>

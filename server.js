@@ -19,6 +19,8 @@ const calendarRoutes = require('./routes/calendar');
 const boardRoutes = require('./routes/board');
 const notificationRoutes = require('./routes/notifications');
 const historyRoutes = require('./routes/history');
+const profileRoutes = require('./routes/profile');
+const playersRoutes = require('./routes/players');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -56,6 +58,8 @@ app.use('/calendar', calendarRoutes);
 app.use('/board', boardRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/history', historyRoutes);
+app.use('/profile', profileRoutes);
+app.use('/players', playersRoutes);
 
 app.listen(PORT, () => {
   console.log(`Quest Planner running at http://localhost:${PORT}`);

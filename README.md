@@ -1,6 +1,6 @@
-# Quest Planner v0.5.1 — D&D Session Scheduler
+# Quest Planner v0.5.5 — D&D Session Scheduler
 
-> **Latest release:** v0.5.1 (2026-01-30)
+> **Latest release:** v0.5.5 (2026-01-31)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -57,7 +57,10 @@ If you enjoy Quest Planner, consider buying me a coffee:
   - Triggered by: session confirmation, @mentions in posts/replies/comments
 - **Light / Dark / Auto Theme** — Dark (Dungeon), Light (Parchment), Auto (switches at 6AM/7PM)
 - **Live Clock** — Current date and time in the nav bar, updates every second
-- **User Settings** — Avatar upload, time format toggle, theme toggle, password change
+- **User Profile** — Avatar upload, birthday, about section, character info with character avatar
+- **Public Profiles** — View any guild member's profile page with avatar, birthday, about, and character
+- **Guild Members Directory** — `/players` page showing all members with links to their profiles
+- **User Settings** — Time format toggle, theme toggle, password change
 - **Unavailability Days** — Players mark dates they can't play; DM sees these when creating sessions
 - **Calendar Feed (iCal)** — Personal feed (sessions + unavailability) and public sessions-only feed
 - **Auto-Update Check** — Admin can check for new releases from the Guild Settings page
@@ -438,8 +441,10 @@ dndplanning/
 │   ├── dashboard.js       # Role-based redirect (DM/Player), welcome popup
 │   ├── notifications.js   # Notification API (fetch, mark read)
 │   ├── history.js          # Session history page (completed D&D/RPG sessions)
+│   ├── players.js         # Guild members directory
+│   ├── profile.js         # User profile (avatar, birthday, about, character, public profiles)
 │   ├── sessions.js        # Session CRUD, slot confirmation, recap, comments, replies
-│   ├── settings.js        # User settings (avatar, theme, time, password, unavailability, calendar)
+│   ├── settings.js        # User settings (theme, time, password, unavailability, calendar)
 │   └── votes.js           # Player voting
 ├── views/                 # EJS templates
 │   ├── partials/          # Header (theme), footer (about/GPL/support), nav (bell/clock), flash, slot grid, comments
@@ -448,7 +453,10 @@ dndplanning/
 │   ├── player/            # Player dashboard, voting
 │   ├── board.ejs          # Bulletin board page
 │   ├── history.ejs        # Session history page
-│   └── settings.ejs       # User settings page (avatar, theme, time, password, unavailability, calendar)
+│   ├── players.ejs        # Guild members directory page
+│   ├── profile.ejs        # Edit own profile page
+│   ├── profile-public.ejs # Public read-only profile page
+│   └── settings.ejs       # User settings page (theme, time, password, unavailability, calendar)
 ├── public/
 │   ├── css/style.css      # Dark + light theme, notifications, mentions, board styles
 │   └── js/app.js          # Clock, notifications, time picker, unavailability warnings, theme recheck
@@ -507,6 +515,18 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.5.5 (2026-01-31)
+
+- **Profile page** — dedicated `/profile` page for editing avatar, birthday, about text, and character info with character avatar
+- **Public profiles** — read-only `/profile/:username` pages showing user info, birthday (month + day), about, and character
+- **Guild Members directory** — `/players` page with a grid of all members linking to their profiles
+- **Profile links** — usernames in bulletin board and session comments now link to public profiles
+- **Birthday banner** — dashboard shows a festive banner when a guild member has a birthday today
+- **Vote confirmation** — "Submit Availability" button now shows a JS confirm dialog before submitting
+- **Settings cleanup** — avatar moved to Profile page, removed First Day of Week setting; Settings now contains only preferences
+- **Hamburger menu update** — Profile and All Players links added; reordered to Profile → All Players → Settings → ...
+- **DB migration** — added `birthday`, `about`, `character_info`, `character_avatar` columns to users table
 
 ### v0.5.1 (2026-01-30)
 

@@ -1,0 +1,51 @@
+<%- include('partials/head', { pageTitle: profileUser.username + '\'s Profile' }) %>
+
+<div class="page-header">
+  <h1><%= profileUser.username %>'s Profile</h1>
+  <a href="/players" class="btn btn-outline">All Players</a>
+</div>
+
+<div class="card profile-card">
+  <div class="profile-card-header">
+    <% if (profileUser.avatar) { %>
+      <img src="/avatars/<%= profileUser.avatar %>" alt="<%= profileUser.username %>" class="profile-avatar-lg">
+    <% } else { %>
+      <div class="profile-avatar-lg-placeholder"><%= profileUser.username.charAt(0).toUpperCase() %></div>
+    <% } %>
+    <div class="profile-card-info">
+      <h2 style="margin-top: 0; margin-bottom: 0.25rem;"><%= profileUser.username %></h2>
+      <span class="role-badge role-<%= profileUser.role %>"><%= profileUser.role === 'admin' ? 'Guild Master' : profileUser.role === 'dm' ? 'Dungeon Master' : 'Adventurer' %></span>
+      <% if (profileUser.birthday) { %>
+        <%
+          const bParts = profileUser.birthday.split('-');
+          const bDate = new Date(bParts[0], bParts[1] - 1, bParts[2]);
+          const bFormatted = bDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+        %>
+        <div class="profile-birthday" style="margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Birthday: <%= bFormatted %></div>
+      <% } %>
+    </div>
+  </div>
+
+  <% if (profileUser.about) { %>
+    <div class="profile-section">
+      <h3>About</h3>
+      <p><%= profileUser.about %></p>
+    </div>
+  <% } %>
+
+  <% if (profileUser.character_info || profileUser.character_avatar) { %>
+    <div class="profile-section">
+      <h3>Character</h3>
+      <% if (profileUser.character_avatar) { %>
+        <div style="margin-bottom: 1rem;">
+          <img src="/avatars/<%= profileUser.character_avatar %>" alt="Character" class="character-avatar-preview">
+        </div>
+      <% } %>
+      <% if (profileUser.character_info) { %>
+        <p><%= profileUser.character_info %></p>
+      <% } %>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/foot') %>

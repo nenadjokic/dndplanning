@@ -7,6 +7,12 @@ router.get('/', requireLogin, (req, res) => {
   const firstLogin = !!req.session.firstLogin;
   if (req.session.firstLogin) delete req.session.firstLogin;
 
+  const birthdayUsers = db.prepare(`
+    SELECT username, avatar FROM users
+    WHERE birthday IS NOT NULL
+    AND substr(birthday, 6) = strftime('%m-%d', 'now')
+  `).all();
+
   if (req.user.role === 'dm' || req.user.role === 'admin') {
     const sessions = db.prepare(`
       SELECT s.*, sl.date_time as confirmed_date, sl.label as confirmed_label
@@ -23,7 +29,7 @@ router.get('/', requireLogin, (req, res) => {
         s.created_at DESC
     `).all();
 
-    return res.render('dm/dashboard', { sessions, firstLogin });
+    return res.render('dm/dashboard', { sessions, firstLogin, birthdayUsers });
   }
 
   // Player dashboard
@@ -52,7 +58,7 @@ router.get('/', requireLogin, (req, res) => {
     WHERE v.user_id = ?
   `).all(req.user.id).map(r => r.session_id);
 
-  res.render('player/dashboard', { sessions, votedSessionIds, firstLogin });
+  res.render('player/dashboard', { sessions, votedSessionIds, firstLogin, birthdayUsers });
 });
 
 module.exports = router;

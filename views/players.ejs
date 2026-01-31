@@ -1,0 +1,24 @@
+<%- include('partials/head', { pageTitle: 'Guild Members' }) %>
+
+<div class="page-header">
+  <h1>Guild Members</h1>
+  <a href="/" class="btn btn-outline">Back to Quest Board</a>
+</div>
+
+<div class="players-grid">
+  <% for (const p of players) { %>
+    <a href="/profile/<%= p.username %>" class="card player-card">
+      <% if (p.avatar) { %>
+        <img src="/avatars/<%= p.avatar %>" alt="<%= p.username %>" class="player-card-avatar">
+      <% } else { %>
+        <div class="player-card-avatar-placeholder"><%= p.username.charAt(0).toUpperCase() %></div>
+      <% } %>
+      <div class="player-card-info">
+        <strong><%= p.username %></strong>
+        <span class="role-badge role-<%= p.role %>"><%= p.role === 'admin' ? 'Guild Master' : p.role === 'dm' ? 'Dungeon Master' : 'Adventurer' %></span>
+      </div>
+    </a>
+  <% } %>
+</div>
+
+<%- include('partials/foot') %>

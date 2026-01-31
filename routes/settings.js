@@ -1,37 +1,9 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
 const crypto = require('crypto');
-const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const db = require('../db/connection');
 const { requireLogin } = require('../middleware/auth');
 const router = express.Router();
-
-const avatarDir = path.join(__dirname, '..', 'data', 'avatars');
-if (!fs.existsSync(avatarDir)) {
-  fs.mkdirSync(avatarDir, { recursive: true });
-}
-
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, avatarDir),
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase();
-      cb(null, req.user.id + ext);
-    }
-  }),
-  limits: { fileSize: 2 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (allowed.includes(ext)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed.'));
-    }
-  }
-});
 
 router.get('/', requireLogin, (req, res) => {
   // Re-read user to get latest data (e.g. after token generation)
@@ -62,13 +34,6 @@ router.post('/time-format', requireLogin, (req, res) => {
 });
 
 router.post('/week-start', requireLogin, (req, res) => {
-  const { week_start } = req.body;
-  if (!['monday', 'sunday'].includes(week_start)) {
-    req.flash('error', 'Invalid first day of week.');
-    return res.redirect('/settings');
-  }
-  db.prepare('UPDATE users SET week_start = ? WHERE id = ?').run(week_start, req.user.id);
-  req.flash('success', 'First day of week updated.');
   res.redirect('/settings');
 });
 
@@ -114,30 +79,7 @@ router.post('/password', requireLogin, (req, res) => {
 });
 
 router.post('/avatar', requireLogin, (req, res) => {
-  upload.single('avatar')(req, res, (err) => {
-    if (err) {
-      req.flash('error', err.message || 'Avatar upload failed.');
-      return res.redirect('/settings');
-    }
-    if (!req.file) {
-      req.flash('error', 'No file selected.');
-      return res.redirect('/settings');
-    }
-
-    // Remove old avatar if different extension
-    const currentAvatar = db.prepare('SELECT avatar FROM users WHERE id = ?').get(req.user.id).avatar;
-    if (currentAvatar) {
-      const oldPath = path.join(avatarDir, currentAvatar);
-      if (oldPath !== req.file.path && fs.existsSync(oldPath)) {
-        fs.unlinkSync(oldPath);
-      }
-    }
-
-    const filename = req.file.filename;
-    db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(filename, req.user.id);
-    req.flash('success', 'Avatar updated.');
-    res.redirect('/settings');
-  });
+  res.redirect('/profile');
 });
 
 router.post('/generate-calendar-token', requireLogin, (req, res) => {
