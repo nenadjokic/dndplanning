@@ -2280,12 +2280,23 @@ h3 { font-size: 1.25rem; }
 
   .hamburger-menu {
     position: fixed;
-    top: auto;
+    top: 56px;
     right: 0;
     left: 0;
     width: 100%;
     border-radius: 0;
     margin-top: 0;
+    z-index: 1000;
+  }
+
+  .notif-dropdown {
+    position: fixed;
+    top: 56px;
+    right: 0.5rem;
+    left: 0.5rem;
+    width: auto;
+    max-width: 100vw;
+    z-index: 1001;
   }
 
   .analytics-stats {
