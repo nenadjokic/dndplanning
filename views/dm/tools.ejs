@@ -48,6 +48,18 @@
         <input type="file" name="thumbnail" id="tool-thumb" accept="image/*">
         <small class="form-hint">JPG, PNG, GIF, WebP &mdash; max 2MB. Will be center-cropped to 128&times;128.</small>
       </div>
+      <div class="form-group">
+        <label>Or fetch favicon from URL</label>
+        <input type="hidden" name="favicon_file" id="add-favicon-file">
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <button type="button" class="btn btn-outline btn-small" onclick="fetchFavicon('add')">Fetch Favicon</button>
+          <span id="add-favicon-status" class="form-hint"></span>
+        </div>
+        <div id="add-favicon-preview" style="display:none; margin-top:0.5rem;">
+          <img id="add-favicon-img" src="" alt="" style="width:32px; height:32px; object-fit:cover; border-radius:4px; border:1px solid var(--border);">
+          <button type="button" class="btn btn-small btn-outline" style="margin-left:0.5rem; font-size:0.75rem;" onclick="clearFavicon('add')">Remove</button>
+        </div>
+      </div>
       <div style="display: flex; gap: 0.5rem;">
         <button type="submit" class="btn btn-primary btn-small">Add Tool</button>
         <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('add-tool-form').style.display='none'">Cancel</button>
@@ -164,6 +176,18 @@
         <input type="file" name="thumbnail" id="edit-tool-thumb" accept="image/*">
         <small class="form-hint">Upload new image to replace, or check "Remove" to use icon instead. Cropped to 128&times;128.</small>
       </div>
+      <div class="form-group">
+        <label>Or fetch favicon from URL</label>
+        <input type="hidden" name="favicon_file" id="edit-favicon-file">
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <button type="button" class="btn btn-outline btn-small" onclick="fetchFavicon('edit')">Fetch Favicon</button>
+          <span id="edit-favicon-status" class="form-hint"></span>
+        </div>
+        <div id="edit-favicon-preview" style="display:none; margin-top:0.5rem;">
+          <img id="edit-favicon-img" src="" alt="" style="width:32px; height:32px; object-fit:cover; border-radius:4px; border:1px solid var(--border);">
+          <button type="button" class="btn btn-small btn-outline" style="margin-left:0.5rem; font-size:0.75rem;" onclick="clearFavicon('edit')">Remove</button>
+        </div>
+      </div>
       <div style="display: flex; gap: 0.5rem;">
         <button type="submit" class="btn btn-primary btn-small">Save</button>
         <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('edit-tool-modal').style.display='none'">Cancel</button>
@@ -197,6 +221,37 @@ document.addEventListener('click', function(e) {
     document.getElementById('edit-tool-modal').style.display = 'block';
   }
 });
+
+// Favicon fetching
+function fetchFavicon(prefix) {
+  var urlInput = prefix === 'add' ? document.getElementById('tool-url') : document.getElementById('edit-tool-url');
+  var url = urlInput ? urlInput.value : '';
+  if (!url) { alert('Enter the tool URL first.'); return; }
+  var status = document.getElementById(prefix + '-favicon-status');
+  status.textContent = 'Fetching...';
+  fetch('/dm-tools/fetch-favicon', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: url })
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.success) {
+      document.getElementById(prefix + '-favicon-file').value = data.filename;
+      document.getElementById(prefix + '-favicon-img').src = '/thumbnails/' + data.filename;
+      document.getElementById(prefix + '-favicon-preview').style.display = 'block';
+      status.textContent = 'Favicon fetched!';
+    } else {
+      status.textContent = data.error || 'Failed to fetch favicon';
+    }
+  }).catch(function() {
+    status.textContent = 'Failed to fetch favicon';
+  });
+}
+
+function clearFavicon(prefix) {
+  document.getElementById(prefix + '-favicon-file').value = '';
+  document.getElementById(prefix + '-favicon-preview').style.display = 'none';
+  document.getElementById(prefix + '-favicon-status').textContent = '';
+}
 
 // Grid size selector
 (function() {

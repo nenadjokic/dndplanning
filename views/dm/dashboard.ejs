@@ -25,13 +25,13 @@
         <% if (s.description) { %>
           <p class="session-desc"><%= s.description %></p>
         <% } %>
-        <% if (s.status === 'confirmed' && s.confirmed_date) { %>
+        <% if ((s.status === 'confirmed' || s.status === 'completed') && s.confirmed_date) { %>
           <div class="session-confirmed-date">
             <%= formatDate(s.confirmed_date, { weekday: 'long', month: 'long', day: 'numeric' }) %>
             <% if (s.confirmed_label) { %> &mdash; <%= s.confirmed_label %><% } %>
           </div>
         <% } %>
-        <div class="session-meta">Created <%= formatDate(s.created_at, { showTime: false }) %></div>
+        <div class="session-meta"><%= (s.status === 'completed' || s.status === 'confirmed') && s.confirmed_date ? formatDate(s.confirmed_date, { showTime: false }) : 'Created ' + formatDate(s.created_at, { showTime: false }) %></div>
       </a>
     <% } %>
   </div>

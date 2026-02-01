@@ -1,0 +1,112 @@
+<%- include('partials/head', { pageTitle: 'Install App' }) %>
+
+<div class="page-header">
+  <h1>Install Quest Planner</h1>
+  <a href="/" class="btn btn-outline">Back to Chamber</a>
+</div>
+
+<div class="card">
+  <h2>What is a PWA?</h2>
+  <p>Quest Planner is a Progressive Web App (PWA). You can install it directly from your browser to get a native app-like experience &mdash; no app store needed!</p>
+  <p>Once installed, Quest Planner will:</p>
+  <ul class="pwa-benefits">
+    <li>Appear as an app on your home screen / desktop</li>
+    <li>Open in its own window (no browser chrome)</li>
+    <li>Show an offline page when you lose connection</li>
+    <li>Load faster with cached assets</li>
+  </ul>
+</div>
+
+<div class="card" style="margin-top: 1.5rem;">
+  <h2>Installation Instructions</h2>
+
+  <div class="pwa-platform">
+    <h3>Android (Chrome)</h3>
+    <ol>
+      <li>Open Quest Planner in <strong>Chrome</strong></li>
+      <li>Tap the <strong>three-dot menu</strong> (top right)</li>
+      <li>Tap <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong></li>
+      <li>Confirm by tapping <strong>"Install"</strong></li>
+      <li>The app icon will appear on your home screen</li>
+    </ol>
+  </div>
+
+  <div class="pwa-platform">
+    <h3>iPhone / iPad (Safari)</h3>
+    <ol>
+      <li>Open Quest Planner in <strong>Safari</strong> (required &mdash; other browsers won't work)</li>
+      <li>Tap the <strong>Share button</strong> (square with arrow at the bottom)</li>
+      <li>Scroll down and tap <strong>"Add to Home Screen"</strong></li>
+      <li>Tap <strong>"Add"</strong> in the top right</li>
+      <li>The app icon will appear on your home screen</li>
+    </ol>
+    <p class="form-hint">Note: iOS 16.4+ is required for full PWA support.</p>
+  </div>
+
+  <div class="pwa-platform">
+    <h3>Desktop (Chrome / Edge)</h3>
+    <ol>
+      <li>Open Quest Planner in <strong>Chrome</strong> or <strong>Edge</strong></li>
+      <li>Look for the <strong>install icon</strong> in the address bar (monitor with down arrow)</li>
+      <li>Click it and confirm <strong>"Install"</strong></li>
+      <li>The app will open in its own window and appear in your app launcher</li>
+    </ol>
+  </div>
+
+  <div class="pwa-platform">
+    <h3>Desktop (Firefox)</h3>
+    <p class="text-muted">Firefox does not support PWA installation on desktop. Use Chrome or Edge instead.</p>
+  </div>
+</div>
+
+<div class="card" style="margin-top: 1.5rem;">
+  <h2>App Status</h2>
+  <div id="pwa-status">
+    <p id="pwa-installed-status" class="text-muted">Checking installation status...</p>
+    <button type="button" class="btn btn-primary" id="pwa-install-btn" style="display:none;">Install Quest Planner</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  var installBtn = document.getElementById('pwa-install-btn');
+  var statusText = document.getElementById('pwa-installed-status');
+  var deferredPrompt = null;
+
+  // Check if already installed
+  if (window.matchMedia('(display-mode: standalone)').matches) {
+    statusText.textContent = 'Quest Planner is installed and running as an app!';
+    statusText.style.color = 'var(--green-light)';
+    return;
+  }
+
+  statusText.textContent = 'Quest Planner is not installed yet. Use the instructions above or click the button below.';
+
+  window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.style.display = 'inline-block';
+  });
+
+  installBtn.addEventListener('click', function() {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(function(choice) {
+      if (choice.outcome === 'accepted') {
+        statusText.textContent = 'Quest Planner has been installed!';
+        statusText.style.color = 'var(--green-light)';
+        installBtn.style.display = 'none';
+      }
+      deferredPrompt = null;
+    });
+  });
+
+  window.addEventListener('appinstalled', function() {
+    statusText.textContent = 'Quest Planner is installed and running as an app!';
+    statusText.style.color = 'var(--green-light)';
+    installBtn.style.display = 'none';
+  });
+})();
+</script>
+
+<%- include('partials/foot') %>

@@ -103,6 +103,24 @@ class MessengerService {
           description: '',
           link
         };
+      case 'session_completed':
+        return {
+          emoji: '\u2694\ufe0f',
+          title: 'Quest Completed',
+          text: `Quest Completed: "${data.title}"${data.summary ? ' — Recap available!' : ''}${linkText}`,
+          color: 0x9b59b6,
+          description: data.summary ? (data.summary.length > 200 ? data.summary.substring(0, 200) + '...' : data.summary) : '',
+          link
+        };
+      case 'session_recap':
+        return {
+          emoji: '\ud83d\udcdc',
+          title: 'Quest Recap Updated',
+          text: `Recap updated for: "${data.title}"${linkText}`,
+          color: 0x3498db,
+          description: data.summary ? (data.summary.length > 200 ? data.summary.substring(0, 200) + '...' : data.summary) : '',
+          link
+        };
       case 'test':
         return {
           emoji: '\ud83c\udff0',

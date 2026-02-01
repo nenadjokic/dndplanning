@@ -1,6 +1,6 @@
-# Quest Planner v0.7.3 — D&D Session Scheduler
+# Quest Planner v0.7.4 — D&D Session Scheduler
 
-> **Latest release:** v0.7.3 (2026-01-31)
+> **Latest release:** v0.7.4 (2026-02-01)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -63,7 +63,7 @@ If you enjoy Quest Planner, consider buying me a coffee:
 - **User Settings** — Time format toggle, theme toggle, password change
 - **Unavailability Days** — Players mark dates they can't play; DM sees these when creating sessions
 - **Calendar Feed (iCal)** — Personal feed (sessions + unavailability) and public sessions-only feed
-- **Omni-Channel Notifications** — Broadcast session events (created, confirmed, cancelled, reopened) to Discord, Telegram, or Viber; configured per-guild in Guild Settings
+- **Omni-Channel Notifications** — Broadcast session events (created, confirmed, cancelled, reopened, completed, recap) to Discord, Telegram, or Viber; configured per-guild in Guild Settings
 - **World Map** — Interactive Leaflet.js map at `/map` with custom image upload, location pins (city, dungeon, tavern), draggable party marker, click-to-add locations
 - **Party Inventory (Loot Tracker)** — Shared inventory at `/loot` with categories (weapon, armor, potion, quest, gold, item), item assignment to players, quest item highlights
 - **Session Analytics** — Chart.js dashboard at `/analytics` with sessions-per-month, preferred day, player attendance %, streak counter, and summary stats
@@ -71,6 +71,10 @@ If you enjoy Quest Planner, consider buying me a coffee:
 - **Map Fullscreen** — View the world map in immersive fullscreen mode (Escape or button to exit)
 - **Pin Editing** — DMs can edit any map location's name, description, and icon type directly from the map or table
 - **DM Tools** — Streamdeck-style customizable tool board at `/dm-tools` for quick access to external resources (generators, music, references)
+- **DM Tools Favicon Scraping** — Auto-fetch website favicons as tool thumbnails (apple-touch-icon preferred, falls back to favicon.ico)
+- **Completion & Recap Notifications** — Bot broadcasts when sessions are completed and when recaps are added/updated
+- **Map Pin Navigation** — Clickable pin icons in the location table center the map on that location
+- **PWA Support** — Progressive Web App with manifest, service worker, offline page; installable on mobile and desktop with dedicated install instructions page
 - **What's New Modal** — Post-update changelog popup shown to users on first login after a version update, with GitHub release link and support badges
 - **Auto-Update Check** — Admin can check for new releases from the Guild Settings page
 - **Welcome Popup** — First-login modal thanking users with support links
@@ -448,6 +452,7 @@ All users can access **Settings** (pencil icon in the nav bar) to:
 - A streamdeck-style grid of customizable buttons linking to external tools
 - Click **"+ Add Tool"** to create a new button with a name, icon, and URL
 - Choose from 16 thematic icons: link, dice, scroll, book, music, map, sword, shield, potion, skull, dragon, wand, gem, crown, hammer, eye
+- Upload a custom thumbnail or auto-fetch the website's favicon with the "Fetch Favicon" button
 - Click any tool button to open it in a new tab
 - Edit or delete buttons at any time
 
@@ -461,7 +466,7 @@ The Guild Master can access **Guild Settings** (cogwheel icon) to:
   2. Enter the required credentials (bot token, channel/chat ID)
   3. Optionally set a Public URL for clickable links in messages
   4. Click **Save**, then **Test Connection** to verify
-  5. Session events (create, confirm, cancel, reopen) will be broadcast automatically
+  5. Session events (create, confirm, cancel, reopen, complete, recap) will be broadcast automatically
 
 ---
 
@@ -517,13 +522,19 @@ dndplanning/
 │   ├── map.ejs            # World map page (Leaflet.js)
 │   ├── loot.ejs           # Party inventory page
 │   ├── analytics.ejs      # Session analytics page (Chart.js)
+│   ├── pwa.ejs            # PWA installation instructions page
 │   └── settings.ejs       # User settings page (theme, time, password, unavailability, calendar)
 ├── public/
-│   ├── css/style.css      # Dark + light theme, notifications, mentions, board, map, loot, analytics styles
-│   └── js/app.js          # Clock, notifications, time picker, unavailability warnings, theme recheck
-└── data/                  # SQLite files + avatars + maps (not in git)
+│   ├── css/style.css      # Dark + light theme, notifications, mentions, board, map, loot, analytics, PWA styles
+│   ├── js/app.js          # Clock, notifications, time picker, unavailability warnings, theme recheck
+│   ├── manifest.json      # PWA web app manifest
+│   ├── sw.js              # Service worker for PWA offline support
+│   ├── offline.html       # Offline fallback page
+│   └── icons/             # PWA app icons (192x192, 512x512)
+└── data/                  # SQLite files + avatars + maps + thumbnails (not in git)
     ├── avatars/           # User avatar uploads
-    └── maps/              # Uploaded world map images
+    ├── maps/              # Uploaded world map images
+    └── thumbnails/        # DM Tools thumbnails (128x128)
 ```
 
 ---
@@ -577,6 +588,17 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.7.4 (2026-02-01)
+
+- **Fix: Completed session dates** — completed sessions on the dashboard now show the session date (not creation date) in the card footer; confirmed date is also displayed for completed sessions alongside confirmed ones
+- **Session date in detail view** — completed session detail now shows the session date below the "Reopen Quest Board" button
+- **DM Tools favicon scraping** — new "Fetch Favicon" button in the add/edit tool forms; auto-fetches the website's apple-touch-icon or favicon.ico, crops to 128x128, saves as thumbnail
+- **Completion notifications** — Discord/Telegram/Viber bot now sends a notification when a session is completed (with recap preview) and when a recap is updated
+- **Map pin navigation** — clickable pin icon added before each location name in the map locations table; clicking scrolls to map and centers on that location
+- **PWA support** — Progressive Web App with manifest.json, service worker (offline page), and app icons; installable on mobile and desktop
+- **Install App page** — new `/pwa` page with step-by-step installation instructions for Android, iOS, and desktop browsers; includes real-time install status detection
+- **Navigation update** — "Install App" link added to hamburger menu
 
 ### v0.7.3 (2026-01-31)
 

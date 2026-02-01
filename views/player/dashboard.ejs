@@ -24,7 +24,7 @@
         <% if (s.description) { %>
           <p class="session-desc"><%= s.description %></p>
         <% } %>
-        <% if (s.status === 'confirmed' && s.confirmed_date) { %>
+        <% if ((s.status === 'confirmed' || s.status === 'completed') && s.confirmed_date) { %>
           <div class="session-confirmed-date">
             <%= formatDate(s.confirmed_date, { weekday: 'long', month: 'long', day: 'numeric' }) %>
           </div>

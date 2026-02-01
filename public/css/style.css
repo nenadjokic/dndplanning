@@ -1856,6 +1856,22 @@ h3 { font-size: 1.25rem; }
 .map-marker-dungeon { background: rgba(142, 68, 173, 0.2); color: #bb86fc; }
 .map-marker-tavern { background: rgba(39, 174, 96, 0.2); color: #2ecc71; }
 
+.btn-map-pin {
+  background: none;
+  border: none;
+  color: var(--gold);
+  cursor: pointer;
+  padding: 0.15rem;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  transition: color 0.2s, background 0.2s;
+}
+.btn-map-pin:hover {
+  color: var(--gold-bright);
+  background: rgba(212, 168, 67, 0.15);
+}
+
 /* === Loot Styles === */
 .loot-quest-card {
   border: 2px solid var(--gold-dim) !important;
@@ -2287,4 +2303,34 @@ h3 { font-size: 1.25rem; }
   .map-container {
     height: 350px;
   }
+}
+
+/* === PWA Page === */
+.pwa-benefits {
+  padding-left: 1.25rem;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+.pwa-platform {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.pwa-platform:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.pwa-platform h3 {
+  color: var(--gold);
+  margin-bottom: 0.5rem;
+}
+
+.pwa-platform ol {
+  padding-left: 1.25rem;
+  line-height: 1.8;
+  color: var(--text-secondary);
 }

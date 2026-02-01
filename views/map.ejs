@@ -78,6 +78,7 @@
     <table class="admin-table">
       <thead>
         <tr>
+          <th style="width:2rem;"></th>
           <th>Name</th>
           <th>Description</th>
           <th>Type</th>
@@ -87,6 +88,11 @@
       <tbody>
         <% for (const loc of locations) { %>
           <tr>
+            <td>
+              <button type="button" class="btn-map-pin" data-center-loc="<%= loc.id %>" title="Center map on this location">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+              </button>
+            </td>
             <td><strong><%= loc.name %></strong></td>
             <td class="text-muted"><%= loc.description || '—' %></td>
             <td><span class="map-marker-badge map-marker-<%= loc.icon %>"><%= loc.icon %></span></td>
@@ -301,6 +307,19 @@
       var id = parseInt(btn.getAttribute('data-table-edit-loc'), 10);
       var l = locById[id];
       if (l) openEditLocation(l.id, l.name, l.description || '', l.icon);
+    }
+
+    // Center map on location when pin icon clicked
+    var pinBtn = e.target.closest('[data-center-loc]');
+    if (pinBtn) {
+      var locId = parseInt(pinBtn.getAttribute('data-center-loc'), 10);
+      var loc = locById[locId];
+      if (loc) {
+        var ll = pctToLatLng(loc.x, loc.y);
+        map.setView(ll, 1, { animate: true });
+        // Exit fullscreen if not active, scroll to map
+        document.getElementById('map-wrapper').scrollIntoView({ behavior: 'smooth' });
+      }
     }
   });
 })();

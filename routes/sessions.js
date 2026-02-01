@@ -353,10 +353,18 @@ router.post('/:id/summary', requireLogin, requireDM, (req, res) => {
   if (session.status === 'confirmed') {
     db.prepare('UPDATE sessions SET summary = ?, status = ? WHERE id = ?')
       .run(summary.trim(), 'completed', session.id);
+    messenger.send('session_completed', {
+      title: session.title, summary: summary.trim(),
+      link: '/sessions/' + session.id, actorName: req.user.username
+    }).catch(() => {});
     req.flash('success', 'Session recap saved and quest completed!');
   } else {
     db.prepare('UPDATE sessions SET summary = ? WHERE id = ?')
       .run(summary.trim(), session.id);
+    messenger.send('session_recap', {
+      title: session.title, summary: summary.trim(),
+      link: '/sessions/' + session.id, actorName: req.user.username
+    }).catch(() => {});
     req.flash('success', 'Session recap updated.');
   }
 

@@ -45,7 +45,7 @@ router.get('/', requireLogin, requireDM, (req, res) => {
 
 router.post('/', requireLogin, requireDM, upload.single('thumbnail'), async (req, res) => {
   try {
-    const { name, url, icon } = req.body;
+    const { name, url, icon, favicon_file } = req.body;
     if (!name || !name.trim() || !url || !url.trim()) {
       req.flash('error', 'Name and URL are required.');
       return res.redirect('/dm-tools');
@@ -54,7 +54,8 @@ router.post('/', requireLogin, requireDM, upload.single('thumbnail'), async (req
     const toolIcon = validIcons.includes(icon) ? icon : 'link';
     const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM dm_tools').get();
     const order = (maxOrder.m || 0) + 1;
-    const thumbnail = req.file ? await cropAndSave(req.file.buffer) : null;
+    let thumbnail = req.file ? await cropAndSave(req.file.buffer) : null;
+    if (!thumbnail && favicon_file) thumbnail = favicon_file;
     db.prepare('INSERT INTO dm_tools (name, url, icon, sort_order, created_by, thumbnail) VALUES (?, ?, ?, ?, ?, ?)')
       .run(name.trim(), url.trim(), toolIcon, order, req.user.id, thumbnail);
     req.flash('success', 'Tool added to the board!');
@@ -68,7 +69,7 @@ router.post('/', requireLogin, requireDM, upload.single('thumbnail'), async (req
 
 router.post('/:id/edit', requireLogin, requireDM, upload.single('thumbnail'), async (req, res) => {
   try {
-    const { name, url, icon, remove_thumbnail } = req.body;
+    const { name, url, icon, remove_thumbnail, favicon_file } = req.body;
     const tool = db.prepare('SELECT * FROM dm_tools WHERE id = ?').get(req.params.id);
     if (!tool) {
       req.flash('error', 'Tool not found.');
@@ -85,6 +86,9 @@ router.post('/:id/edit', requireLogin, requireDM, upload.single('thumbnail'), as
     if (req.file) {
       deleteThumb(tool.thumbnail);
       thumbnail = await cropAndSave(req.file.buffer);
+    } else if (favicon_file) {
+      deleteThumb(tool.thumbnail);
+      thumbnail = favicon_file;
     } else if (remove_thumbnail === '1') {
       deleteThumb(tool.thumbnail);
       thumbnail = null;
@@ -98,6 +102,64 @@ router.post('/:id/edit', requireLogin, requireDM, upload.single('thumbnail'), as
     console.error('Error editing tool:', err);
     req.flash('error', 'Failed to update tool.');
     res.redirect('/dm-tools');
+  }
+});
+
+router.post('/fetch-favicon', requireLogin, requireDM, async (req, res) => {
+  try {
+    const axios = require('axios');
+    const { url } = req.body;
+    if (!url || !url.trim()) {
+      return res.json({ success: false, error: 'URL is required' });
+    }
+
+    // Fetch the page HTML to find favicon
+    let pageUrl = url.trim();
+    if (!/^https?:\/\//i.test(pageUrl)) pageUrl = 'https://' + pageUrl;
+    const origin = new URL(pageUrl).origin;
+
+    let faviconUrl = null;
+    try {
+      const resp = await axios.get(pageUrl, { timeout: 8000, maxRedirects: 5, responseType: 'text', headers: { 'User-Agent': 'Mozilla/5.0' } });
+      const html = resp.data;
+      // Look for <link rel="icon" href="..."> or rel="shortcut icon"
+      const iconMatch = html.match(/<link[^>]*rel=["'](?:shortcut )?icon["'][^>]*href=["']([^"']+)["']/i)
+        || html.match(/<link[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:shortcut )?icon["']/i);
+      if (iconMatch) {
+        faviconUrl = iconMatch[1];
+      }
+      // Also check for apple-touch-icon (higher quality)
+      const appleMatch = html.match(/<link[^>]*rel=["']apple-touch-icon["'][^>]*href=["']([^"']+)["']/i)
+        || html.match(/<link[^>]*href=["']([^"']+)["'][^>]*rel=["']apple-touch-icon["']/i);
+      if (appleMatch) {
+        faviconUrl = appleMatch[1]; // prefer apple-touch-icon (usually larger)
+      }
+    } catch (e) {
+      // If page fetch fails, fall through to /favicon.ico
+    }
+
+    // Default fallback
+    if (!faviconUrl) faviconUrl = '/favicon.ico';
+
+    // Resolve relative URL
+    if (faviconUrl.startsWith('//')) {
+      faviconUrl = 'https:' + faviconUrl;
+    } else if (faviconUrl.startsWith('/')) {
+      faviconUrl = origin + faviconUrl;
+    } else if (!/^https?:\/\//i.test(faviconUrl)) {
+      faviconUrl = origin + '/' + faviconUrl;
+    }
+
+    // Download the favicon image
+    const imgResp = await axios.get(faviconUrl, { timeout: 8000, responseType: 'arraybuffer', headers: { 'User-Agent': 'Mozilla/5.0' } });
+    const buffer = Buffer.from(imgResp.data);
+
+    // Crop and save using sharp
+    const filename = await cropAndSave(buffer);
+    res.json({ success: true, filename });
+  } catch (err) {
+    console.error('Favicon fetch error:', err.message);
+    res.json({ success: false, error: 'Could not fetch favicon from this URL' });
   }
 });
 

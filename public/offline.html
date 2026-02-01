@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quest Planner - Offline</title>
+  <style>
+    body {
+      background: #1a1a2e;
+      color: #e8e6e3;
+      font-family: 'Crimson Text', Georgia, serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      text-align: center;
+    }
+    .offline-card {
+      background: #2a2a3e;
+      border: 1px solid rgba(212, 168, 67, 0.3);
+      border-radius: 12px;
+      padding: 2rem;
+      max-width: 400px;
+    }
+    h1 { color: #d4a843; font-family: 'MedievalSharp', cursive; }
+    p { color: #a8a5a0; }
+    .retry-btn {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.5rem 1.5rem;
+      background: #d4a843;
+      color: #1a1a2e;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+  </style>
+</head>
+<body>
+  <div class="offline-card">
+    <h1>You Are Offline</h1>
+    <p>The quest cannot continue without a connection. Check your network and try again.</p>
+    <button class="retry-btn" onclick="window.location.reload()">Retry Connection</button>
+  </div>
+</body>
+</html>

@@ -76,6 +76,12 @@ app.use('/loot', lootRoutes);
 app.use('/analytics', analyticsRoutes);
 app.use('/dm-tools', dmToolsRoutes);
 
+// PWA install page
+app.get('/pwa', (req, res) => {
+  if (!req.user) return res.redirect('/login');
+  res.render('pwa');
+});
+
 app.listen(PORT, () => {
   console.log(`Quest Planner running at http://localhost:${PORT}`);
 });

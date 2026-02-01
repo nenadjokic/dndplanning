@@ -105,6 +105,15 @@
       <form action="/sessions/<%= session.id %>/reopen" method="POST" class="inline-form">
         <button type="submit" class="btn btn-outline">Reopen Quest Board</button>
       </form>
+      <% if (session.status === 'completed') { %>
+        <% const completedSlot = slots.find(s => s.id === session.confirmed_slot_id); %>
+        <% if (completedSlot) { %>
+          <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.9rem;">
+            Session date: <%= formatDate(completedSlot.date_time, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) %>
+            <% if (completedSlot.label) { %> &mdash; <%= completedSlot.label %><% } %>
+          </p>
+        <% } %>
+      <% } %>
     </div>
   <% } %>
 
