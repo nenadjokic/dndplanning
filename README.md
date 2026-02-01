@@ -1,6 +1,6 @@
-# Quest Planner v0.8.6 — D&D Session Scheduler
+# Quest Planner v0.8.7 — D&D Session Scheduler
 
-> **Latest release:** v0.8.6 (2026-02-01)
+> **Latest release:** v0.8.7 (2026-02-01)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -595,6 +595,15 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.8.7 (2026-02-01)
+
+- **Realistic dice throwing** — Dice are now thrown laterally from the edge of the play area toward the center with momentum, bouncing off walls and rolling across the surface face-by-face before settling; replaces the old "drop and vibrate" behavior
+- **Sleep-based settling** — Uses cannon-es body sleep detection instead of manual velocity thresholds; dice stop cleanly with zero vibration once at rest
+- **Random initial orientation** — Each die starts with a random quaternion rotation so the initial face shown is unpredictable
+- **Fix: D10/D100 triangle seams** — Rebuilt D10 mesh with shared kite-face normals computed from face diagonals; auto-corrects triangle winding to always face outward; eliminates visible triangle artifacts
+- **Stronger gravity** — Increased to -20 for faster ground contact and more natural arc
+- **Minimal air damping** — Reduced linear/angular damping to 0.05/0.15; ground friction now does the actual slowing like real physics
 
 ### v0.8.6 (2026-02-01)
 

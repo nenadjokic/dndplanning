@@ -321,28 +321,54 @@ function makeD10Verts(r) {
 
 function buildD10Mesh(r, labels) {
   var verts = makeD10Verts(r);
-  var tris = [];
-  for (var i = 0; i < 5; i++) {
-    var u1 = 1 + i, u2 = 1 + ((i + 1) % 5), l = 6 + i;
-    tris.push([0, l, u1]);
-    tris.push([0, u2, l]);
-  }
-  for (var i = 0; i < 5; i++) {
-    var l1 = 6 + i, l2 = 6 + ((i + 1) % 5), u = 1 + ((i + 1) % 5);
-    tris.push([11, u, l2]);
-    tris.push([11, l1, u]);
+  var positions = [], normals = [];
+
+  // Helper: push a triangle with a given shared normal
+  function pushTri(a, b, c, n) {
+    positions.push(a[0],a[1],a[2], b[0],b[1],b[2], c[0],c[1],c[2]);
+    normals.push(n[0],n[1],n[2], n[0],n[1],n[2], n[0],n[1],n[2]);
   }
 
-  var positions = [], normals = [];
-  for (var t = 0; t < tris.length; t++) {
-    var a = verts[tris[t][0]], b = verts[tris[t][1]], c = verts[tris[t][2]];
-    positions.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
-    var abx = b[0]-a[0], aby = b[1]-a[1], abz = b[2]-a[2];
-    var acx = c[0]-a[0], acy = c[1]-a[1], acz = c[2]-a[2];
-    var nx = aby*acz - abz*acy, ny = abz*acx - abx*acz, nz = abx*acy - aby*acx;
-    var len = Math.sqrt(nx*nx + ny*ny + nz*nz);
-    nx /= len; ny /= len; nz /= len;
-    normals.push(nx, ny, nz, nx, ny, nz, nx, ny, nz);
+  // Build a kite face from 4 vertices with proper outward normal
+  function kiteFace(p0, p1, p2, p3) {
+    // p0-p2 = long diagonal, p1-p3 = short diagonal
+    var cx = (p0[0]+p1[0]+p2[0]+p3[0])/4;
+    var cy = (p0[1]+p1[1]+p2[1]+p3[1])/4;
+    var cz = (p0[2]+p1[2]+p2[2]+p3[2])/4;
+
+    // Normal from cross of diagonals
+    var d1 = [p2[0]-p0[0], p2[1]-p0[1], p2[2]-p0[2]];
+    var d2 = [p3[0]-p1[0], p3[1]-p1[1], p3[2]-p1[2]];
+    var nx = d1[1]*d2[2]-d1[2]*d2[1], ny = d1[2]*d2[0]-d1[0]*d2[2], nz = d1[0]*d2[1]-d1[1]*d2[0];
+    var len = Math.sqrt(nx*nx+ny*ny+nz*nz);
+    nx/=len; ny/=len; nz/=len;
+
+    // Ensure outward (dot with center direction > 0)
+    if (cx*nx+cy*ny+cz*nz < 0) { nx=-nx; ny=-ny; nz=-nz; }
+    var n = [nx, ny, nz];
+
+    // Two triangles: [p0,p1,p2] and [p0,p2,p3]
+    // Check winding matches outward normal
+    var e1 = [p1[0]-p0[0], p1[1]-p0[1], p1[2]-p0[2]];
+    var e2 = [p2[0]-p0[0], p2[1]-p0[1], p2[2]-p0[2]];
+    var tnx = e1[1]*e2[2]-e1[2]*e2[1], tny = e1[2]*e2[0]-e1[0]*e2[2], tnz = e1[0]*e2[1]-e1[1]*e2[0];
+
+    if (tnx*nx+tny*ny+tnz*nz > 0) {
+      pushTri(p0, p1, p2, n);
+      pushTri(p0, p2, p3, n);
+    } else {
+      pushTri(p0, p2, p1, n);
+      pushTri(p0, p3, p2, n);
+    }
+  }
+
+  // Upper 5 kites: top(0), u_i, l_i, u_(i+1)
+  for (var i = 0; i < 5; i++) {
+    kiteFace(verts[0], verts[1+i], verts[6+i], verts[1+((i+1)%5)]);
+  }
+  // Lower 5 kites: bottom(11), l_(i+1), u_(i+1), l_i
+  for (var i = 0; i < 5; i++) {
+    kiteFace(verts[11], verts[6+((i+1)%5)], verts[1+((i+1)%5)], verts[6+i]);
   }
 
   var geo = new THREE.BufferGeometry();
@@ -445,10 +471,13 @@ function createD20Body(material) {
 
 /* ── Create a single die ── */
 function createDie(type, index, total, scene, world, material) {
-  var spread = Math.min(total * 0.8, 4);
-  var px = (Math.random() - 0.5) * spread;
-  var pz = (Math.random() - 0.5) * spread;
-  var py = 3 + Math.random() * 2;
+  // Spawn at one edge, throw toward center — like a real dice throw
+  var angle = Math.random() * Math.PI * 2;
+  var spawnDist = 3.5;
+  var px = Math.cos(angle) * spawnDist + (Math.random() - 0.5);
+  var pz = Math.sin(angle) * spawnDist + (Math.random() - 0.5);
+  var py = 1.0 + Math.random() * 0.5; // just above ground
+
   var mesh, body;
   switch (type) {
     case 'd4':  mesh = createD4Mesh();  body = createD4Body(material);  break;
@@ -461,19 +490,40 @@ function createDie(type, index, total, scene, world, material) {
     default:    mesh = createD6Mesh();  body = createD6Body(material);
   }
   body.position.set(px, py, pz);
-  body.linearDamping = 0.5;
-  body.angularDamping = 0.5;
-  body.angularVelocity.set(
-    (Math.random() - 0.5) * 16,
-    (Math.random() - 0.5) * 16,
-    (Math.random() - 0.5) * 16
+
+  // Random starting orientation
+  body.quaternion.setFromEuler(
+    Math.random() * Math.PI * 2,
+    Math.random() * Math.PI * 2,
+    Math.random() * Math.PI * 2
   );
+
+  // Minimal air damping — ground friction does the slowing
+  body.linearDamping = 0.05;
+  body.angularDamping = 0.15;
+
+  // Enable sleep to prevent vibration at rest
+  body.allowSleep = true;
+  body.sleepSpeedLimit = 0.15;
+  body.sleepTimeLimit = 0.4;
+
+  // Throw toward center with strong lateral velocity
+  var throwSpeed = 5 + Math.random() * 3;
   body.velocity.set(
-    (Math.random() - 0.5) * 5,
-    -2,
-    (Math.random() - 0.5) * 5
+    -Math.cos(angle) * throwSpeed + (Math.random() - 0.5) * 2,
+    -0.5,
+    -Math.sin(angle) * throwSpeed + (Math.random() - 0.5) * 2
   );
+
+  // Rolling spin — primarily around horizontal axes
+  body.angularVelocity.set(
+    (Math.random() - 0.5) * 10,
+    (Math.random() - 0.5) * 4,
+    (Math.random() - 0.5) * 10
+  );
+
   mesh.position.copy(body.position);
+  mesh.quaternion.copy(body.quaternion);
   scene.add(mesh);
   world.addBody(body);
   return { mesh: mesh, body: body };
@@ -555,9 +605,10 @@ function run3DRoll() {
   scene.add(pointLight);
 
   // Physics — no visible ground, no shadows
-  var world = new CANNON.World({ gravity: new CANNON.Vec3(0, -12, 0) });
+  var world = new CANNON.World({ gravity: new CANNON.Vec3(0, -20, 0) });
   world.broadphase = new CANNON.NaiveBroadphase();
-  world.solver.iterations = 10;
+  world.solver.iterations = 15;
+  world.allowSleep = true;
 
   var groundMat = new CANNON.Material('ground');
   var groundBody = new CANNON.Body({ type: CANNON.Body.STATIC, shape: new CANNON.Plane(), material: groundMat });
@@ -580,23 +631,20 @@ function run3DRoll() {
   });
 
   var diceMat = new CANNON.Material('dice');
-  world.addContactMaterial(new CANNON.ContactMaterial(groundMat, diceMat, { friction: 0.5, restitution: 0.35 }));
-  world.addContactMaterial(new CANNON.ContactMaterial(diceMat, diceMat, { friction: 0.4, restitution: 0.25 }));
+  world.addContactMaterial(new CANNON.ContactMaterial(groundMat, diceMat, { friction: 0.5, restitution: 0.3 }));
+  world.addContactMaterial(new CANNON.ContactMaterial(diceMat, diceMat, { friction: 0.3, restitution: 0.25 }));
 
-  var diceMeshes = [], diceBodies = [], dieTypes = [], settledFrames = [];
+  var diceMeshes = [], diceBodies = [], dieTypes = [];
   diceList.forEach(function(die, idx) {
     var r = createDie(die, idx, diceList.length, scene, world, diceMat);
     diceMeshes.push(r.mesh);
     diceBodies.push(r.body);
     dieTypes.push(die);
-    settledFrames.push(0);
   });
 
   var allSettled = false;
   var frameCount = 0;
-  var maxFrames = 180;
-  var SETTLE_THRESHOLD = 0.15;
-  var SETTLE_FRAMES = 15;
+  var maxFrames = 240; // 4s safety
 
   function animate() {
     if (allSettled) return;
@@ -605,18 +653,16 @@ function run3DRoll() {
     for (var i = 0; i < diceMeshes.length; i++) {
       diceMeshes[i].position.copy(diceBodies[i].position);
       diceMeshes[i].quaternion.copy(diceBodies[i].quaternion);
-      var vel = diceBodies[i].velocity.length();
-      var angVel = diceBodies[i].angularVelocity.length();
-      if (vel < SETTLE_THRESHOLD && angVel < SETTLE_THRESHOLD) settledFrames[i]++;
-      else settledFrames[i] = 0;
     }
     renderer.render(scene, camera);
 
-    var allDone = true;
-    for (var j = 0; j < settledFrames.length; j++)
-      if (settledFrames[j] < SETTLE_FRAMES) { allDone = false; break; }
+    // Use cannon-es sleep state — no more vibration
+    var allSleeping = frameCount > 30; // give at least 0.5s before checking
+    for (var j = 0; j < diceBodies.length; j++) {
+      if (diceBodies[j].sleepState !== CANNON.Body.SLEEPING) { allSleeping = false; break; }
+    }
 
-    if (allDone || frameCount >= maxFrames) {
+    if (allSleeping || frameCount >= maxFrames) {
       for (var k = 0; k < diceBodies.length; k++) {
         diceBodies[k].velocity.setZero();
         diceBodies[k].angularVelocity.setZero();
