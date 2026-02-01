@@ -294,7 +294,8 @@
   width: 200px;
   overflow: hidden;
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
+  justify-content: flex-end;
   padding: 0.5rem;
   pointer-events: none;
   z-index: 990;
@@ -347,7 +348,8 @@
     transition: max-height 0.3s;
     background: var(--bg-darker);
     border-top: 1px solid var(--border);
-    flex-direction: column-reverse;
+    flex-direction: column;
+    justify-content: flex-end;
     padding: 0;
     pointer-events: auto;
   }

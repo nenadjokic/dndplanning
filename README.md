@@ -1,6 +1,6 @@
-# Quest Planner v0.9.9 — D&D Session Scheduler
+# Quest Planner v0.9.10 — D&D Session Scheduler
 
-> **Latest release:** v0.9.9 (2026-02-01)
+> **Latest release:** v0.9.10 (2026-02-01)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -596,6 +596,10 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.9.10 (2026-02-01)
+
+- **Fix: History order** — Dice roll history now correctly shows oldest at top (faded) and newest at bottom (bright); oldest rolls fade out and disappear naturally
 
 ### v0.9.9 (2026-02-01)
 

@@ -914,12 +914,13 @@ function renderHistory(rolls) {
   var old = historyEl.querySelectorAll('.dice-history-item');
   for (var i = 0; i < old.length; i++) old[i].remove();
 
-  // Rolls come newest-first from API; display newest at bottom (column-reverse)
-  // So we append in reverse order (oldest first in DOM, newest last)
+  // Rolls come newest-first from API; display oldest at top, newest at bottom
+  // Append in reverse (oldest first in DOM = top, newest last = bottom)
+  // Opacity: top items (oldest) fade out, bottom items (newest) are bright
   for (var i = rolls.length - 1; i >= 0; i--) {
     var roll = rolls[i];
-    var idx = rolls.length - 1 - i; // 0 = newest (bottom)
-    var opacity = 1.0 - (idx * 0.09);
+    // i=rolls.length-1 is oldest (top), i=0 is newest (bottom)
+    var opacity = 1.0 - (i * 0.09);
 
     var item = document.createElement('div');
     item.className = 'dice-history-item';
