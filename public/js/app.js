@@ -442,7 +442,7 @@ document.addEventListener('DOMContentLoaded', function() {
       var cls = 'footer-player' + (isAway ? ' away' : '');
       var avatarHtml;
       if (p.avatar) {
-        avatarHtml = '<img src="' + p.avatar + '" class="footer-player-avatar" alt="">';
+        avatarHtml = '<img src="/avatars/' + p.avatar + '" class="footer-player-avatar" alt="">';
       } else {
         avatarHtml = '<span class="footer-player-letter">' + p.username.charAt(0).toUpperCase() + '</span>';
       }
