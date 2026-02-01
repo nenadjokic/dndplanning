@@ -241,6 +241,17 @@ function assignFaceUVs(geo) {
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvArr, 2));
 }
 
+/* ── Edge outline — thin brown lines on die edges ── */
+var edgeLineMat = null;
+function addEdgeLines(mesh) {
+  if (!edgeLineMat) {
+    edgeLineMat = new THREE.LineBasicMaterial({ color: 0x3b2112, linewidth: 1 });
+  }
+  var edges = new THREE.EdgesGeometry(mesh.geometry, 15);
+  var lines = new THREE.LineSegments(edges, edgeLineMat);
+  mesh.add(lines);
+}
+
 /* ── D4 ── */
 function createD4Mesh() {
   var vals = [1, 2, 3, 4];
@@ -472,6 +483,8 @@ function createDie(type, index, total, scene, world, material) {
     case 'd20': mesh = createD20Mesh(); body = createD20Body(material); break;
     default:    mesh = createD6Mesh();  body = createD6Body(material);
   }
+
+  addEdgeLines(mesh);
 
   // Spawn from top-right corner, throw toward center
   var spread = 0.6;

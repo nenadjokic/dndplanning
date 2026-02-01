@@ -6,7 +6,7 @@ After finishing all code changes, ALWAYS perform these steps in order:
 
 1. **Update README.md** — bump version in header and "Latest release" line; add a new changelog entry (### vX.X.X) above the previous version with all changes
 2. **Update What's New popup** — edit `views/partials/foot.ejs` whatsnew-content section with the new changes, using two sub-sections: "What's New" (h3) and "Bug Fixes" (h3)
-3. **Bump version in package.json** — always increment the THIRD decimal (patch) unless explicitly told otherwise (e.g. 0.8.1 -> 0.8.2 -> 0.8.3)
+3. **Bump version in package.json** — always increment the THIRD decimal (patch) unless explicitly told otherwise (e.g. 0.8.1 -> 0.8.2 -> 0.8.3). When the patch number reaches 9, continue to 10, 11, etc. — do NOT roll over to the next minor version (e.g. 0.9.9 -> 0.9.10, NOT 0.10.0)
 4. **Bump service worker cache** — increment the cache version number in `public/sw.js` (CACHE_NAME)
 5. **Git commit** — commit all changes with message format: `vX.X.X: short description`
 6. **Git tag** — create tag `vX.X.X`
