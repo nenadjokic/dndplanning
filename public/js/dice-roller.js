@@ -324,13 +324,13 @@ function buildD10Mesh(r, labels) {
   var tris = [];
   for (var i = 0; i < 5; i++) {
     var u1 = 1 + i, u2 = 1 + ((i + 1) % 5), l = 6 + i;
-    tris.push([0, u1, l]);
-    tris.push([0, l, u2]);
+    tris.push([0, l, u1]);
+    tris.push([0, u2, l]);
   }
   for (var i = 0; i < 5; i++) {
     var l1 = 6 + i, l2 = 6 + ((i + 1) % 5), u = 1 + ((i + 1) % 5);
-    tris.push([11, l2, u]);
-    tris.push([11, u, l1]);
+    tris.push([11, u, l2]);
+    tris.push([11, l1, u]);
   }
 
   var positions = [], normals = [];
@@ -461,17 +461,17 @@ function createDie(type, index, total, scene, world, material) {
     default:    mesh = createD6Mesh();  body = createD6Body(material);
   }
   body.position.set(px, py, pz);
-  body.linearDamping = 0.4;
-  body.angularDamping = 0.4;
+  body.linearDamping = 0.5;
+  body.angularDamping = 0.5;
   body.angularVelocity.set(
-    (Math.random() - 0.5) * 3,
-    (Math.random() - 0.5) * 3,
-    (Math.random() - 0.5) * 3
+    (Math.random() - 0.5) * 16,
+    (Math.random() - 0.5) * 16,
+    (Math.random() - 0.5) * 16
   );
   body.velocity.set(
-    (Math.random() - 0.5) * 2,
-    -1,
-    (Math.random() - 0.5) * 2
+    (Math.random() - 0.5) * 5,
+    -2,
+    (Math.random() - 0.5) * 5
   );
   mesh.position.copy(body.position);
   scene.add(mesh);
@@ -580,8 +580,8 @@ function run3DRoll() {
   });
 
   var diceMat = new CANNON.Material('dice');
-  world.addContactMaterial(new CANNON.ContactMaterial(groundMat, diceMat, { friction: 0.6, restitution: 0.2 }));
-  world.addContactMaterial(new CANNON.ContactMaterial(diceMat, diceMat, { friction: 0.4, restitution: 0.15 }));
+  world.addContactMaterial(new CANNON.ContactMaterial(groundMat, diceMat, { friction: 0.5, restitution: 0.35 }));
+  world.addContactMaterial(new CANNON.ContactMaterial(diceMat, diceMat, { friction: 0.4, restitution: 0.25 }));
 
   var diceMeshes = [], diceBodies = [], dieTypes = [], settledFrames = [];
   diceList.forEach(function(die, idx) {
@@ -594,7 +594,7 @@ function run3DRoll() {
 
   var allSettled = false;
   var frameCount = 0;
-  var maxFrames = 120;
+  var maxFrames = 180;
   var SETTLE_THRESHOLD = 0.15;
   var SETTLE_FRAMES = 15;
 
