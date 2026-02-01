@@ -7,6 +7,7 @@ var rolling = false;
 
 var fabBtn, bubbleMenu, splitBtns, rollBtn, clearBtn;
 var resultsBanner, resultTotal, resultDetail;
+var historyEl, historyPollTimer;
 
 var activeOverlay = null;
 var activeRenderer = null;
@@ -80,9 +81,29 @@ function buildDOM() {
   resultsBanner.appendChild(resultTotal);
   resultsBanner.appendChild(resultDetail);
 
+  // Dice roll history sidebar / bottom drawer
+  historyEl = document.createElement('div');
+  historyEl.className = 'dice-history';
+  historyEl.id = 'dice-history';
+
+  // Mobile grab handle
+  var grabHandle = document.createElement('div');
+  grabHandle.className = 'dice-history-handle';
+  historyEl.appendChild(grabHandle);
+
+  // Toggle expanded on mobile tap
+  grabHandle.addEventListener('click', function() {
+    historyEl.classList.toggle('expanded');
+  });
+
   document.body.appendChild(bubbleMenu);
   document.body.appendChild(fab);
   document.body.appendChild(resultsBanner);
+  document.body.appendChild(historyEl);
+
+  // Start polling history
+  fetchHistory();
+  historyPollTimer = setInterval(fetchHistory, 10000);
 }
 
 function bindEvents() {
@@ -832,6 +853,12 @@ function showResults(results, total) {
     resultTotal.textContent = '= ' + total;
     resultDetail.textContent = parts.join(' + ');
   }
+
+  // Post roll to server for history
+  var rollDesc = buildRollDesc();
+  var detailStr = parts.join(' + ');
+  postRollToServer(rollDesc, total, detailStr);
+
   resultsBanner.classList.add('visible');
   if (resultTimeout) clearTimeout(resultTimeout);
   resultTimeout = setTimeout(function() { hideResults(); }, 4000);
@@ -852,6 +879,77 @@ function hideResults() {
   resultsBanner.classList.remove('visible');
   if (resultTimeout) { clearTimeout(resultTimeout); resultTimeout = null; }
   setTimeout(function() { cleanupActiveRoll(); }, 500);
+}
+
+/* ── History ── */
+function buildRollDesc() {
+  var parts = [];
+  for (var die in selectedDice) {
+    if (selectedDice[die] > 0) {
+      parts.push(selectedDice[die] + die);
+    }
+  }
+  return parts.join(' + ');
+}
+
+function postRollToServer(rollDesc, total, detailStr) {
+  fetch('/api/dice/roll', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rollDesc: rollDesc, result: total, detail: detailStr })
+  }).then(function() {
+    fetchHistory();
+  }).catch(function() {});
+}
+
+function fetchHistory() {
+  fetch('/api/dice/history').then(function(r) { return r.json(); }).then(function(data) {
+    renderHistory(data.rolls || []);
+  }).catch(function() {});
+}
+
+function renderHistory(rolls) {
+  if (!historyEl) return;
+  // Remove old items (keep handle)
+  var old = historyEl.querySelectorAll('.dice-history-item');
+  for (var i = 0; i < old.length; i++) old[i].remove();
+
+  // Rolls come newest-first from API; display newest at bottom (column-reverse)
+  // So we append in reverse order (oldest first in DOM, newest last)
+  for (var i = rolls.length - 1; i >= 0; i--) {
+    var roll = rolls[i];
+    var idx = rolls.length - 1 - i; // 0 = newest (bottom)
+    var opacity = 1.0 - (idx * 0.09);
+
+    var item = document.createElement('div');
+    item.className = 'dice-history-item';
+    item.style.opacity = opacity;
+
+    var userSpan = document.createElement('div');
+    userSpan.className = 'roll-user';
+    userSpan.textContent = roll.username;
+
+    var descSpan = document.createElement('div');
+    descSpan.className = 'roll-desc';
+    descSpan.textContent = 'rolled ' + roll.roll_desc;
+
+    var resultSpan = document.createElement('div');
+    resultSpan.className = 'roll-result';
+    resultSpan.textContent = 'Result: ' + roll.result;
+
+    item.appendChild(userSpan);
+    item.appendChild(descSpan);
+    item.appendChild(resultSpan);
+
+    if (roll.detail) {
+      var detailSpan = document.createElement('div');
+      detailSpan.className = 'roll-detail-text';
+      detailSpan.textContent = roll.detail;
+      item.appendChild(detailSpan);
+    }
+
+    historyEl.appendChild(item);
+  }
 }
 
 /* ── Start ── */

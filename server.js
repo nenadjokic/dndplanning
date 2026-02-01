@@ -25,6 +25,7 @@ const mapRoutes = require('./routes/map');
 const lootRoutes = require('./routes/loot');
 const analyticsRoutes = require('./routes/analytics');
 const dmToolsRoutes = require('./routes/dm-tools');
+const diceRoutes = require('./routes/dice');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -82,6 +83,7 @@ app.use('/map', mapRoutes);
 app.use('/loot', lootRoutes);
 app.use('/analytics', analyticsRoutes);
 app.use('/dm-tools', dmToolsRoutes);
+app.use('/api/dice', diceRoutes);
 
 // PWA install page
 const pushService = require('./helpers/push');

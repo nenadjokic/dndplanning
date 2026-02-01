@@ -1,6 +1,6 @@
-# Quest Planner v0.9.8 — D&D Session Scheduler
+# Quest Planner v0.9.9 — D&D Session Scheduler
 
-> **Latest release:** v0.9.8 (2026-02-01)
+> **Latest release:** v0.9.9 (2026-02-01)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -514,6 +514,7 @@ dndplanning/
 │   ├── map.js             # Multiple maps, locations, party marker, image upload
 │   ├── loot.js            # Party inventory (loot tracker)
 │   ├── analytics.js       # Session analytics and charts
+│   ├── dice.js            # Dice roll history API (save & retrieve rolls)
 │   └── dm-tools.js        # DM Tools streamdeck page
 ├── views/                 # EJS templates
 │   ├── partials/          # Header (theme), footer (about/GPL/support), nav (bell/clock), flash, slot grid, comments
@@ -595,6 +596,14 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.9.9 (2026-02-01)
+
+- **Dice Roll History** — global sidebar showing the last 10 dice rolls from all users in real-time; newest rolls appear at the bottom with an opacity gradient (oldest fades out)
+- **History API** — new `POST /api/dice/roll` and `GET /api/dice/history` endpoints for saving and retrieving dice rolls
+- **Desktop sidebar** — thin fixed right sidebar (200px) with non-blocking pointer-events; rolls displayed with username, description, and result
+- **Mobile bottom drawer** — collapsible bottom strip on portrait screens; tap the grab handle to expand and see full history
+- **Auto-polling** — history refreshes every 10 seconds and immediately after each roll
 
 ### v0.9.8 (2026-02-01)
 
