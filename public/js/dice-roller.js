@@ -461,17 +461,17 @@ function createDie(type, index, total, scene, world, material) {
     default:    mesh = createD6Mesh();  body = createD6Body(material);
   }
   body.position.set(px, py, pz);
-  body.linearDamping = 0.3;
-  body.angularDamping = 0.3;
+  body.linearDamping = 0.4;
+  body.angularDamping = 0.4;
   body.angularVelocity.set(
-    (Math.random() - 0.5) * 10,
-    (Math.random() - 0.5) * 10,
-    (Math.random() - 0.5) * 10
+    (Math.random() - 0.5) * 3,
+    (Math.random() - 0.5) * 3,
+    (Math.random() - 0.5) * 3
   );
   body.velocity.set(
-    (Math.random() - 0.5) * 3,
+    (Math.random() - 0.5) * 2,
     -1,
-    (Math.random() - 0.5) * 3
+    (Math.random() - 0.5) * 2
   );
   mesh.position.copy(body.position);
   scene.add(mesh);
@@ -649,7 +649,7 @@ function run3DRoll() {
     showResults(results, total);
     cleanupTimeout = setTimeout(function() {
       doCleanup(overlay, renderer, diceMeshes);
-    }, 10500);
+    }, 5500);
   }
 
   function doCleanup(ov, ren, meshes) {
@@ -691,7 +691,7 @@ function showResults(results, total) {
   }
   resultsBanner.classList.add('visible');
   if (resultTimeout) clearTimeout(resultTimeout);
-  resultTimeout = setTimeout(function() { hideResults(); }, 10000);
+  resultTimeout = setTimeout(function() { hideResults(); }, 5000);
 
   resultsBanner.onmouseenter = function() {
     if (resultTimeout) clearTimeout(resultTimeout);

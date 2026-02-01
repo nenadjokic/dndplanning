@@ -1,4 +1,4 @@
-var CACHE_NAME = 'quest-planner-v6';
+var CACHE_NAME = 'quest-planner-v7';
 var OFFLINE_URL = '/offline.html';
 
 var PRECACHE_URLS = [
