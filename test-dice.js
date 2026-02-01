@@ -571,18 +571,18 @@ section('D10 Face Normals — Direction Validation');
 section('Physics Parameters');
 (function() {
   // These are the values from the code — document and validate they're reasonable
-  var gravity = -40;
+  var gravity = -50;
   assert(gravity < 0, 'Gravity is negative (downward): ' + gravity);
   assert(Math.abs(gravity) >= 9.8, 'Gravity magnitude >= Earth gravity for snappier feel');
 
-  var linearDamping = 0.05;
-  var angularDamping = 0.4;
+  var linearDamping = 0.1;
+  var angularDamping = 0.3;
   assert(linearDamping < 0.8, 'Linear damping reasonable (' + linearDamping + ')');
   assert(angularDamping < 0.8, 'Angular damping reasonable (' + angularDamping + ')');
 
-  var groundFriction = 0.3;
-  var groundRestitution = 0.15;
-  assert(groundFriction > 0.05 && groundFriction <= 1.0, 'Ground friction reasonable: ' + groundFriction);
+  var groundFriction = 0.6;
+  var groundRestitution = 0.2;
+  assert(groundFriction > 0.1 && groundFriction <= 1.0, 'Ground friction reasonable: ' + groundFriction);
   assert(groundRestitution > 0.05 && groundRestitution < 0.6, 'Ground restitution reasonable: ' + groundRestitution);
 
   var sleepSpeedLimit = 0.8;
@@ -592,89 +592,55 @@ section('Physics Parameters');
 })();
 
 // ── 15. Spawn Position Validation ──
-section('Spawn Position — Camera-Aware Top-Right Grid');
+section('Spawn Position — Center Drop');
 (function() {
-  // Test with various aspect ratios (portrait phone, landscape phone, desktop)
-  var aspects = [0.56, 0.75, 1.33, 1.78, 2.0];
-  var camY = 12;
-  var tanHalfFov = Math.tan(22.5 * Math.PI / 180);
-  var allInBounds = true;
+  // Test staggered center spawn for various die counts
+  var allCentered = true;
   var noOverlap = true;
-  var allInRightHalf = true;
+  var allAboveGround = true;
 
-  for (var ai = 0; ai < aspects.length; ai++) {
-    var aspect = aspects[ai];
+  for (var total = 1; total <= 10; total++) {
+    var positions = [];
+    var spread = 1.2;
+    var halfSpan = (total - 1) * spread / 2;
+    for (var index = 0; index < total; index++) {
+      var px = -halfSpan + index * spread + (Math.random() - 0.5) * 0.3;
+      var pz = (Math.random() - 0.5) * 0.5;
+      var py = 4.0 + Math.random() * 1.0;
 
-    for (var total = 1; total <= 8; total++) {
-      var positions = [];
-      for (var index = 0; index < total; index++) {
-        // Compute bounds at this die's spawn height (matches dice-roller.js)
-        var py = 0.5 + index * 0.15;
-        var distFromCam = camY - py;
-        var hz = distFromCam * tanHalfFov;
-        var hx = hz * aspect;
+      // Must be near center (within a reasonable range)
+      if (Math.abs(px) > halfSpan + 0.5) allCentered = false;
+      if (Math.abs(pz) > 0.5) allCentered = false;
+      if (py < 3.9) allAboveGround = false;
 
-        var margin = 1.5;
-        var availX = hx - margin;
-        var spacing = Math.min(1.3, availX / Math.max(total, 1));
-        spacing = Math.max(spacing, 0.9);
-        var cols = Math.max(1, Math.floor(availX / spacing));
-        cols = Math.min(cols, total);
-        var row = Math.floor(index / cols);
-        var col = index % cols;
-        var spawnX = hx - margin - col * spacing;
-        var spawnZ = -hz + margin + row * spacing;
-        var px = spawnX + (Math.random() - 0.5) * 0.2;
-        var pz = spawnZ + (Math.random() - 0.5) * 0.2;
-
-        // Must be inside visible area at spawn height
-        if (Math.abs(px) > hx - 0.3 || Math.abs(pz) > hz - 0.3) allInBounds = false;
-        if (py < 0.4) allInBounds = false;
-
-        // Spawn should be in the right half of screen (positive X)
-        if (px < 0) allInRightHalf = false;
-
-        // Check no overlap with previous positions
-        for (var j = 0; j < positions.length; j++) {
-          var dx = Math.abs(px - positions[j][0]);
-          var dz = Math.abs(pz - positions[j][1]);
-          if (dx < 0.5 && dz < 0.7) noOverlap = false;
-          if (dx >= 0.5 && dx < 0.7 && dz < 0.5) noOverlap = false;
-        }
-        positions.push([px, pz]);
+      // Check spacing (min ~0.8 apart in X)
+      for (var j = 0; j < positions.length; j++) {
+        var dx = Math.abs(px - positions[j][0]);
+        if (dx < 0.8) noOverlap = false;
       }
+      positions.push([px, pz]);
     }
   }
-  assert(allInBounds, 'All spawn positions within visible bounds at spawn height');
-  assert(noOverlap, 'All spawn positions sufficiently spaced apart');
-  assert(allInRightHalf, 'All spawn positions in the right half (visible top-right corner)');
+  assert(allCentered, 'All spawn positions centered above screen');
+  assert(noOverlap, 'All spawn positions at least 0.8 apart in X');
+  assert(allAboveGround, 'All spawn positions above ground (py >= 3.9)');
 })();
 
-// ── 16. Throw Velocity Points Toward Center ──
-section('Throw Velocity — Toward Center from Top-Right');
+// ── 16. Throw Velocity — Drop from Above ──
+section('Throw Velocity — Drop with Scatter');
 (function() {
-  // Simulate throw from top-right spawn toward center (0,0)
-  var allTowardCenter = true;
   var allDownward = true;
+  var allModerateScatter = true;
   for (var trial = 0; trial < 100; trial++) {
-    // Typical spawn in top-right
-    var px = 3.0 + Math.random() * 2;
-    var pz = -2.0 - Math.random() * 2;
-    var dist = Math.sqrt(px * px + pz * pz);
-    var dirX = -px / dist;
-    var dirZ = -pz / dist;
-    var throwSpeed = dist * 2.5 + Math.random() * 2;
-    var vx = dirX * throwSpeed + (Math.random() - 0.5) * 1.5;
-    var vz = dirZ * throwSpeed + (Math.random() - 0.5) * 1.5;
-    var vy = -1;
+    var vx = (Math.random() - 0.5) * 4;
+    var vy = -5 - Math.random() * 3;
+    var vz = (Math.random() - 0.5) * 4;
 
-    // Velocity should point toward center (vx negative since spawn is +X, vz positive since spawn is -Z)
-    if (vx > 0) allTowardCenter = false;
-    // Velocity Y should be negative (slight downward)
     if (vy > 0) allDownward = false;
+    if (Math.abs(vx) > 3 || Math.abs(vz) > 3) allModerateScatter = false;
   }
-  assert(allTowardCenter, 'All 100 throw velocities go leftward toward center from right spawn');
   assert(allDownward, 'All 100 throw velocities go downward');
+  assert(allModerateScatter, 'All 100 horizontal scatter values within [-3, 3]');
 })();
 
 // ── 17. D100 Two-Dice Result Range ──
