@@ -9,7 +9,7 @@ var fabBtn, bubbleMenu, splitBtns, rollBtn, clearBtn;
 var resultsBanner, resultTotal, resultDetail;
 var historyEl, historyPollTimer, historyFadeTimer;
 var lastRollTimestamp = 0;  // epoch ms of most recent roll
-var FADE_DURATION = 5 * 60 * 1000; // 5 minutes in ms
+var FADE_DURATION = 60 * 1000; // 60 seconds
 var cachedRolls = [];
 
 var activeOverlay = null;
