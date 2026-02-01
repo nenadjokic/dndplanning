@@ -1,6 +1,6 @@
-# Quest Planner v0.8.1 — D&D Session Scheduler
+# Quest Planner v0.8.2 — D&D Session Scheduler
 
-> **Latest release:** v0.8.1 (2026-02-01)
+> **Latest release:** v0.8.2 (2026-02-01)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -77,6 +77,7 @@ If you enjoy Quest Planner, consider buying me a coffee:
 - **Completion & Recap Notifications** — Bot broadcasts when sessions are completed and when recaps are added/updated
 - **Map Pin Navigation** — Clickable pin icons in the location table center the map on that location
 - **PWA Support** — Progressive Web App with manifest, service worker, offline page; installable on mobile and desktop with dedicated install instructions page
+- **3D Dice Roller** — Interactive 3D dice roller (D4–D100) with Three.js rendering and cannon-es physics; floating D20 button, bubble menu for dice selection, results banner with auto-hide
 - **What's New Modal** — Post-update changelog popup shown to users on first login after a version update, with GitHub release link and support badges
 - **Auto-Update Check** — Admin can check for new releases from the Guild Settings page
 - **Welcome Popup** — First-login modal thanking users with support links
@@ -594,6 +595,18 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.8.2 (2026-02-01)
+
+- **3D Dice Roller** — interactive 3D dice roller with realistic physics powered by Three.js and cannon-es; supports D4, D6, D8, D10, D12, D20, and D100 with numbered face textures using MedievalSharp font
+- **Floating D20 Button** — gold-themed D20 FAB button in the bottom-right corner (logged-in users only); click to expand the dice selection bubble menu
+- **Bubble Menu** — 7 die-type buttons expand upward with staggered animation; click to add dice, right-click to remove; counter badges show quantity
+- **Split Roll/Clear** — when dice are selected, the D20 button transforms into a ROLL button with a clear (X) button alongside
+- **Canvas Overlay** — full-screen transparent WebGL canvas for 3D dice rendering with top-down camera, warm lighting, and shadow-catching ground plane
+- **Physics Simulation** — cannon-es physics with gravity, invisible walls, restitution, and friction for natural dice tumbling; velocity-based settling detection with 6-second safety timeout
+- **Results Banner** — fixed top-center gold-bordered banner showing individual die results and total; auto-hides after 10 seconds, persists on hover
+- **WebGL Fallback** — text-only random results if WebGL is unavailable
+- **CDN Dependencies** — Three.js r160 and cannon-es 0.20 loaded from unpkg CDN only for logged-in users
 
 ### v0.8.1 (2026-02-01)
 

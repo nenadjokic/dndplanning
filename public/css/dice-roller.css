@@ -1,0 +1,303 @@
+/* === Dice Roller === */
+
+/* Floating D20 Button */
+.dice-fab {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 997;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.dice-fab-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  background: var(--bg-card);
+  color: var(--gold);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+  position: relative;
+}
+
+.dice-fab-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 20px rgba(212, 168, 67, 0.3);
+  background: rgba(212, 168, 67, 0.1);
+}
+
+.dice-fab-btn svg {
+  width: 28px;
+  height: 28px;
+}
+
+/* Bubble Menu */
+.dice-bubble-menu {
+  position: fixed;
+  bottom: 6rem;
+  right: 1.5rem;
+  z-index: 997;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.5rem;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.25s, transform 0.25s;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.dice-bubble-menu.open {
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.dice-bubble {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--gold-dim);
+  background: var(--bg-card);
+  color: var(--gold);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading);
+  font-size: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s, border-color 0.15s, background 0.15s;
+  position: relative;
+  opacity: 0;
+  transform: scale(0.5) translateY(10px);
+}
+
+.dice-bubble-menu.open .dice-bubble {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.dice-bubble-menu.open .dice-bubble:nth-child(1) { transition-delay: 0s; }
+.dice-bubble-menu.open .dice-bubble:nth-child(2) { transition-delay: 0.03s; }
+.dice-bubble-menu.open .dice-bubble:nth-child(3) { transition-delay: 0.06s; }
+.dice-bubble-menu.open .dice-bubble:nth-child(4) { transition-delay: 0.09s; }
+.dice-bubble-menu.open .dice-bubble:nth-child(5) { transition-delay: 0.12s; }
+.dice-bubble-menu.open .dice-bubble:nth-child(6) { transition-delay: 0.15s; }
+.dice-bubble-menu.open .dice-bubble:nth-child(7) { transition-delay: 0.18s; }
+
+.dice-bubble:hover {
+  transform: scale(1.12);
+  border-color: var(--gold);
+  background: rgba(212, 168, 67, 0.15);
+}
+
+.dice-bubble.selected {
+  border-color: var(--gold-bright);
+  background: rgba(212, 168, 67, 0.2);
+  box-shadow: 0 0 8px rgba(212, 168, 67, 0.4);
+}
+
+/* Counter badge */
+.dice-bubble-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--gold);
+  color: var(--bg-darker);
+  font-family: var(--font-heading);
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.dice-bubble-count.visible {
+  display: flex;
+}
+
+/* Split Button (Roll / Clear) */
+.dice-split-btns {
+  display: none;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.dice-split-btns.visible {
+  display: flex;
+}
+
+.dice-roll-btn {
+  height: 44px;
+  padding: 0 1rem;
+  border-radius: 22px;
+  border: 2px solid var(--gold);
+  background: var(--gold);
+  color: var(--bg-darker);
+  cursor: pointer;
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.dice-roll-btn:hover {
+  transform: scale(1.05);
+  background: var(--gold-bright);
+}
+
+.dice-roll-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.dice-clear-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--red);
+  background: transparent;
+  color: var(--red-light);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.dice-clear-btn:hover {
+  background: rgba(192, 57, 43, 0.15);
+  transform: scale(1.08);
+}
+
+/* Canvas Overlay */
+.dice-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1002;
+  pointer-events: auto;
+}
+
+.dice-overlay canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Results Banner */
+.dice-results-banner {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1003;
+  background: var(--bg-card);
+  border: 2px solid var(--gold);
+  border-radius: var(--radius);
+  padding: 0.75rem 1.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 30px rgba(212, 168, 67, 0.1);
+  font-family: var(--font-heading);
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  text-align: center;
+  max-width: 90vw;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.dice-results-banner.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.dice-results-banner .dice-result-total {
+  color: var(--gold-bright);
+  font-weight: 700;
+  font-size: 1.3rem;
+}
+
+.dice-results-banner .dice-result-detail {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+  .dice-fab {
+    bottom: 1rem;
+    right: 1rem;
+  }
+
+  .dice-fab-btn {
+    width: 48px;
+    height: 48px;
+  }
+
+  .dice-fab-btn svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .dice-bubble-menu {
+    bottom: 5rem;
+    right: 1rem;
+  }
+
+  .dice-bubble {
+    width: 38px;
+    height: 38px;
+    font-size: 0.7rem;
+  }
+
+  .dice-results-banner {
+    font-size: 0.95rem;
+    padding: 0.6rem 1rem;
+  }
+
+  .dice-results-banner .dice-result-total {
+    font-size: 1.1rem;
+  }
+}
+
+/* Light theme adjustments */
+[data-theme="light"] .dice-fab-btn {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .dice-bubble {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .dice-results-banner {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .dice-roll-btn {
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}

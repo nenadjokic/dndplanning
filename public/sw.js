@@ -1,8 +1,10 @@
-var CACHE_NAME = 'quest-planner-v3';
+var CACHE_NAME = 'quest-planner-v4';
 var OFFLINE_URL = '/offline.html';
 
 var PRECACHE_URLS = [
   '/css/style.css',
+  '/css/dice-roller.css',
+  '/js/dice-roller.js',
   '/offline.html'
 ];
 

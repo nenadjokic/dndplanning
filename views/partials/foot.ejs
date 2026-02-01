@@ -26,14 +26,11 @@
         <div class="whatsnew-content">
           <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">What's New</h3>
           <ul class="whatsnew-list">
-            <li><strong>Tavern Login Page</strong> &mdash; Redesigned login with Quest Planner logo, warm ambient glow, and floating ember particles for a cozy tavern atmosphere</li>
+            <li><strong>3D Dice Roller</strong> &mdash; Roll 3D dice with realistic physics! Click the D20 button in the bottom-right corner, pick your dice (D4&ndash;D100), and hit ROLL to see them tumble across your screen</li>
           </ul>
           <h3 style="color: var(--gold); font-size: 0.95rem; margin: 0.75rem 0 0.5rem;">Bug Fixes</h3>
           <ul class="whatsnew-list">
-            <li><strong>Safari Character Grid</strong> &mdash; Fixed characters not displaying in grid layout on Safari (MacBook); added missing CSS variable and vendor prefixes</li>
-            <li><strong>Character Card Outlines</strong> &mdash; Fixed missing card outlines/shadows on Safari by adding cross-browser box-shadow</li>
-            <li><strong>Character Sheet Tabs</strong> &mdash; Fixed tabs appearing as plain buttons on desktop Safari and Chrome; tabs now render correctly as tab controls on all platforms</li>
-            <li><strong>Sheet Layout</strong> &mdash; Improved character sheet responsive grid with better breakpoints for medium screens</li>
+            <li>None</li>
           </ul>
         </div>
         <div class="whatsnew-links">
@@ -92,5 +89,11 @@
   <% } %>
 
   <script src="/js/app.js"></script>
+  <% if (typeof user !== 'undefined' && user) { %>
+    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"></script>
+    <link rel="stylesheet" href="/css/dice-roller.css">
+    <script src="/js/dice-roller.js"></script>
+  <% } %>
 </body>
 </html>
