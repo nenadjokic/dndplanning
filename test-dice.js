@@ -566,73 +566,68 @@ section('D10 Face Normals — Direction Validation');
 section('Physics Parameters');
 (function() {
   // These are the values from the code — document and validate they're reasonable
-  var gravity = -20;
+  var gravity = -50;
   assert(gravity < 0, 'Gravity is negative (downward): ' + gravity);
   assert(Math.abs(gravity) >= 9.8, 'Gravity magnitude >= Earth gravity for snappier feel');
 
-  var linearDamping = 0.01;
-  var angularDamping = 0.05;
-  assert(linearDamping < 0.5, 'Linear damping is low (' + linearDamping + ') — dice travel freely');
-  assert(angularDamping < 0.5, 'Angular damping is low (' + angularDamping + ') — dice spin freely');
+  var linearDamping = 0.3;
+  var angularDamping = 0.3;
+  assert(linearDamping < 0.8, 'Linear damping reasonable (' + linearDamping + ')');
+  assert(angularDamping < 0.8, 'Angular damping reasonable (' + angularDamping + ')');
 
-  var groundFriction = 0.6;
-  var groundRestitution = 0.35;
-  assert(groundFriction > 0.2 && groundFriction < 1.0, 'Ground friction reasonable: ' + groundFriction);
-  assert(groundRestitution > 0.1 && groundRestitution < 0.6, 'Ground restitution reasonable: ' + groundRestitution);
+  var groundFriction = 0.8;
+  var groundRestitution = 0.2;
+  assert(groundFriction > 0.2 && groundFriction <= 1.0, 'Ground friction reasonable: ' + groundFriction);
+  assert(groundRestitution > 0.05 && groundRestitution < 0.6, 'Ground restitution reasonable: ' + groundRestitution);
 
-  var sleepSpeedLimit = 0.08;
-  var sleepTimeLimit = 0.6;
-  assert(sleepSpeedLimit > 0 && sleepSpeedLimit < 1, 'Sleep speed limit reasonable: ' + sleepSpeedLimit);
-  assert(sleepTimeLimit > 0.1 && sleepTimeLimit < 2, 'Sleep time limit reasonable: ' + sleepTimeLimit);
+  var sleepSpeedLimit = 0.5;
+  var sleepTimeLimit = 0.15;
+  assert(sleepSpeedLimit > 0 && sleepSpeedLimit < 2, 'Sleep speed limit reasonable: ' + sleepSpeedLimit);
+  assert(sleepTimeLimit > 0.05 && sleepTimeLimit < 2, 'Sleep time limit reasonable: ' + sleepTimeLimit);
 
-  var throwSpeed = 5; // min
-  var throwSpeedMax = 8; // max (5 + 3)
+  var throwSpeed = 6; // min
+  var throwSpeedMax = 8; // max (6 + 2)
   assert(throwSpeed >= 3, 'Min throw speed gives good momentum: ' + throwSpeed);
   assert(throwSpeedMax <= 12, 'Max throw speed not too extreme: ' + throwSpeedMax);
 })();
 
 // ── 15. Spawn Position Validation ──
-section('Spawn Position — Edge Spawn Pattern');
+section('Spawn Position — Top-Right Corner');
 (function() {
-  var spawnDist = 3.5;
-
-  // Simulate 100 spawn positions
-  var allOutside = true;
+  // Simulate 100 spawn positions (top-right corner pattern)
   var allReasonable = true;
+  var allRightSide = true;
   for (var trial = 0; trial < 100; trial++) {
-    var angle = Math.random() * Math.PI * 2;
-    var px = Math.cos(angle) * spawnDist + (Math.random() - 0.5);
-    var pz = Math.sin(angle) * spawnDist + (Math.random() - 0.5);
-    var py = 1.5 + Math.random() * 0.5;
+    var total = Math.floor(Math.random() * 5) + 1;
+    var spread = 0.6;
+    var px = 3.5 + (Math.random() - 0.5) * spread * total;
+    var pz = -2.5 + (Math.random() - 0.5) * spread * total;
+    var py = 3.0 + Math.random() * 0.5;
 
-    var dist = Math.sqrt(px*px + pz*pz);
-    if (dist < 2.5) allOutside = false;
-    if (dist > 5.0) allReasonable = false;
-    if (py < 1.4 || py > 2.1) allReasonable = false;
+    if (px < 1.0) allRightSide = false;
+    if (py < 2.9 || py > 3.6) allReasonable = false;
   }
-  assert(allOutside, 'All 100 spawn positions are outside center zone (dist > 2.5)');
-  assert(allReasonable, 'All 100 spawn positions within bounds (dist < 5, height 1.9-3.1)');
+  assert(allRightSide, 'All 100 spawn positions are on right side (px > 1.0)');
+  assert(allReasonable, 'All 100 spawn positions at correct height (2.9-3.6)');
 })();
 
 // ── 16. Throw Velocity Points Toward Center ──
-section('Throw Velocity — Toward Center');
+section('Throw Velocity — Toward Center-Left');
 (function() {
-  var allTowardCenter = true;
+  var allLeftward = true;
+  var allDownward = true;
   for (var trial = 0; trial < 100; trial++) {
-    var angle = Math.random() * Math.PI * 2;
-    var throwSpeed = 5 + Math.random() * 3;
-    var vx = -Math.cos(angle) * throwSpeed + (Math.random() - 0.5) * 2;
-    var vz = -Math.sin(angle) * throwSpeed + (Math.random() - 0.5) * 2;
+    var throwSpeed = 6 + Math.random() * 2;
+    var vx = -throwSpeed + (Math.random() - 0.5) * 2;
+    var vy = -3;
 
-    // Spawn position direction
-    var spawnDirX = Math.cos(angle);
-    var spawnDirZ = Math.sin(angle);
-
-    // Velocity should roughly oppose spawn direction (toward center)
-    var velDot = vx * spawnDirX + vz * spawnDirZ;
-    if (velDot > 0) allTowardCenter = false; // velocity pointing AWAY from center
+    // Velocity X should be negative (leftward, toward center from top-right)
+    if (vx > 0) allLeftward = false;
+    // Velocity Y should be negative (downward)
+    if (vy > 0) allDownward = false;
   }
-  assert(allTowardCenter, 'All 100 throw velocities point toward center (negative dot with spawn direction)');
+  assert(allLeftward, 'All 100 throw velocities go leftward (toward center)');
+  assert(allDownward, 'All 100 throw velocities go downward');
 })();
 
 // ── 17. D100 Result Range ──

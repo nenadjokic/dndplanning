@@ -473,36 +473,35 @@ function createDie(type, index, total, scene, world, material) {
     default:    mesh = createD6Mesh();  body = createD6Body(material);
   }
 
-  // Spawn from one side, throw toward center with arc
-  var angle = (index / Math.max(total, 1)) * Math.PI * 2 + (Math.random() - 0.5) * 0.6;
-  var spawnDist = 3.5;
-  var px = Math.cos(angle) * spawnDist;
-  var pz = Math.sin(angle) * spawnDist;
-  var py = 1.5 + Math.random() * 0.5;
+  // Spawn from top-right corner, throw toward center
+  var spread = 0.6;
+  var px = 3.5 + (Math.random() - 0.5) * spread * total;
+  var pz = -2.5 + (Math.random() - 0.5) * spread * total;
+  var py = 3.0 + Math.random() * 0.5;
   body.position.set(px, py, pz);
 
-  // Minimal air damping — the ground does all slowing
-  body.linearDamping = 0.01;
-  body.angularDamping = 0.05;
+  // Higher damping for quick settling
+  body.linearDamping = 0.3;
+  body.angularDamping = 0.3;
 
-  // Enable sleep for clean stop
+  // Aggressive sleep for fast stop
   body.allowSleep = true;
-  body.sleepSpeedLimit = 0.08;
-  body.sleepTimeLimit = 0.6;
+  body.sleepSpeedLimit = 0.5;
+  body.sleepTimeLimit = 0.15;
 
-  // Throw toward center — strong lateral, slight downward
-  var throwSpeed = 5 + Math.random() * 3;
+  // Throw toward center-left with downward arc
+  var throwSpeed = 6 + Math.random() * 2;
   body.velocity.set(
-    -Math.cos(angle) * throwSpeed + (Math.random() - 0.5) * 2,
-    -1,
-    -Math.sin(angle) * throwSpeed + (Math.random() - 0.5) * 2
+    -throwSpeed + (Math.random() - 0.5) * 2,
+    -3,
+    throwSpeed * 0.4 + (Math.random() - 0.5) * 2
   );
 
-  // Moderate angular velocity — slow enough to see faces change
+  // Angular velocity for visible tumbling
   body.angularVelocity.set(
-    (Math.random() - 0.5) * 12,
-    (Math.random() - 0.5) * 6,
-    (Math.random() - 0.5) * 12
+    (Math.random() - 0.5) * 15,
+    (Math.random() - 0.5) * 8,
+    (Math.random() - 0.5) * 15
   );
 
   scene.add(mesh);
@@ -596,11 +595,11 @@ function run3DRoll() {
   pointLight.position.set(0, 6, 0);
   scene.add(pointLight);
 
-  // Physics
-  var world = new CANNON.World({ gravity: new CANNON.Vec3(0, -20, 0) });
+  // Physics — strong gravity for fast settle
+  var world = new CANNON.World({ gravity: new CANNON.Vec3(0, -50, 0) });
   world.broadphase = new CANNON.NaiveBroadphase();
-  world.solver.iterations = 20;
-  world.solver.tolerance = 0.0001;
+  world.solver.iterations = 10;
+  world.solver.tolerance = 0.001;
   world.allowSleep = true;
 
   var groundMat = new CANNON.Material('ground');
@@ -609,7 +608,7 @@ function run3DRoll() {
   groundBody.position.set(0, -0.5, 0);
   world.addBody(groundBody);
 
-  // Walls — tighter box so dice bounce off edges
+  // Walls
   var wallDefs = [
     { pos: [5, 2, 0], rot: [0, -Math.PI / 2, 0] },
     { pos: [-5, 2, 0], rot: [0, Math.PI / 2, 0] },
@@ -625,10 +624,10 @@ function run3DRoll() {
 
   var diceMat = new CANNON.Material('dice');
   world.addContactMaterial(new CANNON.ContactMaterial(groundMat, diceMat, {
-    friction: 0.6, restitution: 0.35
+    friction: 0.8, restitution: 0.2
   }));
   world.addContactMaterial(new CANNON.ContactMaterial(diceMat, diceMat, {
-    friction: 0.4, restitution: 0.4
+    friction: 0.5, restitution: 0.3
   }));
 
   var diceMeshes = [], diceBodies = [], dieTypes = [];
@@ -666,13 +665,13 @@ function run3DRoll() {
   var lastTime = performance.now();
   var elapsed = 0;
   var fixedStep = 1 / 120;
-  var maxSubSteps = 5;
-  var maxTime = 8000; // 8s safety
+  var maxSubSteps = 8;
+  var maxTime = 1000; // 1s hard limit
 
   // Phase: 'physics' = pure physics, 'correcting' = slerp to target after stopped
   var phase = 'physics';
   var correctStart = 0;
-  var correctDuration = 0.4; // 400ms smooth correction
+  var correctDuration = 0.25; // 250ms smooth correction
 
   function animate(now) {
     if (allSettled) return;
@@ -689,8 +688,8 @@ function run3DRoll() {
         diceMeshes[i].quaternion.copy(diceBodies[i].quaternion);
       }
 
-      // Check if all dice have stopped
-      var allSleeping = elapsed > 1.0;
+      // Check if all dice have stopped (allow sleep check after 0.3s)
+      var allSleeping = elapsed > 0.3;
       for (var j = 0; j < diceBodies.length; j++) {
         if (diceBodies[j].sleepState !== CANNON.Body.SLEEPING) {
           allSleeping = false;
@@ -758,7 +757,7 @@ function run3DRoll() {
     showResults(results, total);
     cleanupTimeout = setTimeout(function() {
       doCleanup(overlay, renderer, diceMeshes);
-    }, 5500);
+    }, 2000);
   }
 
   function doCleanup(ov, ren, meshes) {
@@ -800,7 +799,7 @@ function showResults(results, total) {
   }
   resultsBanner.classList.add('visible');
   if (resultTimeout) clearTimeout(resultTimeout);
-  resultTimeout = setTimeout(function() { hideResults(); }, 5000);
+  resultTimeout = setTimeout(function() { hideResults(); }, 4000);
 
   resultsBanner.onmouseenter = function() {
     if (resultTimeout) clearTimeout(resultTimeout);
