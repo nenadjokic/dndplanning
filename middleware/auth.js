@@ -10,7 +10,7 @@ function attachUser(req, res, next) {
   res.locals.renderMarkdown = (text) => text ? marked(text) : '';
 
   if (req.session.userId) {
-    const user = db.prepare('SELECT id, username, role, avatar, time_format, calendar_token, theme, week_start, last_seen_version FROM users WHERE id = ?').get(req.session.userId);
+    const user = db.prepare('SELECT id, username, role, avatar, time_format, calendar_token, theme, week_start, last_seen_version, google_id, google_email FROM users WHERE id = ?').get(req.session.userId);
     if (user) {
       req.user = user;
       res.locals.user = user;

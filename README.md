@@ -1,6 +1,6 @@
-# Quest Planner v0.9.15 — D&D Session Scheduler
+# Quest Planner v0.9.16 — D&D Session Scheduler
 
-> **Latest release:** v0.9.15 (2026-02-01)
+> **Latest release:** v0.9.16 (2026-02-02)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -596,6 +596,23 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.9.16 (2026-02-02)
+
+**Features:**
+- **Google Login** — Sign in with Google or link your existing account from Settings
+- **Hidden Dice Rolls** — Toggle the lock icon to roll secretly; hidden results don't appear in public dice history
+- **Dice Long-Press to Subtract** — Long-press (500ms) a die bubble on mobile to remove one die (with haptic feedback)
+- **Dice History on Left + Mobile Toasts** — Desktop history sidebar moved to the left side; on mobile the sidebar is hidden and new rolls appear as auto-fading toast notifications
+- **Map Fullscreen Close Button** — Floating ✕ button visible in fullscreen mode for easy exit on touch devices
+- **Notification Preferences** — Choose which notification types you receive (session confirmed, session cancelled, @mentions) in Settings
+- **Password Reset** — Admins can reset any player's password from Guild Settings; generates a temporary 8-character password
+- **Forgot Password Hint** — Login page now shows a hint to ask the Guild Master for a password reset
+
+**Bug Fixes:**
+- Fixed user deletion failing with foreign key constraint errors (missing DELETEs for dice_rolls, characters, push_subscriptions, loot_items, dm_tools, map_locations, maps)
+- Fixed confirmed session deletion failing with FK constraint (confirmed_slot_id not cleared before slot deletion)
+- Fixed birthday banner persisting past midnight due to UTC vs local time comparison
 
 ### v0.9.15 (2026-02-01)
 

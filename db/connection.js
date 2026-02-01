@@ -31,7 +31,10 @@ const alterStatements = [
   "ALTER TABLE sessions ADD COLUMN location_id INTEGER REFERENCES map_locations(id)",
   "ALTER TABLE users ADD COLUMN last_seen_version TEXT",
   "ALTER TABLE dm_tools ADD COLUMN thumbnail TEXT",
-  "ALTER TABLE users ADD COLUMN last_heartbeat TEXT"
+  "ALTER TABLE users ADD COLUMN last_heartbeat TEXT",
+  "ALTER TABLE dice_rolls ADD COLUMN hidden INTEGER DEFAULT 0",
+  "ALTER TABLE users ADD COLUMN google_id TEXT",
+  "ALTER TABLE users ADD COLUMN google_email TEXT"
 ];
 
 for (const sql of alterStatements) {
@@ -209,6 +212,17 @@ db.exec(`
     public_url TEXT
   );
   INSERT OR IGNORE INTO notification_config (id) VALUES (1);
+`);
+
+// User notification preferences (per-type opt-in/out)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_notification_prefs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    notif_type TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    UNIQUE(user_id, notif_type)
+  );
 `);
 
 module.exports = db;

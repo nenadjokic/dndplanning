@@ -79,6 +79,9 @@
   position: relative;
   opacity: 0;
   transform: scale(0.5) translateY(10px);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .dice-bubble-menu.open .dice-bubble {
@@ -189,6 +192,34 @@
   transform: scale(1.08);
 }
 
+/* Hidden Roll Toggle */
+.dice-hidden-toggle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--gold-dim);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  transition: background 0.15s, transform 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.dice-hidden-toggle:hover {
+  transform: scale(1.08);
+  border-color: var(--gold);
+}
+
+.dice-hidden-toggle.active {
+  border-color: var(--gold-bright);
+  background: rgba(212, 168, 67, 0.2);
+  color: var(--gold-bright);
+  box-shadow: 0 0 8px rgba(212, 168, 67, 0.3);
+}
+
 /* Canvas Overlay */
 .dice-overlay {
   position: fixed;
@@ -245,6 +276,13 @@
   margin-top: 0.25rem;
 }
 
+.dice-results-banner .dice-result-hidden {
+  font-size: 0.75rem;
+  color: var(--gold-dim);
+  font-style: italic;
+  margin-top: 0.2rem;
+}
+
 /* Mobile adjustments */
 @media (max-width: 640px) {
   .dice-fab {
@@ -285,10 +323,10 @@
 
 /* === Dice Roll History === */
 
-/* Desktop: thin fixed sidebar on right */
+/* Desktop: thin fixed sidebar on LEFT */
 .dice-history {
   position: fixed;
-  right: 0;
+  left: 0;
   top: 60px;
   bottom: 0;
   width: 200px;
@@ -331,19 +369,46 @@
   opacity: 0.7;
 }
 
-/* Mobile: narrower right sidebar, no bottom drawer (avoids iPhone home gesture) */
+/* Mobile: hide sidebar, use toasts instead */
 @media (max-width: 768px) {
   .dice-history {
-    width: 150px;
-    top: 50px;
-    padding: 0.3rem;
+    display: none;
   }
+}
 
-  .dice-history-item {
-    padding: 0.3rem 0.5rem;
-    margin-bottom: 0.2rem;
-    font-size: 0.7rem;
-  }
+/* Dice Toast (mobile only) */
+.dice-toast {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1005;
+  background: var(--bg-card);
+  border: 1px solid var(--gold-dim);
+  border-radius: var(--radius);
+  padding: 0.5rem 1rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  max-width: 90vw;
+  text-align: center;
+  opacity: 1;
+  transition: opacity 0.5s;
+  pointer-events: none;
+}
+
+.dice-toast .toast-user {
+  font-weight: 600;
+  color: var(--gold);
+}
+
+.dice-toast .toast-result {
+  color: var(--gold-bright);
+  font-weight: 700;
+}
+
+.dice-toast.fading {
+  opacity: 0;
 }
 
 /* Light theme adjustments */
@@ -362,4 +427,8 @@
 [data-theme="light"] .dice-roll-btn {
   color: #fff;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .dice-toast {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }

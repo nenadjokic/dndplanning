@@ -4,10 +4,13 @@ import * as CANNON from 'https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js';
 var selectedDice = {};
 var menuOpen = false;
 var rolling = false;
+var hiddenMode = false;
 
-var fabBtn, bubbleMenu, splitBtns, rollBtn, clearBtn;
-var resultsBanner, resultTotal, resultDetail;
+var fabBtn, bubbleMenu, splitBtns, rollBtn, clearBtn, hiddenBtn;
+var resultsBanner, resultTotal, resultDetail, resultHidden;
 var historyEl, historyPollTimer, historyFadeTimer;
+var isMobile = window.innerWidth <= 768;
+var touchTimers = {};
 var lastRollTimestamp = 0;  // epoch ms of most recent roll
 var FADE_DURATION = 60 * 1000; // 60 seconds
 var cachedRolls = [];
@@ -116,7 +119,14 @@ function buildDOM() {
   clearBtn.setAttribute('aria-label', 'Clear dice');
   clearBtn.innerHTML = '&times;';
 
+  hiddenBtn = document.createElement('button');
+  hiddenBtn.className = 'dice-hidden-toggle';
+  hiddenBtn.setAttribute('aria-label', 'Toggle hidden roll');
+  hiddenBtn.title = 'Hidden Roll';
+  hiddenBtn.textContent = '\uD83D\uDD12';
+
   splitBtns.appendChild(rollBtn);
+  splitBtns.appendChild(hiddenBtn);
   splitBtns.appendChild(clearBtn);
   fab.appendChild(splitBtns);
   fab.appendChild(fabBtn);
@@ -146,8 +156,11 @@ function buildDOM() {
   resultTotal.className = 'dice-result-total';
   resultDetail = document.createElement('div');
   resultDetail.className = 'dice-result-detail';
+  resultHidden = document.createElement('div');
+  resultHidden.className = 'dice-result-hidden';
   resultsBanner.appendChild(resultTotal);
   resultsBanner.appendChild(resultDetail);
+  resultsBanner.appendChild(resultHidden);
 
   // Dice roll history sidebar
   historyEl = document.createElement('div');
@@ -170,6 +183,14 @@ function buildDOM() {
   });
 }
 
+function subtractDie(die) {
+  if (selectedDice[die] && selectedDice[die] > 0) {
+    selectedDice[die]--;
+    if (selectedDice[die] === 0) delete selectedDice[die];
+  }
+  updateBubbleUI();
+}
+
 function bindEvents() {
   fabBtn.addEventListener('click', function() {
     if (rolling) return;
@@ -180,6 +201,8 @@ function bindEvents() {
   bubbleMenu.addEventListener('click', function(e) {
     var btn = e.target.closest('.dice-bubble');
     if (!btn || rolling) return;
+    // If touch long-press already handled subtract, skip
+    if (btn._longPressHandled) { btn._longPressHandled = false; return; }
     var die = btn.getAttribute('data-die');
     if (!selectedDice[die]) selectedDice[die] = 0;
     selectedDice[die]++;
@@ -190,17 +213,46 @@ function bindEvents() {
     var btn = e.target.closest('.dice-bubble');
     if (!btn || rolling) return;
     e.preventDefault();
-    var die = btn.getAttribute('data-die');
-    if (selectedDice[die] && selectedDice[die] > 0) {
-      selectedDice[die]--;
-      if (selectedDice[die] === 0) delete selectedDice[die];
-    }
-    updateBubbleUI();
+    subtractDie(btn.getAttribute('data-die'));
   });
+
+  // Long-press touch to subtract
+  bubbleMenu.addEventListener('touchstart', function(e) {
+    var btn = e.target.closest('.dice-bubble');
+    if (!btn || rolling) return;
+    var die = btn.getAttribute('data-die');
+    btn._longPressHandled = false;
+    touchTimers[die] = setTimeout(function() {
+      btn._longPressHandled = true;
+      if (navigator.vibrate) navigator.vibrate(50);
+      subtractDie(die);
+    }, 500);
+  }, { passive: true });
+
+  bubbleMenu.addEventListener('touchend', function(e) {
+    var btn = e.target.closest('.dice-bubble');
+    if (!btn) return;
+    var die = btn.getAttribute('data-die');
+    if (touchTimers[die]) { clearTimeout(touchTimers[die]); delete touchTimers[die]; }
+  }, { passive: true });
+
+  bubbleMenu.addEventListener('touchmove', function(e) {
+    // Cancel long-press if finger moves
+    var btn = e.target.closest('.dice-bubble');
+    if (!btn) return;
+    var die = btn.getAttribute('data-die');
+    if (touchTimers[die]) { clearTimeout(touchTimers[die]); delete touchTimers[die]; }
+  }, { passive: true });
 
   rollBtn.addEventListener('click', function() {
     if (rolling || totalSelected() === 0) return;
     performRoll();
+  });
+
+  hiddenBtn.addEventListener('click', function() {
+    if (rolling) return;
+    hiddenMode = !hiddenMode;
+    hiddenBtn.classList.toggle('active', hiddenMode);
   });
 
   clearBtn.addEventListener('click', function() {
@@ -918,11 +970,12 @@ function showResults(results, total) {
     resultTotal.textContent = '= ' + total;
     resultDetail.textContent = parts.join(' + ');
   }
+  resultHidden.textContent = hiddenMode ? '(Hidden Roll)' : '';
 
   // Post roll to server for history
   var rollDesc = buildRollDesc();
   var detailStr = parts.join(' + ');
-  postRollToServer(rollDesc, total, detailStr);
+  postRollToServer(rollDesc, total, detailStr, hiddenMode);
 
   resultsBanner.classList.add('visible');
   if (resultTimeout) clearTimeout(resultTimeout);
@@ -957,19 +1010,27 @@ function buildRollDesc() {
   return parts.join(' + ');
 }
 
-function postRollToServer(rollDesc, total, detailStr) {
+function postRollToServer(rollDesc, total, detailStr, isHidden) {
   fetch('/api/dice/roll', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ rollDesc: rollDesc, result: total, detail: detailStr })
+    body: JSON.stringify({ rollDesc: rollDesc, result: total, detail: detailStr, hidden: isHidden ? true : false })
   }).then(function() {
-    fetchHistory();
+    if (!isHidden) fetchHistory();
   }).catch(function() {});
 }
 
 function fetchHistory() {
   fetch('/api/dice/history').then(function(r) { return r.json(); }).then(function(data) {
-    cachedRolls = data.rolls || [];
+    var newRolls = data.rolls || [];
+    // Check for new rolls to show as mobile toast
+    if (isMobile && cachedRolls.length > 0 && newRolls.length > 0) {
+      var prevNewest = cachedRolls[0].created_at;
+      if (newRolls[0].created_at !== prevNewest) {
+        showDiceToast(newRolls[0]);
+      }
+    }
+    cachedRolls = newRolls;
     // Update last roll timestamp from newest roll
     if (cachedRolls.length > 0) {
       var newest = new Date(cachedRolls[0].created_at + 'Z').getTime();
@@ -977,6 +1038,22 @@ function fetchHistory() {
     }
     renderHistory();
   }).catch(function() {});
+}
+
+function showDiceToast(roll) {
+  var toast = document.createElement('div');
+  toast.className = 'dice-toast';
+  toast.innerHTML = '<span class="toast-user">' + escapeHtml(roll.username) + '</span> rolled ' +
+    escapeHtml(roll.roll_desc) + ' &mdash; <span class="toast-result">' + roll.result + '</span>';
+  document.body.appendChild(toast);
+  setTimeout(function() { toast.classList.add('fading'); }, 3500);
+  setTimeout(function() { if (toast.parentNode) toast.remove(); }, 4000);
+}
+
+function escapeHtml(str) {
+  var d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
 }
 
 function renderHistory() {

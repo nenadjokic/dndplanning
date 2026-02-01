@@ -5,15 +5,15 @@ const router = express.Router();
 
 // POST /api/dice/roll — save a dice roll
 router.post('/roll', requireLogin, (req, res) => {
-  const { rollDesc, result, detail } = req.body;
+  const { rollDesc, result, detail, hidden } = req.body;
   if (!rollDesc || result == null) {
     return res.status(400).json({ error: 'Missing rollDesc or result' });
   }
 
   db.prepare(`
-    INSERT INTO dice_rolls (user_id, username, roll_desc, result, detail)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(req.user.id, req.user.username, String(rollDesc), Number(result), detail || null);
+    INSERT INTO dice_rolls (user_id, username, roll_desc, result, detail, hidden)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(req.user.id, req.user.username, String(rollDesc), Number(result), detail || null, hidden ? 1 : 0);
 
   // Prune old rolls — keep only last 50
   db.prepare(`
@@ -30,6 +30,7 @@ router.get('/history', requireLogin, (req, res) => {
   const rolls = db.prepare(`
     SELECT username, roll_desc, result, detail, created_at
     FROM dice_rolls
+    WHERE hidden = 0
     ORDER BY created_at DESC
     LIMIT 10
   `).all();

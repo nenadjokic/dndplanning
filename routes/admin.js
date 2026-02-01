@@ -1,4 +1,6 @@
 const express = require('express');
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const db = require('../db/connection');
 const { requireLogin, requireAdmin } = require('../middleware/auth');
 const messenger = require('../helpers/messenger');
@@ -54,6 +56,23 @@ router.post('/users/:id/delete', requireLogin, requireAdmin, (req, res) => {
   }
 
   const deleteUser = db.transaction(() => {
+    // Delete dice rolls by this user
+    db.prepare('DELETE FROM dice_rolls WHERE user_id = ?').run(targetId);
+    // Delete characters by this user
+    db.prepare('DELETE FROM characters WHERE user_id = ?').run(targetId);
+    // Delete push subscriptions by this user
+    db.prepare('DELETE FROM push_subscriptions WHERE user_id = ?').run(targetId);
+    // Delete notification preferences by this user
+    db.prepare('DELETE FROM user_notification_prefs WHERE user_id = ?').run(targetId);
+    // Delete loot items created by or held by this user
+    db.prepare('UPDATE loot_items SET held_by = NULL WHERE held_by = ?').run(targetId);
+    db.prepare('DELETE FROM loot_items WHERE created_by = ?').run(targetId);
+    // Delete DM tools by this user
+    db.prepare('DELETE FROM dm_tools WHERE created_by = ?').run(targetId);
+    // Delete map locations created by this user
+    db.prepare('DELETE FROM map_locations WHERE created_by = ?').run(targetId);
+    // Delete maps created by this user
+    db.prepare('DELETE FROM maps WHERE created_by = ?').run(targetId);
     // Delete votes by this user
     db.prepare('DELETE FROM votes WHERE user_id = ?').run(targetId);
     // Delete preferences by this user
@@ -75,6 +94,7 @@ router.post('/users/:id/delete', requireLogin, requireAdmin, (req, res) => {
       db.prepare('DELETE FROM preferences WHERE session_id = ?').run(sid);
       db.prepare('DELETE FROM replies WHERE post_id IN (SELECT id FROM posts WHERE session_id = ?)').run(sid);
       db.prepare('DELETE FROM posts WHERE session_id = ?').run(sid);
+      db.prepare('UPDATE sessions SET confirmed_slot_id = NULL WHERE id = ?').run(sid);
       db.prepare('DELETE FROM slots WHERE session_id = ?').run(sid);
     }
     db.prepare('DELETE FROM sessions WHERE created_by = ?').run(targetId);
@@ -84,6 +104,28 @@ router.post('/users/:id/delete', requireLogin, requireAdmin, (req, res) => {
 
   deleteUser();
   req.flash('success', 'User and all related data deleted.');
+  res.redirect('/admin/users');
+});
+
+router.post('/users/:id/reset-password', requireLogin, requireAdmin, async (req, res) => {
+  const targetId = parseInt(req.params.id, 10);
+  const target = db.prepare('SELECT id, username, role FROM users WHERE id = ?').get(targetId);
+
+  if (!target) {
+    req.flash('error', 'User not found.');
+    return res.redirect('/admin/users');
+  }
+
+  if (target.role === 'admin') {
+    req.flash('error', 'Cannot reset an admin password.');
+    return res.redirect('/admin/users');
+  }
+
+  const tempPassword = crypto.randomBytes(4).toString('hex'); // 8-char hex string
+  const hash = await bcrypt.hash(tempPassword, 10);
+  db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hash, targetId);
+
+  req.flash('success', `Password reset for ${target.username}. Temporary password: ${tempPassword}`);
   res.redirect('/admin/users');
 });
 

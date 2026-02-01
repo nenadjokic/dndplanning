@@ -1,6 +1,13 @@
 const db = require('../db/connection');
 
+function isNotifEnabled(userId, notifType) {
+  const pref = db.prepare('SELECT enabled FROM user_notification_prefs WHERE user_id = ? AND notif_type = ?').get(userId, notifType);
+  // Default: enabled (if no row exists)
+  return !pref || pref.enabled === 1;
+}
+
 function createNotification(userId, type, message, link) {
+  if (!isNotifEnabled(userId, type)) return;
   db.prepare('INSERT INTO notifications (user_id, type, message, link) VALUES (?, ?, ?, ?)').run(userId, type, message, link || null);
 }
 

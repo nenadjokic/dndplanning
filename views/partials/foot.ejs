@@ -29,11 +29,19 @@
         <div class="whatsnew-content">
           <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">What's New</h3>
           <ul class="whatsnew-list">
-            <li><strong>Faster history fade</strong> &mdash; Dice roll history now fades out over 60 seconds instead of 5 minutes for a cleaner screen on mobile</li>
+            <li><strong>Google Login</strong> &mdash; Sign in with Google or link your existing account</li>
+            <li><strong>Hidden Dice Rolls</strong> &mdash; DMs can roll secretly; results won't show in public history</li>
+            <li><strong>Dice Long-Press to Subtract</strong> &mdash; Long-press a die bubble on mobile to remove one</li>
+            <li><strong>Dice History on Left</strong> &mdash; Desktop sidebar moved to the left; mobile shows toast notifications</li>
+            <li><strong>Map Fullscreen Close</strong> &mdash; Floating &times; button for easy exit on touch devices</li>
+            <li><strong>Notification Preferences</strong> &mdash; Choose which notification types you receive in Settings</li>
+            <li><strong>Password Reset</strong> &mdash; Admins can reset any player's password from Guild Settings</li>
           </ul>
           <h3 style="color: var(--gold); font-size: 0.95rem; margin: 0.75rem 0 0.5rem;">Bug Fixes</h3>
           <ul class="whatsnew-list">
-            <li>None</li>
+            <li>Fixed user deletion failing with foreign key constraint errors</li>
+            <li>Fixed session deletion failing when session had a confirmed slot</li>
+            <li>Fixed birthday banner persisting past midnight (UTC vs local time)</li>
           </ul>
         </div>
         <div class="whatsnew-links">

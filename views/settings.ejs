@@ -103,4 +103,36 @@
   <p class="form-hint">This public feed includes only confirmed sessions (no personal unavailability). Share with anyone.</p>
 </div>
 
+<div class="settings-section card">
+  <h2>Notification Preferences</h2>
+  <p class="form-hint">Choose which notifications you receive.</p>
+  <form action="/settings/notifications" method="POST">
+    <div class="form-group">
+      <label><input type="checkbox" name="notif_session_confirmed" value="1" <%= notifPrefs.session_confirmed ? 'checked' : '' %>> Session Confirmed</label>
+    </div>
+    <div class="form-group">
+      <label><input type="checkbox" name="notif_session_cancelled" value="1" <%= notifPrefs.session_cancelled ? 'checked' : '' %>> Session Cancelled</label>
+    </div>
+    <div class="form-group">
+      <label><input type="checkbox" name="notif_mention" value="1" <%= notifPrefs.mention ? 'checked' : '' %>> @Mentions</label>
+    </div>
+    <button type="submit" class="btn btn-primary btn-small">Save Preferences</button>
+  </form>
+</div>
+
+<% if (googleEnabled) { %>
+<div class="settings-section card">
+  <h2>Google Account</h2>
+  <% if (settingsUser.google_id) { %>
+    <p>Linked to: <strong><%= settingsUser.google_email %></strong></p>
+    <form action="/settings/google/unlink" method="POST">
+      <button type="submit" class="btn btn-outline btn-small btn-danger">Unlink Google Account</button>
+    </form>
+  <% } else { %>
+    <p class="form-hint">Link your Google account for one-click sign-in.</p>
+    <a href="/settings/google/link" class="btn btn-outline btn-small">Link Google Account</a>
+  <% } %>
+</div>
+<% } %>
+
 <%- include('partials/foot') %>

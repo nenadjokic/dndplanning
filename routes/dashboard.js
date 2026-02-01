@@ -21,7 +21,7 @@ router.get('/', requireLogin, (req, res) => {
   const birthdayUsers = db.prepare(`
     SELECT username, avatar FROM users
     WHERE birthday IS NOT NULL
-    AND substr(birthday, 6) = strftime('%m-%d', 'now')
+    AND substr(birthday, 6) = strftime('%m-%d', 'now', 'localtime')
   `).all();
 
   if (req.user.role === 'dm' || req.user.role === 'admin') {

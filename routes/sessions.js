@@ -386,8 +386,13 @@ router.post('/:id/delete', requireLogin, requireAdmin, (req, res) => {
   }
 
   const deleteSession = db.transaction(() => {
+    // Clear confirmed_slot_id FK before deleting slots
+    db.prepare('UPDATE sessions SET confirmed_slot_id = NULL WHERE id = ?').run(session.id);
     db.prepare('DELETE FROM preferences WHERE session_id = ?').run(session.id);
     db.prepare('DELETE FROM votes WHERE slot_id IN (SELECT id FROM slots WHERE session_id = ?)').run(session.id);
+    // Delete replies and posts for this session
+    db.prepare('DELETE FROM replies WHERE post_id IN (SELECT id FROM posts WHERE session_id = ?)').run(session.id);
+    db.prepare('DELETE FROM posts WHERE session_id = ?').run(session.id);
     db.prepare('DELETE FROM slots WHERE session_id = ?').run(session.id);
     db.prepare('DELETE FROM sessions WHERE id = ?').run(session.id);
   });

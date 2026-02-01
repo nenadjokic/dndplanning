@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.get('/', requireLogin, (req, res) => {
   // Re-read user to get latest data (e.g. after token generation)
-  const freshUser = db.prepare('SELECT id, username, role, avatar, time_format, calendar_token, theme, week_start FROM users WHERE id = ?').get(req.user.id);
+  const freshUser = db.prepare('SELECT id, username, role, avatar, time_format, calendar_token, theme, week_start, google_id, google_email FROM users WHERE id = ?').get(req.user.id);
   const unavailabilities = db.prepare(
     'SELECT * FROM unavailability WHERE user_id = ? ORDER BY date'
   ).all(req.user.id);
@@ -19,7 +19,17 @@ router.get('/', requireLogin, (req, res) => {
 
   const publicCalendarUrl = `${req.protocol}://${req.get('host')}/calendar/sessions/feed.ics`;
 
-  res.render('settings', { unavailabilities, calendarUrl, publicCalendarUrl, settingsUser: freshUser });
+  // Load notification preferences
+  const NOTIF_TYPES = ['session_confirmed', 'session_cancelled', 'mention'];
+  const notifPrefs = {};
+  for (const t of NOTIF_TYPES) {
+    const row = db.prepare('SELECT enabled FROM user_notification_prefs WHERE user_id = ? AND notif_type = ?').get(req.user.id, t);
+    notifPrefs[t] = row ? row.enabled === 1 : true; // default: enabled
+  }
+
+  const googleEnabled = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+
+  res.render('settings', { unavailabilities, calendarUrl, publicCalendarUrl, settingsUser: freshUser, notifPrefs, googleEnabled });
 });
 
 router.post('/time-format', requireLogin, (req, res) => {
@@ -107,6 +117,37 @@ router.post('/unavailability/:id/delete', requireLogin, (req, res) => {
     req.params.id, req.user.id
   );
   req.flash('success', 'Unavailability day removed.');
+  res.redirect('/settings');
+});
+
+// --- Notification Preferences ---
+router.post('/notifications', requireLogin, (req, res) => {
+  const NOTIF_TYPES = ['session_confirmed', 'session_cancelled', 'mention'];
+  for (const t of NOTIF_TYPES) {
+    const enabled = req.body[`notif_${t}`] ? 1 : 0;
+    db.prepare(`
+      INSERT INTO user_notification_prefs (user_id, notif_type, enabled) VALUES (?, ?, ?)
+      ON CONFLICT(user_id, notif_type) DO UPDATE SET enabled = excluded.enabled
+    `).run(req.user.id, t, enabled);
+  }
+  req.flash('success', 'Notification preferences updated.');
+  res.redirect('/settings');
+});
+
+// --- Google Account Link/Unlink ---
+router.get('/google/link', requireLogin, (req, res) => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    req.flash('error', 'Google sign-in is not configured.');
+    return res.redirect('/settings');
+  }
+  // Store intent in session, then redirect to the normal Google OAuth flow
+  req.session.linkGoogleUserId = req.user.id;
+  res.redirect('/auth/google');
+});
+
+router.post('/google/unlink', requireLogin, (req, res) => {
+  db.prepare('UPDATE users SET google_id = NULL, google_email = NULL WHERE id = ?').run(req.user.id);
+  req.flash('success', 'Google account unlinked.');
   res.redirect('/settings');
 });
 

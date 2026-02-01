@@ -1,11 +1,19 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const axios = require('axios');
 const db = require('../db/connection');
 const router = express.Router();
 
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+
+function isGoogleEnabled() {
+  return !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
+}
+
 router.get('/login', (req, res) => {
   if (req.user) return res.redirect('/');
-  res.render('auth/login');
+  res.render('auth/login', { googleEnabled: isGoogleEnabled() });
 });
 
 router.post('/login', async (req, res) => {
@@ -68,6 +76,103 @@ router.post('/logout', (req, res) => {
   req.session.destroy(() => {
     res.redirect('/login');
   });
+});
+
+// --- Google OAuth ---
+function getGoogleRedirectUri(req) {
+  return `${req.protocol}://${req.get('host')}/auth/google/callback`;
+}
+
+router.get('/auth/google', (req, res) => {
+  if (!isGoogleEnabled()) return res.redirect('/login');
+  const redirectUri = getGoogleRedirectUri(req);
+  const url = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: 'openid email profile',
+    access_type: 'offline',
+    prompt: 'select_account'
+  }).toString();
+  res.redirect(url);
+});
+
+router.get('/auth/google/callback', async (req, res) => {
+  if (!isGoogleEnabled()) return res.redirect('/login');
+  const { code } = req.query;
+  if (!code) {
+    req.flash('error', 'Google sign-in was cancelled.');
+    return res.redirect('/login');
+  }
+
+  try {
+    const redirectUri = getGoogleRedirectUri(req);
+    // Exchange code for tokens
+    const tokenRes = await axios.post('https://oauth2.googleapis.com/token', {
+      code,
+      client_id: GOOGLE_CLIENT_ID,
+      client_secret: GOOGLE_CLIENT_SECRET,
+      redirect_uri: redirectUri,
+      grant_type: 'authorization_code'
+    });
+    const { access_token } = tokenRes.data;
+
+    // Get user info
+    const userInfoRes = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${access_token}` }
+    });
+    const { id: googleId, email: googleEmail, name: googleName } = userInfoRes.data;
+
+    // Check if a user with this google_id already exists
+    let user = db.prepare('SELECT * FROM users WHERE google_id = ?').get(googleId);
+    if (user) {
+      req.session.userId = user.id;
+      req.flash('success', `Welcome back, ${user.username}!`);
+      return res.redirect('/');
+    }
+
+    // Check if the user is linking from settings (session has linkGoogleUserId)
+    if (req.session.linkGoogleUserId) {
+      const linkUserId = req.session.linkGoogleUserId;
+      delete req.session.linkGoogleUserId;
+      db.prepare('UPDATE users SET google_id = ?, google_email = ? WHERE id = ?').run(googleId, googleEmail, linkUserId);
+      req.flash('success', 'Google account linked successfully.');
+      return res.redirect('/settings');
+    }
+
+    // Check if a user with matching email exists (auto-link)
+    const emailUser = db.prepare('SELECT * FROM users WHERE google_email = ?').get(googleEmail);
+    if (emailUser) {
+      db.prepare('UPDATE users SET google_id = ? WHERE id = ?').run(googleId, emailUser.id);
+      req.session.userId = emailUser.id;
+      req.flash('success', `Welcome back, ${emailUser.username}!`);
+      return res.redirect('/');
+    }
+
+    // Create new user account
+    const username = googleName || googleEmail.split('@')[0];
+    // Ensure unique username
+    let finalUsername = username;
+    let suffix = 1;
+    while (db.prepare('SELECT id FROM users WHERE username = ?').get(finalUsername)) {
+      finalUsername = username + suffix;
+      suffix++;
+    }
+
+    const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
+    const role = userCount === 0 ? 'admin' : 'player';
+    // No password for Google-only accounts — set random hash
+    const hash = await bcrypt.hash(require('crypto').randomBytes(32).toString('hex'), 10);
+    const result = db.prepare('INSERT INTO users (username, password, role, google_id, google_email) VALUES (?, ?, ?, ?, ?)').run(finalUsername, hash, role, googleId, googleEmail);
+    req.session.userId = result.lastInsertRowid;
+    req.session.firstLogin = true;
+    req.flash('success', `Welcome, ${finalUsername}! You have joined via Google.`);
+    res.redirect('/');
+  } catch (err) {
+    console.error('[Google OAuth] Error:', err.message);
+    req.flash('error', 'Google sign-in failed. Please try again.');
+    res.redirect('/login');
+  }
 });
 
 module.exports = router;
