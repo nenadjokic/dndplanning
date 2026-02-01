@@ -1,6 +1,6 @@
-# Quest Planner v0.9.0 — D&D Session Scheduler
+# Quest Planner v0.9.1 — D&D Session Scheduler
 
-> **Latest release:** v0.9.0 (2026-02-01)
+> **Latest release:** v0.9.1 (2026-02-01)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -595,6 +595,12 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.9.1 (2026-02-01)
+
+- **Automatic cache busting** — All CSS and JS asset URLs now include a `?v=` query string tied to the app version; when the app updates, browsers automatically fetch fresh files on the next page load
+- **Network-first service worker** — Service worker fetch strategy changed from cache-first to network-first for assets; fresh content is always served when online, cached copies used only when offline
+- **Service worker no-cache headers** — `sw.js` is now served with `Cache-Control: no-cache` so the browser always checks for a new version on every page load
 
 ### v0.9.0 (2026-02-01)
 
