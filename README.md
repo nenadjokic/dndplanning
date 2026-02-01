@@ -1,6 +1,6 @@
-# Quest Planner v0.9.6 — D&D Session Scheduler
+# Quest Planner v0.9.7 — D&D Session Scheduler
 
-> **Latest release:** v0.9.6 (2026-02-01)
+> **Latest release:** v0.9.7 (2026-02-01)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -595,6 +595,12 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.9.7 (2026-02-01)
+
+- **Per-die frustum bounds** — Visible area is now computed at each die's actual spawn height, not at ground level; fixes dice appearing outside the screen on all devices
+- **Lower spawn height** — Dice spawn at y=0.5 (near ground) instead of y=1.5, keeping them well within the visible frustum
+- **Larger margin** — Increased edge margin from 1.2 to 1.5 units so entire dice are visible including edges
 
 ### v0.9.6 (2026-02-01)
 

@@ -487,16 +487,17 @@ function createDie(type, index, total, scene, world, material, bounds) {
 
   addEdgeLines(mesh);
 
-  // bounds = { halfX, halfZ } — visible area from camera
-  var hx = bounds.halfX;
-  var hz = bounds.halfZ;
+  // Compute spawn height first, then calculate visible bounds AT that height
+  var py = 0.5 + index * 0.15;
+  var distFromCam = bounds.camY - py;
+  var hz = distFromCam * bounds.tanHalfFov;
+  var hx = hz * bounds.aspect;
 
-  // Spawn in visible top-right corner, staggered grid so dice never overlap
-  // Adapt grid to available space — use at most half the screen width
-  var margin = 1.2;
-  var availX = hx - margin;     // space from right edge to center
+  // Spawn in visible top-right corner with generous margin (die radius ~0.9)
+  var margin = 1.5;
+  var availX = hx - margin;
   var spacing = Math.min(1.3, availX / Math.max(total, 1));
-  spacing = Math.max(spacing, 0.9); // minimum spacing to prevent overlap
+  spacing = Math.max(spacing, 0.9);
   var cols = Math.max(1, Math.floor(availX / spacing));
   cols = Math.min(cols, total);
   var row = Math.floor(index / cols);
@@ -505,7 +506,6 @@ function createDie(type, index, total, scene, world, material, bounds) {
   var spawnZ = -hz + margin + row * spacing;
   var px = spawnX + (Math.random() - 0.5) * 0.2;
   var pz = spawnZ + (Math.random() - 0.5) * 0.2;
-  var py = 1.5 + index * 0.3;
   body.position.set(px, py, pz);
 
   // Low damping so dice travel across the screen
@@ -632,12 +632,16 @@ function run3DRoll() {
   pointLight.position.set(0, 6, 0);
   scene.add(pointLight);
 
-  // Calculate visible bounds at ground level from camera FOV + aspect
+  // Pass camera info so each die computes visible bounds at its own spawn height
+  var tanHalfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  var camY = camera.position.y;
+  var bounds = { camY: camY, tanHalfFov: tanHalfFov, aspect: aspect };
+
+  // Also compute ground-level bounds for wall placement
   var groundY = -0.5;
-  var camDist = camera.position.y - groundY; // distance from camera to ground
-  var halfZ = camDist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  var groundDist = camY - groundY;
+  var halfZ = groundDist * tanHalfFov;
   var halfX = halfZ * aspect;
-  var bounds = { halfX: halfX, halfZ: halfZ };
 
   // Physics — moderate gravity so dice travel horizontally before stopping
   var world = new CANNON.World({ gravity: new CANNON.Vec3(0, -40, 0) });

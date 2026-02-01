@@ -596,46 +596,48 @@ section('Spawn Position — Camera-Aware Top-Right Grid');
 (function() {
   // Test with various aspect ratios (portrait phone, landscape phone, desktop)
   var aspects = [0.56, 0.75, 1.33, 1.78, 2.0];
+  var camY = 12;
+  var tanHalfFov = Math.tan(22.5 * Math.PI / 180);
   var allInBounds = true;
   var noOverlap = true;
   var allInRightHalf = true;
 
   for (var ai = 0; ai < aspects.length; ai++) {
     var aspect = aspects[ai];
-    // Camera: y=12, groundY=-0.5, FOV=45
-    var camDist = 12.5;
-    var halfZ = camDist * Math.tan(22.5 * Math.PI / 180);
-    var halfX = halfZ * aspect;
 
     for (var total = 1; total <= 8; total++) {
       var positions = [];
-      var margin = 1.2;
-      var availX = halfX - margin;
-      var spacing = Math.min(1.3, availX / Math.max(total, 1));
-      spacing = Math.max(spacing, 0.9);
-      var cols = Math.max(1, Math.floor(availX / spacing));
-      cols = Math.min(cols, total);
       for (var index = 0; index < total; index++) {
+        // Compute bounds at this die's spawn height (matches dice-roller.js)
+        var py = 0.5 + index * 0.15;
+        var distFromCam = camY - py;
+        var hz = distFromCam * tanHalfFov;
+        var hx = hz * aspect;
+
+        var margin = 1.5;
+        var availX = hx - margin;
+        var spacing = Math.min(1.3, availX / Math.max(total, 1));
+        spacing = Math.max(spacing, 0.9);
+        var cols = Math.max(1, Math.floor(availX / spacing));
+        cols = Math.min(cols, total);
         var row = Math.floor(index / cols);
         var col = index % cols;
-        var spawnX = halfX - margin - col * spacing;
-        var spawnZ = -halfZ + margin + row * spacing;
+        var spawnX = hx - margin - col * spacing;
+        var spawnZ = -hz + margin + row * spacing;
         var px = spawnX + (Math.random() - 0.5) * 0.2;
         var pz = spawnZ + (Math.random() - 0.5) * 0.2;
-        var py = 1.5 + index * 0.3;
 
-        // Must be inside visible area
-        if (Math.abs(px) > halfX - 0.3 || Math.abs(pz) > halfZ - 0.3) allInBounds = false;
-        if (py < 1.4) allInBounds = false;
+        // Must be inside visible area at spawn height
+        if (Math.abs(px) > hx - 0.3 || Math.abs(pz) > hz - 0.3) allInBounds = false;
+        if (py < 0.4) allInBounds = false;
 
         // Spawn should be in the right half of screen (positive X)
         if (px < 0) allInRightHalf = false;
 
-        // Check no overlap: positions in the same column must differ in Z
+        // Check no overlap with previous positions
         for (var j = 0; j < positions.length; j++) {
           var dx = Math.abs(px - positions[j][0]);
           var dz = Math.abs(pz - positions[j][1]);
-          // If in same column (dx small), Z must be spaced; otherwise X spacing is enough
           if (dx < 0.5 && dz < 0.7) noOverlap = false;
           if (dx >= 0.5 && dx < 0.7 && dz < 0.5) noOverlap = false;
         }
@@ -643,8 +645,8 @@ section('Spawn Position — Camera-Aware Top-Right Grid');
       }
     }
   }
-  assert(allInBounds, 'All spawn positions within visible bounds for all aspect ratios');
-  assert(noOverlap, 'All spawn positions at least 0.8 unit apart (no overlap)');
+  assert(allInBounds, 'All spawn positions within visible bounds at spawn height');
+  assert(noOverlap, 'All spawn positions sufficiently spaced apart');
   assert(allInRightHalf, 'All spawn positions in the right half (visible top-right corner)');
 })();
 
