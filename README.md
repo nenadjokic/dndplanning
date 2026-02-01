@@ -1,6 +1,6 @@
-# Quest Planner v0.8.8 — D&D Session Scheduler
+# Quest Planner v0.8.9 — D&D Session Scheduler
 
-> **Latest release:** v0.8.8 (2026-02-01)
+> **Latest release:** v0.8.9 (2026-02-01)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -595,6 +595,12 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.8.9 (2026-02-01)
+
+- **Dice-dice collisions** — Multiple dice now physically collide and bounce off each other using SAP broadphase collision detection; no more ghost dice passing through
+- **Pre-determined rolls** — Results are computed before the throw; each die starts oriented to show a different number than the final result, then the physics simulation rolls it with a smooth quaternion slerp correction to land on the target face
+- **Initial orientation guarantee** — The starting face is always different from the final face, so you see a real transition during every roll
 
 ### v0.8.8 (2026-02-01)
 

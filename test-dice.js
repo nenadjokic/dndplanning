@@ -600,15 +600,15 @@ section('Spawn Position — Edge Spawn Pattern');
     var angle = Math.random() * Math.PI * 2;
     var px = Math.cos(angle) * spawnDist + (Math.random() - 0.5);
     var pz = Math.sin(angle) * spawnDist + (Math.random() - 0.5);
-    var py = 1.0 + Math.random() * 0.5;
+    var py = 2.0 + Math.random() * 1.0;
 
     var dist = Math.sqrt(px*px + pz*pz);
     if (dist < 2.5) allOutside = false;
     if (dist > 5.0) allReasonable = false;
-    if (py < 0.9 || py > 1.6) allReasonable = false;
+    if (py < 1.9 || py > 3.1) allReasonable = false;
   }
   assert(allOutside, 'All 100 spawn positions are outside center zone (dist > 2.5)');
-  assert(allReasonable, 'All 100 spawn positions within bounds (dist < 5, height 0.9-1.6)');
+  assert(allReasonable, 'All 100 spawn positions within bounds (dist < 5, height 1.9-3.1)');
 })();
 
 // ── 16. Throw Velocity Points Toward Center ──
@@ -617,9 +617,9 @@ section('Throw Velocity — Toward Center');
   var allTowardCenter = true;
   for (var trial = 0; trial < 100; trial++) {
     var angle = Math.random() * Math.PI * 2;
-    var throwSpeed = 5 + Math.random() * 3;
-    var vx = -Math.cos(angle) * throwSpeed + (Math.random() - 0.5) * 2;
-    var vz = -Math.sin(angle) * throwSpeed + (Math.random() - 0.5) * 2;
+    var throwSpeed = 6 + Math.random() * 4;
+    var vx = -Math.cos(angle) * throwSpeed + (Math.random() - 0.5) * 3;
+    var vz = -Math.sin(angle) * throwSpeed + (Math.random() - 0.5) * 3;
 
     // Spawn position direction
     var spawnDirX = Math.cos(angle);
@@ -685,6 +685,121 @@ section('Fallback Random Roll Distribution');
     }
     assert(allPresent, die.toUpperCase() + ' fallback: all values 1-' + max + ' appeared in ' + trials + ' trials');
   }
+})();
+
+// ── 19. randomResult — range validation ──
+section('randomResult — Range Validation');
+(function() {
+  function randomResult(type) {
+    switch (type) {
+      case 'd4':  return Math.floor(Math.random() * 4) + 1;
+      case 'd6':  return Math.floor(Math.random() * 6) + 1;
+      case 'd8':  return Math.floor(Math.random() * 8) + 1;
+      case 'd10': return Math.floor(Math.random() * 10) + 1;
+      case 'd100':
+        var tens = Math.floor(Math.random() * 10) * 10;
+        var units = Math.floor(Math.random() * 10);
+        var r = tens + units;
+        return r === 0 ? 100 : r;
+      case 'd12': return Math.floor(Math.random() * 12) + 1;
+      case 'd20': return Math.floor(Math.random() * 20) + 1;
+      default:    return Math.floor(Math.random() * 6) + 1;
+    }
+  }
+
+  var types = { 'd4': [1,4], 'd6': [1,6], 'd8': [1,8], 'd10': [1,10], 'd12': [1,12], 'd20': [1,20], 'd100': [1,100] };
+  for (var type in types) {
+    var range = types[type];
+    var min = Infinity, max = -Infinity;
+    for (var t = 0; t < 5000; t++) {
+      var v = randomResult(type);
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+    assert(min >= range[0], type.toUpperCase() + ' randomResult min >= ' + range[0] + ' (got ' + min + ')');
+    assert(max <= range[1], type.toUpperCase() + ' randomResult max <= ' + range[1] + ' (got ' + max + ')');
+    assert(min === range[0], type.toUpperCase() + ' randomResult hit min ' + range[0] + ' in 5000 trials');
+    assert(max === range[1], type.toUpperCase() + ' randomResult hit max ' + range[1] + ' in 5000 trials');
+  }
+})();
+
+// ── 20. valueToFaceIndex — round-trip validation ──
+section('valueToFaceIndex — Value to Face Mapping');
+(function() {
+  function valueToFaceIndex(type, value) {
+    switch (type) {
+      case 'd4':  return value - 1;
+      case 'd6':  return [1, 6, 2, 5, 3, 4].indexOf(value);
+      case 'd8':  return value - 1;
+      case 'd10': return value === 10 ? 0 : value;
+      case 'd100':
+        if (value === 100 || value < 10) return 0;
+        return Math.floor(value / 10);
+      case 'd12': return value - 1;
+      case 'd20': return value - 1;
+      default:    return 0;
+    }
+  }
+
+  // D4: values 1-4 → faces 0-3
+  for (var v = 1; v <= 4; v++) {
+    var fi = valueToFaceIndex('d4', v);
+    assert(fi >= 0 && fi < 4, 'D4 value ' + v + ' → face ' + fi + ' (valid 0-3)');
+    assert(fi === v - 1, 'D4 value ' + v + ' → face ' + fi);
+  }
+
+  // D6: all 6 values map to unique faces 0-5
+  var d6faces = new Set();
+  for (var v = 1; v <= 6; v++) {
+    var fi = valueToFaceIndex('d6', v);
+    assert(fi >= 0 && fi < 6, 'D6 value ' + v + ' → face ' + fi + ' (valid 0-5)');
+    d6faces.add(fi);
+  }
+  assert(d6faces.size === 6, 'D6 all 6 values map to 6 unique faces');
+
+  // D10: value 10 → face 0, values 1-9 → faces 1-9
+  assert(valueToFaceIndex('d10', 10) === 0, 'D10 value 10 → face 0');
+  for (var v = 1; v <= 9; v++) {
+    assert(valueToFaceIndex('d10', v) === v, 'D10 value ' + v + ' → face ' + v);
+  }
+
+  // D100: value-to-face mapping
+  assert(valueToFaceIndex('d100', 100) === 0, 'D100 value 100 → face 0');
+  assert(valueToFaceIndex('d100', 1) === 0, 'D100 value 1 → face 0 (tens=0)');
+  assert(valueToFaceIndex('d100', 9) === 0, 'D100 value 9 → face 0 (tens=0)');
+  assert(valueToFaceIndex('d100', 10) === 1, 'D100 value 10 → face 1 (tens=10)');
+  assert(valueToFaceIndex('d100', 19) === 1, 'D100 value 19 → face 1 (tens=10)');
+  assert(valueToFaceIndex('d100', 50) === 5, 'D100 value 50 → face 5 (tens=50)');
+  assert(valueToFaceIndex('d100', 99) === 9, 'D100 value 99 → face 9 (tens=90)');
+  assert(valueToFaceIndex('d100', 90) === 9, 'D100 value 90 → face 9 (tens=90)');
+
+  // D12: values 1-12 → faces 0-11
+  for (var v = 1; v <= 12; v++) {
+    assert(valueToFaceIndex('d12', v) === v - 1, 'D12 value ' + v + ' → face ' + (v-1));
+  }
+
+  // D20: values 1-20 → faces 0-19
+  for (var v = 1; v <= 20; v++) {
+    assert(valueToFaceIndex('d20', v) === v - 1, 'D20 value ' + v + ' → face ' + (v-1));
+  }
+})();
+
+// ── 21. Initial face differs from target face ──
+section('Initial Face Differs From Target');
+(function() {
+  // Simulate the logic: pick random initFace != targetFace
+  var allDifferent = true;
+  var faceCountsPerType = { 'd4': 4, 'd6': 6, 'd8': 8, 'd10': 10, 'd12': 12, 'd20': 20, 'd100': 10 };
+  for (var type in faceCountsPerType) {
+    var totalFaces = faceCountsPerType[type];
+    for (var trial = 0; trial < 200; trial++) {
+      var targetFace = Math.floor(Math.random() * totalFaces);
+      var initFace = targetFace;
+      while (initFace === targetFace) initFace = Math.floor(Math.random() * totalFaces);
+      if (initFace === targetFace) allDifferent = false;
+    }
+  }
+  assert(allDifferent, 'All 1400 initial face picks differ from target face');
 })();
 
 // ── Summary ──

@@ -573,6 +573,61 @@ function readDieFace(mesh, type) {
   }
 }
 
+/* ── Pre-determined results ── */
+function randomResult(type) {
+  switch (type) {
+    case 'd4':  return Math.floor(Math.random() * 4) + 1;
+    case 'd6':  return Math.floor(Math.random() * 6) + 1;
+    case 'd8':  return Math.floor(Math.random() * 8) + 1;
+    case 'd10': return Math.floor(Math.random() * 10) + 1;
+    case 'd100':
+      var tens = Math.floor(Math.random() * 10) * 10;
+      var units = Math.floor(Math.random() * 10);
+      var r = tens + units;
+      return r === 0 ? 100 : r;
+    case 'd12': return Math.floor(Math.random() * 12) + 1;
+    case 'd20': return Math.floor(Math.random() * 20) + 1;
+    default:    return Math.floor(Math.random() * 6) + 1;
+  }
+}
+
+function valueToFaceIndex(type, value) {
+  switch (type) {
+    case 'd4':  return value - 1;
+    case 'd6':  return [1, 6, 2, 5, 3, 4].indexOf(value);
+    case 'd8':  return value - 1;
+    case 'd10': return value === 10 ? 0 : value;
+    case 'd100':
+      if (value === 100 || value < 10) return 0;
+      return Math.floor(value / 10);
+    case 'd12': return value - 1;
+    case 'd20': return value - 1;
+    default:    return 0;
+  }
+}
+
+function getLocalFaceNormal(mesh, groupIndex) {
+  var geo = mesh.geometry;
+  var pos = geo.getAttribute('position');
+  var s = geo.groups[groupIndex].start;
+  var a = new THREE.Vector3().fromBufferAttribute(pos, s);
+  var b = new THREE.Vector3().fromBufferAttribute(pos, s + 1);
+  var c = new THREE.Vector3().fromBufferAttribute(pos, s + 2);
+  return new THREE.Vector3().crossVectors(
+    new THREE.Vector3().subVectors(b, a),
+    new THREE.Vector3().subVectors(c, a)
+  ).normalize();
+}
+
+function computeFaceQuaternion(mesh, faceIndex, targetDir) {
+  var localN = getLocalFaceNormal(mesh, faceIndex);
+  var q = new THREE.Quaternion().setFromUnitVectors(localN, targetDir);
+  var yawQ = new THREE.Quaternion().setFromAxisAngle(
+    new THREE.Vector3(0, 1, 0), Math.random() * Math.PI * 2
+  );
+  return new THREE.Quaternion().multiplyQuaternions(yawQ, q);
+}
+
 /* ── 3D Roll ── */
 function run3DRoll() {
   var overlay = document.createElement('div');
@@ -607,7 +662,7 @@ function run3DRoll() {
 
   // Physics — no visible ground, no shadows
   var world = new CANNON.World({ gravity: new CANNON.Vec3(0, -25, 0) });
-  world.broadphase = new CANNON.NaiveBroadphase();
+  world.broadphase = new CANNON.SAPBroadphase(world);
   world.solver.iterations = 20;
   world.solver.tolerance = 0.001;
   world.allowSleep = true;
@@ -637,11 +692,32 @@ function run3DRoll() {
   world.addContactMaterial(new CANNON.ContactMaterial(diceMat, diceMat, { friction: 0.3, restitution: 0.35 }));
 
   var diceMeshes = [], diceBodies = [], dieTypes = [];
+  var targetQuats = [], preResults = [];
+
   diceList.forEach(function(die, idx) {
     var r = createDie(die, idx, diceList.length, scene, world, diceMat);
     diceMeshes.push(r.mesh);
     diceBodies.push(r.body);
     dieTypes.push(die);
+
+    // Pre-determine the result
+    var result = randomResult(die);
+    preResults.push(result);
+
+    // Compute which face needs to end up on top (or bottom for D4)
+    var faceIdx = valueToFaceIndex(die, result);
+    var targetDir = (die === 'd4')
+      ? new THREE.Vector3(0, -1, 0)   // D4: read bottom face
+      : new THREE.Vector3(0, 1, 0);   // all others: read top face
+    var targetQ = computeFaceQuaternion(r.mesh, faceIdx, targetDir);
+    targetQuats.push(targetQ);
+
+    // Set initial orientation to a DIFFERENT face so the roll is visible
+    var totalFaces = r.mesh.geometry.groups.length;
+    var initFace = faceIdx;
+    while (initFace === faceIdx) initFace = Math.floor(Math.random() * totalFaces);
+    var initQ = computeFaceQuaternion(r.mesh, initFace, targetDir);
+    r.body.quaternion.set(initQ.x, initQ.y, initQ.z, initQ.w);
   });
 
   var allSettled = false;
@@ -664,6 +740,25 @@ function run3DRoll() {
       diceMeshes[i].position.copy(diceBodies[i].position);
       diceMeshes[i].quaternion.copy(diceBodies[i].quaternion);
     }
+
+    // Gently correct orientation toward pre-determined target when die is slowing
+    for (var i = 0; i < diceBodies.length; i++) {
+      if (diceBodies[i].sleepState === CANNON.Body.SLEEPING) continue;
+      var vel = diceBodies[i].velocity.length();
+      var angVel = diceBodies[i].angularVelocity.length();
+      if (vel < 2.0 && angVel < 3.0 && diceBodies[i].position.y < 1.5) {
+        var cur = new THREE.Quaternion(
+          diceBodies[i].quaternion.x, diceBodies[i].quaternion.y,
+          diceBodies[i].quaternion.z, diceBodies[i].quaternion.w
+        );
+        cur.slerp(targetQuats[i], 0.06);
+        diceBodies[i].quaternion.set(cur.x, cur.y, cur.z, cur.w);
+        diceBodies[i].velocity.scale(0.95, diceBodies[i].velocity);
+        diceBodies[i].angularVelocity.scale(0.92, diceBodies[i].angularVelocity);
+        diceMeshes[i].quaternion.set(cur.x, cur.y, cur.z, cur.w);
+      }
+    }
+
     renderer.render(scene, camera);
 
     // Use cannon-es sleep state — no more vibration
@@ -676,6 +771,12 @@ function run3DRoll() {
       for (var k = 0; k < diceBodies.length; k++) {
         diceBodies[k].velocity.setZero();
         diceBodies[k].angularVelocity.setZero();
+        // Snap to exact target orientation
+        diceBodies[k].quaternion.set(
+          targetQuats[k].x, targetQuats[k].y,
+          targetQuats[k].z, targetQuats[k].w
+        );
+        diceMeshes[k].quaternion.copy(targetQuats[k]);
       }
       renderer.render(scene, camera);
       allSettled = true;
@@ -690,10 +791,9 @@ function run3DRoll() {
   function onSettled() {
     var results = [];
     var total = 0;
-    for (var i = 0; i < diceMeshes.length; i++) {
-      var val = readDieFace(diceMeshes[i], dieTypes[i]);
-      results.push({ die: dieTypes[i].toUpperCase(), value: val });
-      total += val;
+    for (var i = 0; i < preResults.length; i++) {
+      results.push({ die: dieTypes[i].toUpperCase(), value: preResults[i] });
+      total += preResults[i];
     }
     rolling = false;
     activeOverlay = overlay;
