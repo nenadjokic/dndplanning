@@ -487,28 +487,33 @@ function createDie(type, index, total, scene, world, material) {
 
   addEdgeLines(mesh);
 
-  // Spawn from top-left corner (-X, -Z), throw toward center
-  var spread = 0.5;
-  var px = -4.0 + (Math.random() - 0.5) * spread * Math.min(total, 6);
-  var pz = -2.5 + (Math.random() - 0.5) * spread * Math.min(total, 6);
-  var py = 2.5 + Math.random() * 0.5;
+  // Spawn in top-left quadrant, staggered grid so dice never overlap
+  var cols = Math.min(total, 3);
+  var row = Math.floor(index / cols);
+  var col = index % cols;
+  var spacing = 1.5;
+  var startX = -3.5;
+  var startZ = -2.0;
+  var px = startX + col * spacing + (Math.random() - 0.5) * 0.2;
+  var pz = startZ + row * spacing + (Math.random() - 0.5) * 0.2;
+  var py = 3.0 + index * 0.3;
   body.position.set(px, py, pz);
 
-  // Higher damping for quick settling
-  body.linearDamping = 0.4;
-  body.angularDamping = 0.4;
+  // Low linear damping so dice travel far; high angular damping to stop spinning
+  body.linearDamping = 0.15;
+  body.angularDamping = 0.5;
 
-  // Aggressive sleep for fast stop
+  // Aggressive sleep for fast stop once slow
   body.allowSleep = true;
   body.sleepSpeedLimit = 1.0;
-  body.sleepTimeLimit = 0.08;
+  body.sleepTimeLimit = 0.1;
 
-  // Throw toward center (+X, +Z) with downward arc
-  var throwSpeed = 7 + Math.random() * 2;
+  // Throw toward center — must travel ~50% of play area (5 units rightward)
+  var throwSpeed = 10 + Math.random() * 3;
   body.velocity.set(
     throwSpeed + (Math.random() - 0.5) * 2,
-    -2,
-    throwSpeed * 0.3 + (Math.random() - 0.5) * 2
+    -3,
+    1.5 + (Math.random() - 0.5) * 2
   );
 
   // Angular velocity for visible tumbling
@@ -642,10 +647,10 @@ function run3DRoll() {
 
   var diceMat = new CANNON.Material('dice');
   world.addContactMaterial(new CANNON.ContactMaterial(groundMat, diceMat, {
-    friction: 0.8, restitution: 0.15
+    friction: 0.5, restitution: 0.15
   }));
   world.addContactMaterial(new CANNON.ContactMaterial(diceMat, diceMat, {
-    friction: 0.5, restitution: 0.25
+    friction: 0.3, restitution: 0.35
   }));
 
   var diceMeshes = [], diceBodies = [], dieTypes = [];
@@ -684,7 +689,7 @@ function run3DRoll() {
   var elapsed = 0;
   var fixedStep = 1 / 120;
   var maxSubSteps = 10;
-  var maxTime = 700; // 0.7s hard limit for physics
+  var maxTime = 1000; // 1s hard limit for physics
 
   // Phase: 'physics' = pure physics, 'correcting' = slerp to target after stopped
   var phase = 'physics';

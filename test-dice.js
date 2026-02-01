@@ -575,45 +575,61 @@ section('Physics Parameters');
   assert(gravity < 0, 'Gravity is negative (downward): ' + gravity);
   assert(Math.abs(gravity) >= 9.8, 'Gravity magnitude >= Earth gravity for snappier feel');
 
-  var linearDamping = 0.4;
-  var angularDamping = 0.4;
+  var linearDamping = 0.15;
+  var angularDamping = 0.5;
   assert(linearDamping < 0.8, 'Linear damping reasonable (' + linearDamping + ')');
   assert(angularDamping < 0.8, 'Angular damping reasonable (' + angularDamping + ')');
 
-  var groundFriction = 0.8;
+  var groundFriction = 0.5;
   var groundRestitution = 0.15;
   assert(groundFriction > 0.2 && groundFriction <= 1.0, 'Ground friction reasonable: ' + groundFriction);
   assert(groundRestitution > 0.05 && groundRestitution < 0.6, 'Ground restitution reasonable: ' + groundRestitution);
 
   var sleepSpeedLimit = 1.0;
-  var sleepTimeLimit = 0.08;
+  var sleepTimeLimit = 0.1;
   assert(sleepSpeedLimit > 0 && sleepSpeedLimit < 2, 'Sleep speed limit reasonable: ' + sleepSpeedLimit);
   assert(sleepTimeLimit > 0.01 && sleepTimeLimit < 2, 'Sleep time limit reasonable: ' + sleepTimeLimit);
 
-  var throwSpeed = 7; // min
-  var throwSpeedMax = 9; // max (7 + 2)
+  var throwSpeed = 10; // min
+  var throwSpeedMax = 13; // max (10 + 3)
   assert(throwSpeed >= 3, 'Min throw speed gives good momentum: ' + throwSpeed);
-  assert(throwSpeedMax <= 12, 'Max throw speed not too extreme: ' + throwSpeedMax);
+  assert(throwSpeedMax <= 15, 'Max throw speed not too extreme: ' + throwSpeedMax);
 })();
 
 // ── 15. Spawn Position Validation ──
-section('Spawn Position — Top-Left Corner');
+section('Spawn Position — Top-Left Staggered Grid');
 (function() {
-  // Simulate 100 spawn positions (top-left corner pattern)
-  var allReasonable = true;
-  var allLeftSide = true;
-  for (var trial = 0; trial < 100; trial++) {
-    var total = Math.floor(Math.random() * 5) + 1;
-    var spread = 0.5;
-    var px = -4.0 + (Math.random() - 0.5) * spread * Math.min(total, 6);
-    var pz = -2.5 + (Math.random() - 0.5) * spread * Math.min(total, 6);
-    var py = 2.5 + Math.random() * 0.5;
+  // Simulate spawn positions using the staggered grid pattern
+  var allInBounds = true;
+  var noOverlap = true;
+  for (var total = 1; total <= 8; total++) {
+    var positions = [];
+    var cols = Math.min(total, 3);
+    for (var index = 0; index < total; index++) {
+      var row = Math.floor(index / cols);
+      var col = index % cols;
+      var spacing = 1.5;
+      var startX = -3.5;
+      var startZ = -2.0;
+      var px = startX + col * spacing + (Math.random() - 0.5) * 0.2;
+      var pz = startZ + row * spacing + (Math.random() - 0.5) * 0.2;
+      var py = 3.0 + index * 0.3;
 
-    if (px > -1.0) allLeftSide = false;
-    if (py < 2.4 || py > 3.1) allReasonable = false;
+      // Must be inside walls (x: -5 to 5, z: -3.5 to 3.5) with margin
+      if (px < -4.5 || px > 4.5 || pz < -3.0 || pz > 3.0) allInBounds = false;
+      if (py < 2.9) allInBounds = false;
+
+      // Check no overlap with previous positions (min 1.0 unit apart)
+      for (var j = 0; j < positions.length; j++) {
+        var dx = px - positions[j][0];
+        var dz = pz - positions[j][1];
+        if (Math.sqrt(dx*dx + dz*dz) < 1.0) noOverlap = false;
+      }
+      positions.push([px, pz]);
+    }
   }
-  assert(allLeftSide, 'All 100 spawn positions are on left side (px < -1.0)');
-  assert(allReasonable, 'All 100 spawn positions at correct height (2.4-3.1)');
+  assert(allInBounds, 'All spawn positions within wall bounds with margin');
+  assert(noOverlap, 'All spawn positions at least 1.0 unit apart (no overlap)');
 })();
 
 // ── 16. Throw Velocity Points Toward Center ──
@@ -621,18 +637,22 @@ section('Throw Velocity — Toward Center-Right');
 (function() {
   var allRightward = true;
   var allDownward = true;
+  var allFastEnough = true;
   for (var trial = 0; trial < 100; trial++) {
-    var throwSpeed = 7 + Math.random() * 2;
+    var throwSpeed = 10 + Math.random() * 3;
     var vx = throwSpeed + (Math.random() - 0.5) * 2;
-    var vy = -2;
+    var vy = -3;
 
     // Velocity X should be positive (rightward, toward center from top-left)
     if (vx < 0) allRightward = false;
     // Velocity Y should be negative (downward)
     if (vy > 0) allDownward = false;
+    // Must have enough speed to travel ~50% of play area
+    if (vx < 8) allFastEnough = false;
   }
   assert(allRightward, 'All 100 throw velocities go rightward (toward center)');
   assert(allDownward, 'All 100 throw velocities go downward');
+  assert(allFastEnough, 'All 100 throw velocities fast enough to reach center (vx >= 8)');
 })();
 
 // ── 17. D100 Two-Dice Result Range ──
