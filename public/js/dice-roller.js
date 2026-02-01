@@ -306,16 +306,17 @@ function createD8Body(material) {
 function makeD10Verts(r) {
   r = r || 0.8;
   var v = [];
-  v.push([0, r * 0.65, 0]);
+  // Taller, pointier shape — closer to a real pentagonal trapezohedron
+  v.push([0, r * 1.1, 0]);  // top pole — tall and pointy
   for (var i = 0; i < 5; i++) {
     var a = i * 2 * Math.PI / 5;
-    v.push([r * 0.85 * Math.cos(a), r * 0.25, r * 0.85 * Math.sin(a)]);
+    v.push([r * 0.72 * Math.cos(a), r * 0.28, r * 0.72 * Math.sin(a)]);
   }
   for (var i = 0; i < 5; i++) {
     var a = (i * 2 * Math.PI / 5) + (Math.PI / 5);
-    v.push([r * 0.85 * Math.cos(a), -r * 0.25, r * 0.85 * Math.sin(a)]);
+    v.push([r * 0.72 * Math.cos(a), -r * 0.28, r * 0.72 * Math.sin(a)]);
   }
-  v.push([0, -r * 0.65, 0]);
+  v.push([0, -r * 1.1, 0]);  // bottom pole
   return v;
 }
 
@@ -476,7 +477,7 @@ function createDie(type, index, total, scene, world, material) {
   var spawnDist = 3.5;
   var px = Math.cos(angle) * spawnDist + (Math.random() - 0.5);
   var pz = Math.sin(angle) * spawnDist + (Math.random() - 0.5);
-  var py = 1.0 + Math.random() * 0.5; // just above ground
+  var py = 2.0 + Math.random() * 1.0; // higher spawn for longer arc
 
   var mesh, body;
   switch (type) {
@@ -499,27 +500,27 @@ function createDie(type, index, total, scene, world, material) {
   );
 
   // Minimal air damping — ground friction does the slowing
-  body.linearDamping = 0.05;
-  body.angularDamping = 0.15;
+  body.linearDamping = 0.02;
+  body.angularDamping = 0.08;
 
   // Enable sleep to prevent vibration at rest
   body.allowSleep = true;
-  body.sleepSpeedLimit = 0.15;
-  body.sleepTimeLimit = 0.4;
+  body.sleepSpeedLimit = 0.1;
+  body.sleepTimeLimit = 0.5;
 
   // Throw toward center with strong lateral velocity
-  var throwSpeed = 5 + Math.random() * 3;
+  var throwSpeed = 6 + Math.random() * 4;
   body.velocity.set(
-    -Math.cos(angle) * throwSpeed + (Math.random() - 0.5) * 2,
-    -0.5,
-    -Math.sin(angle) * throwSpeed + (Math.random() - 0.5) * 2
+    -Math.cos(angle) * throwSpeed + (Math.random() - 0.5) * 3,
+    -1.5,
+    -Math.sin(angle) * throwSpeed + (Math.random() - 0.5) * 3
   );
 
-  // Rolling spin — primarily around horizontal axes
+  // Strong rolling spin — dice MUST tumble across many faces
   body.angularVelocity.set(
-    (Math.random() - 0.5) * 10,
-    (Math.random() - 0.5) * 4,
-    (Math.random() - 0.5) * 10
+    (Math.random() - 0.5) * 20,
+    (Math.random() - 0.5) * 8,
+    (Math.random() - 0.5) * 20
   );
 
   mesh.position.copy(body.position);
@@ -605,9 +606,10 @@ function run3DRoll() {
   scene.add(pointLight);
 
   // Physics — no visible ground, no shadows
-  var world = new CANNON.World({ gravity: new CANNON.Vec3(0, -20, 0) });
+  var world = new CANNON.World({ gravity: new CANNON.Vec3(0, -25, 0) });
   world.broadphase = new CANNON.NaiveBroadphase();
-  world.solver.iterations = 15;
+  world.solver.iterations = 20;
+  world.solver.tolerance = 0.001;
   world.allowSleep = true;
 
   var groundMat = new CANNON.Material('ground');
@@ -631,8 +633,8 @@ function run3DRoll() {
   });
 
   var diceMat = new CANNON.Material('dice');
-  world.addContactMaterial(new CANNON.ContactMaterial(groundMat, diceMat, { friction: 0.5, restitution: 0.3 }));
-  world.addContactMaterial(new CANNON.ContactMaterial(diceMat, diceMat, { friction: 0.3, restitution: 0.25 }));
+  world.addContactMaterial(new CANNON.ContactMaterial(groundMat, diceMat, { friction: 0.4, restitution: 0.4 }));
+  world.addContactMaterial(new CANNON.ContactMaterial(diceMat, diceMat, { friction: 0.3, restitution: 0.35 }));
 
   var diceMeshes = [], diceBodies = [], dieTypes = [];
   diceList.forEach(function(die, idx) {
@@ -643,13 +645,21 @@ function run3DRoll() {
   });
 
   var allSettled = false;
-  var frameCount = 0;
-  var maxFrames = 240; // 4s safety
+  var lastTime = performance.now();
+  var elapsed = 0;
+  var fixedStep = 1 / 120; // 120 Hz physics for stability
+  var maxSubSteps = 4;
+  var maxTime = 6000; // 6s safety timeout
 
-  function animate() {
+  function animate(now) {
     if (allSettled) return;
-    frameCount++;
-    world.step(1 / 60);
+    var dt = Math.min((now - lastTime) / 1000, 0.05); // cap at 50ms
+    lastTime = now;
+    elapsed += dt;
+
+    // Step physics with fixed timestep and substeps for stability
+    world.step(fixedStep, dt, maxSubSteps);
+
     for (var i = 0; i < diceMeshes.length; i++) {
       diceMeshes[i].position.copy(diceBodies[i].position);
       diceMeshes[i].quaternion.copy(diceBodies[i].quaternion);
@@ -657,12 +667,12 @@ function run3DRoll() {
     renderer.render(scene, camera);
 
     // Use cannon-es sleep state — no more vibration
-    var allSleeping = frameCount > 30; // give at least 0.5s before checking
+    var allSleeping = elapsed > 0.8; // give at least 0.8s before checking
     for (var j = 0; j < diceBodies.length; j++) {
       if (diceBodies[j].sleepState !== CANNON.Body.SLEEPING) { allSleeping = false; break; }
     }
 
-    if (allSleeping || frameCount >= maxFrames) {
+    if (allSleeping || elapsed * 1000 >= maxTime) {
       for (var k = 0; k < diceBodies.length; k++) {
         diceBodies[k].velocity.setZero();
         diceBodies[k].angularVelocity.setZero();
