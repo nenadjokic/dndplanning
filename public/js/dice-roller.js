@@ -315,10 +315,10 @@ function createD8Body(material) {
 /* ── D10 / D100 geometry ── */
 function makeD10Verts(r) {
   r = r || 0.8;
-  // Balanced pentagonal trapezohedron — slightly taller than wide
-  var poleY = r * 0.88;
-  var ringY = r * 0.31;
-  var ringR = r * 0.77;
+  // Elongated pentagonal trapezohedron — taller than wide like a real D10
+  var poleY = r * 1.1;
+  var ringY = r * 0.30;
+  var ringR = r * 0.62;
   var v = [];
   v.push([0, poleY, 0]);
   for (var i = 0; i < 5; i++) {
@@ -396,8 +396,8 @@ function buildD10Body(r, material) {
 
 function createD10Mesh() { return buildD10Mesh(0.8, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]); }
 function createD10Body(m) { return buildD10Body(0.8, m); }
-function createD100Mesh() { return buildD10Mesh(0.85, ['00', '10', '20', '30', '40', '50', '60', '70', '80', '90']); }
-function createD100Body(m) { return buildD10Body(0.85, m); }
+function createD100TensMesh() { return buildD10Mesh(0.85, ['00', '10', '20', '30', '40', '50', '60', '70', '80', '90']); }
+function createD100TensBody(m) { return buildD10Body(0.85, m); }
 
 /* ── D12 ── */
 function createD12Mesh() {
@@ -474,47 +474,48 @@ function createD20Body(material) {
 function createDie(type, index, total, scene, world, material) {
   var mesh, body;
   switch (type) {
-    case 'd4':  mesh = createD4Mesh();  body = createD4Body(material);  break;
-    case 'd6':  mesh = createD6Mesh();  body = createD6Body(material);  break;
-    case 'd8':  mesh = createD8Mesh();  body = createD8Body(material);  break;
-    case 'd10': mesh = createD10Mesh(); body = createD10Body(material); break;
-    case 'd100':mesh = createD100Mesh();body = createD100Body(material);break;
-    case 'd12': mesh = createD12Mesh(); body = createD12Body(material); break;
-    case 'd20': mesh = createD20Mesh(); body = createD20Body(material); break;
-    default:    mesh = createD6Mesh();  body = createD6Body(material);
+    case 'd4':        mesh = createD4Mesh();        body = createD4Body(material);        break;
+    case 'd6':        mesh = createD6Mesh();        body = createD6Body(material);        break;
+    case 'd8':        mesh = createD8Mesh();        body = createD8Body(material);        break;
+    case 'd10':       mesh = createD10Mesh();       body = createD10Body(material);       break;
+    case 'd100tens':  mesh = createD100TensMesh();  body = createD100TensBody(material);  break;
+    case 'd100units': mesh = createD10Mesh();       body = createD10Body(material);       break;
+    case 'd12':       mesh = createD12Mesh();       body = createD12Body(material);       break;
+    case 'd20':       mesh = createD20Mesh();       body = createD20Body(material);       break;
+    default:          mesh = createD6Mesh();        body = createD6Body(material);
   }
 
   addEdgeLines(mesh);
 
-  // Spawn from top-right corner, throw toward center
-  var spread = 0.6;
-  var px = 3.5 + (Math.random() - 0.5) * spread * total;
-  var pz = -2.5 + (Math.random() - 0.5) * spread * total;
-  var py = 3.0 + Math.random() * 0.5;
+  // Spawn from top-left corner (-X, -Z), throw toward center
+  var spread = 0.5;
+  var px = -4.0 + (Math.random() - 0.5) * spread * Math.min(total, 6);
+  var pz = -2.5 + (Math.random() - 0.5) * spread * Math.min(total, 6);
+  var py = 2.5 + Math.random() * 0.5;
   body.position.set(px, py, pz);
 
   // Higher damping for quick settling
-  body.linearDamping = 0.3;
-  body.angularDamping = 0.3;
+  body.linearDamping = 0.4;
+  body.angularDamping = 0.4;
 
   // Aggressive sleep for fast stop
   body.allowSleep = true;
-  body.sleepSpeedLimit = 0.5;
-  body.sleepTimeLimit = 0.15;
+  body.sleepSpeedLimit = 1.0;
+  body.sleepTimeLimit = 0.08;
 
-  // Throw toward center-left with downward arc
-  var throwSpeed = 6 + Math.random() * 2;
+  // Throw toward center (+X, +Z) with downward arc
+  var throwSpeed = 7 + Math.random() * 2;
   body.velocity.set(
-    -throwSpeed + (Math.random() - 0.5) * 2,
-    -3,
-    throwSpeed * 0.4 + (Math.random() - 0.5) * 2
+    throwSpeed + (Math.random() - 0.5) * 2,
+    -2,
+    throwSpeed * 0.3 + (Math.random() - 0.5) * 2
   );
 
   // Angular velocity for visible tumbling
   body.angularVelocity.set(
-    (Math.random() - 0.5) * 15,
+    (Math.random() - 0.5) * 14,
     (Math.random() - 0.5) * 8,
-    (Math.random() - 0.5) * 15
+    (Math.random() - 0.5) * 14
   );
 
   scene.add(mesh);
@@ -525,33 +526,29 @@ function createDie(type, index, total, scene, world, material) {
 /* ── Pre-determined results ── */
 function randomResult(type) {
   switch (type) {
-    case 'd4':  return Math.floor(Math.random() * 4) + 1;
-    case 'd6':  return Math.floor(Math.random() * 6) + 1;
-    case 'd8':  return Math.floor(Math.random() * 8) + 1;
-    case 'd10': return Math.floor(Math.random() * 10) + 1;
-    case 'd100':
-      var tens = Math.floor(Math.random() * 10) * 10;
-      var units = Math.floor(Math.random() * 10);
-      var r = tens + units;
-      return r === 0 ? 100 : r;
-    case 'd12': return Math.floor(Math.random() * 12) + 1;
-    case 'd20': return Math.floor(Math.random() * 20) + 1;
-    default:    return Math.floor(Math.random() * 6) + 1;
+    case 'd4':        return Math.floor(Math.random() * 4) + 1;
+    case 'd6':        return Math.floor(Math.random() * 6) + 1;
+    case 'd8':        return Math.floor(Math.random() * 8) + 1;
+    case 'd10':       return Math.floor(Math.random() * 10) + 1;
+    case 'd100tens':  return Math.floor(Math.random() * 10); // 0-9 (tens digit)
+    case 'd100units': return Math.floor(Math.random() * 10); // 0-9 (units digit)
+    case 'd12':       return Math.floor(Math.random() * 12) + 1;
+    case 'd20':       return Math.floor(Math.random() * 20) + 1;
+    default:          return Math.floor(Math.random() * 6) + 1;
   }
 }
 
 function valueToFaceIndex(type, value) {
   switch (type) {
-    case 'd4':  return value - 1;
-    case 'd6':  return [1, 6, 2, 5, 3, 4].indexOf(value);
-    case 'd8':  return value - 1;
-    case 'd10': return value === 10 ? 0 : value;
-    case 'd100':
-      if (value === 100 || value < 10) return 0;
-      return Math.floor(value / 10);
-    case 'd12': return value - 1;
-    case 'd20': return value - 1;
-    default:    return 0;
+    case 'd4':        return value - 1;
+    case 'd6':        return [1, 6, 2, 5, 3, 4].indexOf(value);
+    case 'd8':        return value - 1;
+    case 'd10':       return value === 10 ? 0 : value;
+    case 'd100tens':  return value; // 0-9 maps to face 0-9
+    case 'd100units': return value; // 0-9 maps to face 0-9
+    case 'd12':       return value - 1;
+    case 'd20':       return value - 1;
+    default:          return 0;
   }
 }
 
@@ -583,10 +580,18 @@ function run3DRoll() {
   overlay.className = 'dice-overlay';
   document.body.appendChild(overlay);
 
+  // Build dice list — D100 becomes two D10s (tens + units)
   var diceList = [];
-  for (var die in selectedDice)
-    for (var i = 0; i < selectedDice[die]; i++)
-      diceList.push(die);
+  for (var die in selectedDice) {
+    for (var i = 0; i < selectedDice[die]; i++) {
+      if (die === 'd100') {
+        diceList.push('d100tens');
+        diceList.push('d100units');
+      } else {
+        diceList.push(die);
+      }
+    }
+  }
 
   var scene = new THREE.Scene();
   var aspect = window.innerWidth / window.innerHeight;
@@ -609,7 +614,7 @@ function run3DRoll() {
   scene.add(pointLight);
 
   // Physics — strong gravity for fast settle
-  var world = new CANNON.World({ gravity: new CANNON.Vec3(0, -50, 0) });
+  var world = new CANNON.World({ gravity: new CANNON.Vec3(0, -80, 0) });
   world.broadphase = new CANNON.NaiveBroadphase();
   world.solver.iterations = 10;
   world.solver.tolerance = 0.001;
@@ -637,10 +642,10 @@ function run3DRoll() {
 
   var diceMat = new CANNON.Material('dice');
   world.addContactMaterial(new CANNON.ContactMaterial(groundMat, diceMat, {
-    friction: 0.8, restitution: 0.2
+    friction: 0.8, restitution: 0.15
   }));
   world.addContactMaterial(new CANNON.ContactMaterial(diceMat, diceMat, {
-    friction: 0.5, restitution: 0.3
+    friction: 0.5, restitution: 0.25
   }));
 
   var diceMeshes = [], diceBodies = [], dieTypes = [];
@@ -678,13 +683,13 @@ function run3DRoll() {
   var lastTime = performance.now();
   var elapsed = 0;
   var fixedStep = 1 / 120;
-  var maxSubSteps = 8;
-  var maxTime = 1000; // 1s hard limit
+  var maxSubSteps = 10;
+  var maxTime = 700; // 0.7s hard limit for physics
 
   // Phase: 'physics' = pure physics, 'correcting' = slerp to target after stopped
   var phase = 'physics';
   var correctStart = 0;
-  var correctDuration = 0.25; // 250ms smooth correction
+  var correctDuration = 0.15; // 150ms smooth correction
 
   function animate(now) {
     if (allSettled) return;
@@ -701,8 +706,8 @@ function run3DRoll() {
         diceMeshes[i].quaternion.copy(diceBodies[i].quaternion);
       }
 
-      // Check if all dice have stopped (allow sleep check after 0.3s)
-      var allSleeping = elapsed > 0.3;
+      // Check if all dice have stopped (allow sleep check after 0.2s)
+      var allSleeping = elapsed > 0.2;
       for (var j = 0; j < diceBodies.length; j++) {
         if (diceBodies[j].sleepState !== CANNON.Body.SLEEPING) {
           allSleeping = false;
@@ -754,11 +759,24 @@ function run3DRoll() {
   requestAnimationFrame(animate);
 
   function onSettled() {
+    // Combine D100 pairs (tens + units) into single results
     var results = [];
     var total = 0;
-    for (var i = 0; i < preResults.length; i++) {
-      results.push({ die: dieTypes[i].toUpperCase(), value: preResults[i] });
-      total += preResults[i];
+    var i = 0;
+    while (i < dieTypes.length) {
+      if (dieTypes[i] === 'd100tens' && i + 1 < dieTypes.length && dieTypes[i + 1] === 'd100units') {
+        var tens = preResults[i];
+        var units = preResults[i + 1];
+        var val = tens * 10 + units;
+        if (val === 0) val = 100;
+        results.push({ die: 'D100', value: val });
+        total += val;
+        i += 2;
+      } else {
+        results.push({ die: dieTypes[i].toUpperCase(), value: preResults[i] });
+        total += preResults[i];
+        i++;
+      }
     }
     rolling = false;
     activeOverlay = overlay;

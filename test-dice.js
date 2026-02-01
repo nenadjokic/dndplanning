@@ -22,9 +22,9 @@ function section(name) { console.log('\n═══ ' + name + ' ═══'); }
 /* ── Extracted: makeD10Verts ── */
 function makeD10Verts(r) {
   r = r || 0.8;
-  var poleY = r * 0.88;
-  var ringY = r * 0.31;
-  var ringR = r * 0.77;
+  var poleY = r * 1.1;
+  var ringY = r * 0.30;
+  var ringR = r * 0.62;
   var v = [];
   v.push([0, poleY, 0]);
   for (var i = 0; i < 5; i++) {
@@ -81,10 +81,10 @@ function simulateReadFace(type, upFaceIndex, totalFaces) {
     case 'd10':
       var v = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9][upFaceIndex];
       return v === 0 ? 10 : v;
-    case 'd100':
-      var tens = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90][upFaceIndex];
-      // units are random 0-9, result 0 => 100
-      return tens; // just test the tens digit mapping
+    case 'd100tens':
+      return upFaceIndex; // 0-9 (tens digit)
+    case 'd100units':
+      return upFaceIndex; // 0-9 (units digit)
     case 'd12':
       return upFaceIndex + 1;
     case 'd20':
@@ -267,11 +267,16 @@ section('Face Value Mappings');
   var d10set = new Set(d10vals);
   assert(d10set.size === 10, 'D10 has all 10 unique values (1-10)');
 
-  // D100: tens digit mapping
-  var d100tens = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90];
+  // D100tens: values 0-9 (tens digit)
   for (var i = 0; i < 10; i++) {
-    var val = simulateReadFace('d100', i, 10);
-    assert(val === d100tens[i], 'D100 face ' + i + ' → tens=' + val);
+    var val = simulateReadFace('d100tens', i, 10);
+    assert(val === i, 'D100tens face ' + i + ' → ' + val);
+  }
+
+  // D100units: values 0-9 (units digit)
+  for (var i = 0; i < 10; i++) {
+    var val = simulateReadFace('d100units', i, 10);
+    assert(val === i, 'D100units face ' + i + ' → ' + val);
   }
 
   // D12: values 1-12
@@ -566,93 +571,100 @@ section('D10 Face Normals — Direction Validation');
 section('Physics Parameters');
 (function() {
   // These are the values from the code — document and validate they're reasonable
-  var gravity = -50;
+  var gravity = -80;
   assert(gravity < 0, 'Gravity is negative (downward): ' + gravity);
   assert(Math.abs(gravity) >= 9.8, 'Gravity magnitude >= Earth gravity for snappier feel');
 
-  var linearDamping = 0.3;
-  var angularDamping = 0.3;
+  var linearDamping = 0.4;
+  var angularDamping = 0.4;
   assert(linearDamping < 0.8, 'Linear damping reasonable (' + linearDamping + ')');
   assert(angularDamping < 0.8, 'Angular damping reasonable (' + angularDamping + ')');
 
   var groundFriction = 0.8;
-  var groundRestitution = 0.2;
+  var groundRestitution = 0.15;
   assert(groundFriction > 0.2 && groundFriction <= 1.0, 'Ground friction reasonable: ' + groundFriction);
   assert(groundRestitution > 0.05 && groundRestitution < 0.6, 'Ground restitution reasonable: ' + groundRestitution);
 
-  var sleepSpeedLimit = 0.5;
-  var sleepTimeLimit = 0.15;
+  var sleepSpeedLimit = 1.0;
+  var sleepTimeLimit = 0.08;
   assert(sleepSpeedLimit > 0 && sleepSpeedLimit < 2, 'Sleep speed limit reasonable: ' + sleepSpeedLimit);
-  assert(sleepTimeLimit > 0.05 && sleepTimeLimit < 2, 'Sleep time limit reasonable: ' + sleepTimeLimit);
+  assert(sleepTimeLimit > 0.01 && sleepTimeLimit < 2, 'Sleep time limit reasonable: ' + sleepTimeLimit);
 
-  var throwSpeed = 6; // min
-  var throwSpeedMax = 8; // max (6 + 2)
+  var throwSpeed = 7; // min
+  var throwSpeedMax = 9; // max (7 + 2)
   assert(throwSpeed >= 3, 'Min throw speed gives good momentum: ' + throwSpeed);
   assert(throwSpeedMax <= 12, 'Max throw speed not too extreme: ' + throwSpeedMax);
 })();
 
 // ── 15. Spawn Position Validation ──
-section('Spawn Position — Top-Right Corner');
+section('Spawn Position — Top-Left Corner');
 (function() {
-  // Simulate 100 spawn positions (top-right corner pattern)
+  // Simulate 100 spawn positions (top-left corner pattern)
   var allReasonable = true;
-  var allRightSide = true;
+  var allLeftSide = true;
   for (var trial = 0; trial < 100; trial++) {
     var total = Math.floor(Math.random() * 5) + 1;
-    var spread = 0.6;
-    var px = 3.5 + (Math.random() - 0.5) * spread * total;
-    var pz = -2.5 + (Math.random() - 0.5) * spread * total;
-    var py = 3.0 + Math.random() * 0.5;
+    var spread = 0.5;
+    var px = -4.0 + (Math.random() - 0.5) * spread * Math.min(total, 6);
+    var pz = -2.5 + (Math.random() - 0.5) * spread * Math.min(total, 6);
+    var py = 2.5 + Math.random() * 0.5;
 
-    if (px < 1.0) allRightSide = false;
-    if (py < 2.9 || py > 3.6) allReasonable = false;
+    if (px > -1.0) allLeftSide = false;
+    if (py < 2.4 || py > 3.1) allReasonable = false;
   }
-  assert(allRightSide, 'All 100 spawn positions are on right side (px > 1.0)');
-  assert(allReasonable, 'All 100 spawn positions at correct height (2.9-3.6)');
+  assert(allLeftSide, 'All 100 spawn positions are on left side (px < -1.0)');
+  assert(allReasonable, 'All 100 spawn positions at correct height (2.4-3.1)');
 })();
 
 // ── 16. Throw Velocity Points Toward Center ──
-section('Throw Velocity — Toward Center-Left');
+section('Throw Velocity — Toward Center-Right');
 (function() {
-  var allLeftward = true;
+  var allRightward = true;
   var allDownward = true;
   for (var trial = 0; trial < 100; trial++) {
-    var throwSpeed = 6 + Math.random() * 2;
-    var vx = -throwSpeed + (Math.random() - 0.5) * 2;
-    var vy = -3;
+    var throwSpeed = 7 + Math.random() * 2;
+    var vx = throwSpeed + (Math.random() - 0.5) * 2;
+    var vy = -2;
 
-    // Velocity X should be negative (leftward, toward center from top-right)
-    if (vx > 0) allLeftward = false;
+    // Velocity X should be positive (rightward, toward center from top-left)
+    if (vx < 0) allRightward = false;
     // Velocity Y should be negative (downward)
     if (vy > 0) allDownward = false;
   }
-  assert(allLeftward, 'All 100 throw velocities go leftward (toward center)');
+  assert(allRightward, 'All 100 throw velocities go rightward (toward center)');
   assert(allDownward, 'All 100 throw velocities go downward');
 })();
 
-// ── 17. D100 Result Range ──
-section('D100 Result Range');
+// ── 17. D100 Two-Dice Result Range ──
+section('D100 Two-Dice Result Range');
 (function() {
-  // D100 = tens die (0-90) + random units (0-9), result 0 → 100
-  // Test that all tens values are correct multiples of 10
-  var tensValues = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90];
-  for (var i = 0; i < 10; i++) {
-    assert(tensValues[i] % 10 === 0, 'D100 face ' + i + ' tens value ' + tensValues[i] + ' is multiple of 10');
-  }
-
-  // Simulate 1000 D100 rolls to verify range
+  // D100 = d100tens (0-9) * 10 + d100units (0-9), result 0 → 100
+  // Simulate 1000 D100 rolls using two-dice combination
   var min = Infinity, max = -Infinity;
   for (var trial = 0; trial < 1000; trial++) {
-    var faceIdx = Math.floor(Math.random() * 10);
-    var tens = tensValues[faceIdx];
-    var units = Math.floor(Math.random() * 10);
-    var result = tens + units;
+    var tens = Math.floor(Math.random() * 10); // 0-9
+    var units = Math.floor(Math.random() * 10); // 0-9
+    var result = tens * 10 + units;
     if (result === 0) result = 100;
     if (result < min) min = result;
     if (result > max) max = result;
   }
-  assert(min >= 1, 'D100 min result >= 1 (got ' + min + ')');
-  assert(max <= 100, 'D100 max result <= 100 (got ' + max + ')');
+  assert(min >= 1, 'D100 two-dice min result >= 1 (got ' + min + ')');
+  assert(max <= 100, 'D100 two-dice max result <= 100 (got ' + max + ')');
+
+  // Verify all possible D100 values are reachable
+  var allValues = new Set();
+  for (var t = 0; t < 10; t++) {
+    for (var u = 0; u < 10; u++) {
+      var val = t * 10 + u;
+      if (val === 0) val = 100;
+      allValues.add(val);
+    }
+  }
+  assert(allValues.size === 100, 'D100 two-dice covers all 100 values (1-100)');
+  assert(allValues.has(1), 'D100 can produce 1 (tens=0, units=1)');
+  assert(allValues.has(100), 'D100 can produce 100 (tens=0, units=0)');
+  assert(allValues.has(50), 'D100 can produce 50 (tens=5, units=0)');
 })();
 
 // ── 18. Fallback Random Roll ──
@@ -690,22 +702,19 @@ section('randomResult — Range Validation');
 (function() {
   function randomResult(type) {
     switch (type) {
-      case 'd4':  return Math.floor(Math.random() * 4) + 1;
-      case 'd6':  return Math.floor(Math.random() * 6) + 1;
-      case 'd8':  return Math.floor(Math.random() * 8) + 1;
-      case 'd10': return Math.floor(Math.random() * 10) + 1;
-      case 'd100':
-        var tens = Math.floor(Math.random() * 10) * 10;
-        var units = Math.floor(Math.random() * 10);
-        var r = tens + units;
-        return r === 0 ? 100 : r;
-      case 'd12': return Math.floor(Math.random() * 12) + 1;
-      case 'd20': return Math.floor(Math.random() * 20) + 1;
-      default:    return Math.floor(Math.random() * 6) + 1;
+      case 'd4':        return Math.floor(Math.random() * 4) + 1;
+      case 'd6':        return Math.floor(Math.random() * 6) + 1;
+      case 'd8':        return Math.floor(Math.random() * 8) + 1;
+      case 'd10':       return Math.floor(Math.random() * 10) + 1;
+      case 'd100tens':  return Math.floor(Math.random() * 10); // 0-9
+      case 'd100units': return Math.floor(Math.random() * 10); // 0-9
+      case 'd12':       return Math.floor(Math.random() * 12) + 1;
+      case 'd20':       return Math.floor(Math.random() * 20) + 1;
+      default:          return Math.floor(Math.random() * 6) + 1;
     }
   }
 
-  var types = { 'd4': [1,4], 'd6': [1,6], 'd8': [1,8], 'd10': [1,10], 'd12': [1,12], 'd20': [1,20], 'd100': [1,100] };
+  var types = { 'd4': [1,4], 'd6': [1,6], 'd8': [1,8], 'd10': [1,10], 'd12': [1,12], 'd20': [1,20], 'd100tens': [0,9], 'd100units': [0,9] };
   for (var type in types) {
     var range = types[type];
     var min = Infinity, max = -Infinity;
@@ -726,16 +735,15 @@ section('valueToFaceIndex — Value to Face Mapping');
 (function() {
   function valueToFaceIndex(type, value) {
     switch (type) {
-      case 'd4':  return value - 1;
-      case 'd6':  return [1, 6, 2, 5, 3, 4].indexOf(value);
-      case 'd8':  return value - 1;
-      case 'd10': return value === 10 ? 0 : value;
-      case 'd100':
-        if (value === 100 || value < 10) return 0;
-        return Math.floor(value / 10);
-      case 'd12': return value - 1;
-      case 'd20': return value - 1;
-      default:    return 0;
+      case 'd4':        return value - 1;
+      case 'd6':        return [1, 6, 2, 5, 3, 4].indexOf(value);
+      case 'd8':        return value - 1;
+      case 'd10':       return value === 10 ? 0 : value;
+      case 'd100tens':  return value; // 0-9 maps to face 0-9
+      case 'd100units': return value; // 0-9 maps to face 0-9
+      case 'd12':       return value - 1;
+      case 'd20':       return value - 1;
+      default:          return 0;
     }
   }
 
@@ -761,15 +769,15 @@ section('valueToFaceIndex — Value to Face Mapping');
     assert(valueToFaceIndex('d10', v) === v, 'D10 value ' + v + ' → face ' + v);
   }
 
-  // D100: value-to-face mapping
-  assert(valueToFaceIndex('d100', 100) === 0, 'D100 value 100 → face 0');
-  assert(valueToFaceIndex('d100', 1) === 0, 'D100 value 1 → face 0 (tens=0)');
-  assert(valueToFaceIndex('d100', 9) === 0, 'D100 value 9 → face 0 (tens=0)');
-  assert(valueToFaceIndex('d100', 10) === 1, 'D100 value 10 → face 1 (tens=10)');
-  assert(valueToFaceIndex('d100', 19) === 1, 'D100 value 19 → face 1 (tens=10)');
-  assert(valueToFaceIndex('d100', 50) === 5, 'D100 value 50 → face 5 (tens=50)');
-  assert(valueToFaceIndex('d100', 99) === 9, 'D100 value 99 → face 9 (tens=90)');
-  assert(valueToFaceIndex('d100', 90) === 9, 'D100 value 90 → face 9 (tens=90)');
+  // D100tens: value 0-9 maps to face 0-9
+  for (var v = 0; v <= 9; v++) {
+    assert(valueToFaceIndex('d100tens', v) === v, 'D100tens value ' + v + ' → face ' + v);
+  }
+
+  // D100units: value 0-9 maps to face 0-9
+  for (var v = 0; v <= 9; v++) {
+    assert(valueToFaceIndex('d100units', v) === v, 'D100units value ' + v + ' → face ' + v);
+  }
 
   // D12: values 1-12 → faces 0-11
   for (var v = 1; v <= 12; v++) {
@@ -787,7 +795,7 @@ section('Initial Face Differs From Target');
 (function() {
   // Simulate the logic: pick random initFace != targetFace
   var allDifferent = true;
-  var faceCountsPerType = { 'd4': 4, 'd6': 6, 'd8': 8, 'd10': 10, 'd12': 12, 'd20': 20, 'd100': 10 };
+  var faceCountsPerType = { 'd4': 4, 'd6': 6, 'd8': 8, 'd10': 10, 'd12': 12, 'd20': 20, 'd100tens': 10, 'd100units': 10 };
   for (var type in faceCountsPerType) {
     var totalFaces = faceCountsPerType[type];
     for (var trial = 0; trial < 200; trial++) {
