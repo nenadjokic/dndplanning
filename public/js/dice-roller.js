@@ -19,6 +19,71 @@ var cleanupTimeout = null;
 
 var DIE_TYPES = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100'];
 
+/* ── Procedural dice rolling sound (Web Audio API) ── */
+var audioCtx = null;
+function playDiceSound() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    var ctx = audioCtx;
+    var now = ctx.currentTime;
+    var duration = 1.2;
+
+    // Master gain
+    var master = ctx.createGain();
+    master.gain.setValueAtTime(0.35, now);
+    master.connect(ctx.destination);
+
+    // Number of individual "click" impacts
+    var numClicks = 12 + Math.floor(Math.random() * 6);
+    for (var i = 0; i < numClicks; i++) {
+      // Each click happens at an increasing interval (dice settling)
+      var t = now + (i / numClicks) * duration * (0.3 + 0.7 * (i / numClicks));
+      var clickGain = ctx.createGain();
+      var vol = (1.0 - (i / numClicks) * 0.7) * (0.8 + Math.random() * 0.4);
+      clickGain.gain.setValueAtTime(vol, t);
+      clickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.04 + Math.random() * 0.02);
+      clickGain.connect(master);
+
+      // Noise burst for impact
+      var bufLen = Math.floor(ctx.sampleRate * 0.04);
+      var noiseBuf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+      var data = noiseBuf.getChannelData(0);
+      for (var j = 0; j < bufLen; j++) {
+        data[j] = (Math.random() * 2 - 1);
+      }
+      var noise = ctx.createBufferSource();
+      noise.buffer = noiseBuf;
+
+      // Bandpass filter for wooden thud character
+      var filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(800 + Math.random() * 1200, t);
+      filter.Q.setValueAtTime(1.5 + Math.random() * 2, t);
+      noise.connect(filter);
+      filter.connect(clickGain);
+
+      noise.start(t);
+      noise.stop(t + 0.06);
+
+      // Low resonance for wood surface body (every few clicks)
+      if (i % 3 === 0) {
+        var osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(120 + Math.random() * 80, t);
+        var oscGain = ctx.createGain();
+        oscGain.gain.setValueAtTime(vol * 0.25, t);
+        oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+        osc.connect(oscGain);
+        oscGain.connect(master);
+        osc.start(t);
+        osc.stop(t + 0.06);
+      }
+    }
+  } catch (e) {
+    // Audio not supported — silently ignore
+  }
+}
+
 function totalSelected() {
   var n = 0;
   for (var k in selectedDice) n += selectedDice[k];
@@ -163,6 +228,7 @@ function performRoll() {
   rolling = true;
   hideResults();
   cleanupActiveRoll();
+  playDiceSound();
   var tc = document.createElement('canvas');
   var gl = tc.getContext('webgl') || tc.getContext('experimental-webgl');
   if (!gl || typeof THREE === 'undefined') { fallbackTextRoll(); return; }
