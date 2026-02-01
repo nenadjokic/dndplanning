@@ -1,6 +1,9 @@
   </main>
   <footer class="app-footer">
     <div class="container">
+      <% if (typeof user !== 'undefined' && user) { %>
+        <div class="footer-players" id="active-players"></div>
+      <% } %>
       <div class="footer-about">
         <strong>Quest Planner</strong> v<%= appVersion %> &mdash; Open-source D&D session scheduler
       </div>
@@ -26,13 +29,12 @@
         <div class="whatsnew-content">
           <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">What's New</h3>
           <ul class="whatsnew-list">
-            <li><strong>Dice Roll History</strong> &mdash; Global sidebar showing the last 10 dice rolls from all users; right sidebar on all devices</li>
-            <li><strong>Inactivity fade</strong> &mdash; History gradually fades out over 5 minutes of inactivity; reappears bright on new rolls</li>
-            <li><strong>Auto-polling</strong> &mdash; History refreshes every 10 seconds and immediately after each roll</li>
+            <li><strong>Active Players</strong> &mdash; Footer bar showing who's online with avatars, names, and activity duration; away status after 1 minute of inactivity; disappears after 5 minutes</li>
+            <li><strong>Real-time Dice History</strong> &mdash; When someone rolls dice, all active users see the updated history within ~15 seconds via heartbeat polling</li>
           </ul>
           <h3 style="color: var(--gold); font-size: 0.95rem; margin: 0.75rem 0 0.5rem;">Bug Fixes</h3>
           <ul class="whatsnew-list">
-            <li><strong>iPhone home gesture</strong> &mdash; Removed bottom drawer on mobile; no more accidental app exits</li>
+            <li>None</li>
           </ul>
         </div>
         <div class="whatsnew-links">

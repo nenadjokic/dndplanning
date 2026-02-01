@@ -37,4 +37,29 @@ router.get('/history', requireLogin, (req, res) => {
   res.json({ rolls });
 });
 
+// POST /api/dice/presence/heartbeat — update presence, return active players + last dice roll timestamp
+router.post('/presence/heartbeat', requireLogin, (req, res) => {
+  // Update current user's heartbeat
+  db.prepare("UPDATE users SET last_heartbeat = datetime('now') WHERE id = ?").run(req.user.id);
+
+  // Get players with heartbeat within 5 minutes (active + away)
+  const players = db.prepare(`
+    SELECT username, avatar, last_heartbeat
+    FROM users
+    WHERE last_heartbeat IS NOT NULL
+      AND last_heartbeat > datetime('now', '-5 minutes')
+    ORDER BY username COLLATE NOCASE
+  `).all();
+
+  // Get the most recent dice roll timestamp
+  const lastRoll = db.prepare(`
+    SELECT created_at FROM dice_rolls ORDER BY created_at DESC LIMIT 1
+  `).get();
+
+  res.json({
+    players,
+    lastDiceRollAt: lastRoll ? lastRoll.created_at : null
+  });
+});
+
 module.exports = router;

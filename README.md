@@ -1,6 +1,6 @@
-# Quest Planner v0.9.11 — D&D Session Scheduler
+# Quest Planner v0.9.12 — D&D Session Scheduler
 
-> **Latest release:** v0.9.11 (2026-02-01)
+> **Latest release:** v0.9.12 (2026-02-01)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -596,6 +596,12 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.9.12 (2026-02-01)
+
+- **Active Players footer** — real-time footer bar showing who's currently online with avatars, usernames, and activity duration; players marked "away" after 1 minute of inactivity (dimmed); removed after 5 minutes
+- **Real-time dice history** — heartbeat-driven polling every 15 seconds detects new dice rolls and refreshes the history sidebar for all active users; max ~15s latency instead of 10s fixed polling
+- **Presence heartbeat API** — new `POST /api/dice/presence/heartbeat` endpoint for presence tracking and dice change detection
 
 ### v0.9.11 (2026-02-01)
 

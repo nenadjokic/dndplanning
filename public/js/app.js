@@ -407,6 +407,81 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
+// === Active Players Heartbeat ===
+(function() {
+  var container = document.getElementById('active-players');
+  if (!container) return;
+
+  var lastDiceRollAt = null;
+  var heartbeatStart = {};  // username -> first consecutive heartbeat time
+
+  function formatDuration(ms) {
+    var s = Math.floor(ms / 1000);
+    if (s < 60) return s + 's';
+    var m = Math.floor(s / 60);
+    if (m < 60) return m + 'm';
+    var h = Math.floor(m / 60);
+    return h + 'h';
+  }
+
+  function renderPlayers(players) {
+    var now = new Date();
+    var html = '';
+    for (var i = 0; i < players.length; i++) {
+      var p = players[i];
+      var hb = new Date(p.last_heartbeat + 'Z');
+      var elapsed = now - hb;
+      var isAway = elapsed > 60000; // >60s = away
+
+      // Track first consecutive heartbeat for duration
+      if (!heartbeatStart[p.username]) {
+        heartbeatStart[p.username] = now.getTime();
+      }
+      var duration = now.getTime() - heartbeatStart[p.username];
+
+      var cls = 'footer-player' + (isAway ? ' away' : '');
+      var avatarHtml;
+      if (p.avatar) {
+        avatarHtml = '<img src="' + p.avatar + '" class="footer-player-avatar" alt="">';
+      } else {
+        avatarHtml = '<span class="footer-player-letter">' + p.username.charAt(0).toUpperCase() + '</span>';
+      }
+
+      var statusHtml = isAway ? '<span class="footer-player-status">away</span>' : '<span class="footer-player-status">' + formatDuration(duration) + '</span>';
+
+      html += '<div class="' + cls + '">' + avatarHtml + '<span class="footer-player-name">' + p.username + '</span>' + statusHtml + '</div>';
+    }
+
+    // Clean up stale entries from heartbeatStart
+    var activeNames = {};
+    for (var j = 0; j < players.length; j++) activeNames[players[j].username] = true;
+    for (var name in heartbeatStart) {
+      if (!activeNames[name]) delete heartbeatStart[name];
+    }
+
+    container.innerHTML = html;
+  }
+
+  function sendHeartbeat() {
+    fetch('/api/dice/presence/heartbeat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      if (data.players) renderPlayers(data.players);
+      if (data.lastDiceRollAt && data.lastDiceRollAt !== lastDiceRollAt) {
+        var isFirst = lastDiceRollAt === null;
+        lastDiceRollAt = data.lastDiceRollAt;
+        if (!isFirst) {
+          document.dispatchEvent(new CustomEvent('dice-history-update'));
+        }
+      }
+    }).catch(function() {});
+  }
+
+  sendHeartbeat();
+  setInterval(sendHeartbeat, 15000);
+})();
+
 // Admin: check for updates
 function checkForUpdate() {
   var resultDiv = document.getElementById('update-result');

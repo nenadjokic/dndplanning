@@ -30,7 +30,8 @@ const alterStatements = [
   "ALTER TABLE users ADD COLUMN character_avatar TEXT",
   "ALTER TABLE sessions ADD COLUMN location_id INTEGER REFERENCES map_locations(id)",
   "ALTER TABLE users ADD COLUMN last_seen_version TEXT",
-  "ALTER TABLE dm_tools ADD COLUMN thumbnail TEXT"
+  "ALTER TABLE dm_tools ADD COLUMN thumbnail TEXT",
+  "ALTER TABLE users ADD COLUMN last_heartbeat TEXT"
 ];
 
 for (const sql of alterStatements) {

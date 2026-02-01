@@ -98,6 +98,11 @@ function buildDOM() {
   fetchHistory();
   historyPollTimer = setInterval(fetchHistory, 10000);
   historyFadeTimer = setInterval(applyInactivityFade, 3000);
+
+  // Listen for real-time dice history updates from heartbeat
+  document.addEventListener('dice-history-update', function() {
+    fetchHistory();
+  });
 }
 
 function bindEvents() {
