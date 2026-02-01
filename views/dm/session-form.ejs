@@ -49,7 +49,7 @@
       <select id="location_id" name="location_id">
         <option value="">-- No location --</option>
         <% for (const loc of mapLocations) { %>
-          <option value="<%= loc.id %>"><%= loc.name %></option>
+          <option value="<%= loc.id %>"><%= loc.map_name ? loc.map_name + ' — ' : '' %><%= loc.name %></option>
         <% } %>
       </select>
     </div>

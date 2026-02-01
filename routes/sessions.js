@@ -17,7 +17,7 @@ router.get('/new', requireLogin, requireDM, (req, res) => {
     ORDER BY u.date
   `).all(today);
 
-  const mapLocations = db.prepare('SELECT id, name FROM map_locations ORDER BY name').all();
+  const mapLocations = db.prepare('SELECT ml.id, ml.name, m.name as map_name FROM map_locations ml LEFT JOIN maps m ON ml.map_id = m.id ORDER BY m.name, ml.name').all();
 
   res.render('dm/session-form', { session: null, slots: [], unavailabilities, mapLocations });
 });

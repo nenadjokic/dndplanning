@@ -1,4 +1,4 @@
-var CACHE_NAME = 'quest-planner-v1';
+var CACHE_NAME = 'quest-planner-v2';
 var OFFLINE_URL = '/offline.html';
 
 var PRECACHE_URLS = [
@@ -59,6 +59,8 @@ self.addEventListener('push', function(event) {
       body: data.body,
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
+      tag: 'qp-' + Date.now(),
+      renotify: true,
       data: { url: data.url || '/' }
     })
   );

@@ -66,7 +66,7 @@ if (tableInfo && tableInfo.sql && !tableInfo.sql.includes('completed')) {
   db.pragma('foreign_keys = ON');
 }
 
-// Map tables
+// Map tables (legacy + multi-map)
 db.exec(`
   CREATE TABLE IF NOT EXISTS map_locations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -87,6 +87,33 @@ db.exec(`
   );
   INSERT OR IGNORE INTO map_config (id) VALUES (1);
 `);
+
+// Multi-map system
+db.exec(`
+  CREATE TABLE IF NOT EXISTS maps (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    image_path TEXT,
+    party_x REAL DEFAULT 50,
+    party_y REAL DEFAULT 50,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+// Add map_id column to map_locations (idempotent)
+try { db.exec("ALTER TABLE map_locations ADD COLUMN map_id INTEGER REFERENCES maps(id)"); } catch (e) { /* already exists */ }
+
+// Migrate existing data from map_config to maps table
+const existingMaps = db.prepare('SELECT COUNT(*) as count FROM maps').get();
+if (existingMaps.count === 0) {
+  const oldConfig = db.prepare('SELECT * FROM map_config WHERE id = 1').get();
+  if (oldConfig && oldConfig.image_path) {
+    const result = db.prepare('INSERT INTO maps (name, image_path, party_x, party_y) VALUES (?, ?, ?, ?)')
+      .run('World Map', oldConfig.image_path, oldConfig.party_x, oldConfig.party_y);
+    db.prepare('UPDATE map_locations SET map_id = ? WHERE map_id IS NULL').run(result.lastInsertRowid);
+  }
+}
 
 // Loot tracker table
 db.exec(`

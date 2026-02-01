@@ -158,6 +158,15 @@ h3 { font-size: 1.25rem; }
   font-family: var(--font-heading);
   font-size: 1.5rem;
   color: var(--gold);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.nav-brand-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
 }
 
 .nav-brand:hover {

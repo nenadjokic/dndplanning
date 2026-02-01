@@ -1,6 +1,6 @@
-# Quest Planner v0.7.5.1 — D&D Session Scheduler
+# Quest Planner v0.7.5.2 — D&D Session Scheduler
 
-> **Latest release:** v0.7.5.1 (2026-02-01)
+> **Latest release:** v0.7.5.2 (2026-02-01)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -65,7 +65,7 @@ If you enjoy Quest Planner, consider buying me a coffee:
 - **Unavailability Days** — Players mark dates they can't play; DM sees these when creating sessions
 - **Calendar Feed (iCal)** — Personal feed (sessions + unavailability) and public sessions-only feed
 - **Omni-Channel Notifications** — Broadcast session events (created, confirmed, cancelled, reopened, completed, recap) to Discord, Telegram, or Viber; configured per-guild in Guild Settings
-- **World Map** — Interactive Leaflet.js map at `/map` with custom image upload, location pins (city, dungeon, tavern), draggable party marker, click-to-add locations
+- **Multiple Maps** — Create and manage multiple interactive Leaflet.js maps at `/map` with custom image upload, location pins (city, dungeon, tavern), draggable party marker, click-to-add locations
 - **Party Inventory (Loot Tracker)** — Shared inventory at `/loot` with categories (weapon, armor, potion, quest, gold, item), item assignment to players, quest item highlights
 - **Session Analytics** — Chart.js dashboard at `/analytics` with sessions-per-month, preferred day, player attendance %, streak counter, and summary stats
 - **Session Locations** — Optional location dropdown on session creation, linking sessions to map locations
@@ -418,15 +418,17 @@ All users can access **Settings** (pencil icon in the nav bar) to:
   - Being mentioned with `@yourusername` in any post, reply, or comment
 - Notifications auto-poll every 30 seconds
 
-### World Map
+### Maps
 
-- Click **"World Map"** in the hamburger menu to view the interactive map
+- Click **"Maps"** in the hamburger menu to view the maps index
+- Create multiple maps, each with their own name, image, locations, and party marker
+- Click a map name or thumbnail to view the interactive Leaflet.js map
 - **DM/Admin**: click anywhere on the map to add a location (name, description, icon type)
 - **DM/Admin**: drag the gold party marker to update the party's current position
-- **Admin**: upload a custom map image (JPG, PNG, GIF, WebP, max 5MB)
+- **DM/Admin**: upload a custom map image (JPG, PNG, GIF, WebP, max 5MB)
 - Default: a parchment placeholder is shown until a map image is uploaded
 - Location pins are color-coded: red (pin), blue (city), purple (dungeon), green (tavern)
-- When creating a session, DMs can optionally link it to a map location
+- When creating a session, DMs can optionally link it to a map location (shows map name alongside location name)
 
 ### Party Inventory (Loot Tracker)
 
@@ -507,7 +509,7 @@ dndplanning/
 │   ├── sessions.js        # Session CRUD, slot confirmation, recap, comments, replies
 │   ├── settings.js        # User settings (theme, time, password, unavailability, calendar)
 │   ├── votes.js           # Player voting
-│   ├── map.js             # World map locations, party marker, image upload
+│   ├── map.js             # Multiple maps, locations, party marker, image upload
 │   ├── loot.js            # Party inventory (loot tracker)
 │   ├── analytics.js       # Session analytics and charts
 │   └── dm-tools.js        # DM Tools streamdeck page
@@ -521,7 +523,8 @@ dndplanning/
 │   ├── players.ejs        # Guild members directory page
 │   ├── profile.ejs        # Edit own profile page
 │   ├── profile-public.ejs # Public read-only profile page
-│   ├── map.ejs            # World map page (Leaflet.js)
+│   ├── maps.ejs           # Maps index page
+│   ├── map.ejs            # Single map view (Leaflet.js)
 │   ├── loot.ejs           # Party inventory page
 │   ├── analytics.ejs      # Session analytics page (Chart.js)
 │   ├── pwa.ejs            # PWA installation instructions page
@@ -590,6 +593,18 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.7.5.2 (2026-02-01)
+
+- **Multiple Maps** — replaced single World Map with a multi-map system; create and manage multiple maps, each with their own name, image, locations, and party marker
+- **Maps index page** — new `/map` listing page with thumbnails, names, and links to individual maps; DMs can create new maps and admins can delete them
+- **Auto-migration** — existing World Map data (image, locations, party position) is automatically migrated to the new multi-map system on first startup
+- **App icon in header** — Quest Planner icon now displayed in the navigation bar next to the app name
+- **Welcome modal icon** — app icon shown in the first-login welcome popup above the "Enter the Tavern" button
+- **iOS push notification fixes** — unique notification tags (`renotify: true`), VAPID subject validation for Safari, service worker cache bump to force re-registration, `purpose: "any maskable"` on manifest icons
+- **iOS troubleshooting guide** — new section on the Install App page with step-by-step iOS push notification troubleshooting
+- **Location dropdown with map name** — session creation location selector now shows "Map Name — Location Name" for clarity across multiple maps
+- **DB migration** — added `maps` table and `map_id` column on `map_locations`
 
 ### v0.7.5.1 (2026-02-01)
 

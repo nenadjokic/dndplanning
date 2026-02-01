@@ -1,10 +1,10 @@
-<%- include('partials/head', { pageTitle: 'World Map' }) %>
+<%- include('partials/head', { pageTitle: map.name }) %>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <div class="page-header">
-  <h1>World Map</h1>
+  <h1><%= map.name %></h1>
   <div>
     <button type="button" class="btn btn-outline btn-small" id="map-fullscreen-btn" title="Fullscreen">
       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
@@ -13,14 +13,14 @@
     <% if (isDM) { %>
       <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('upload-form').style.display = document.getElementById('upload-form').style.display === 'none' ? 'block' : 'none'">Upload Map</button>
     <% } %>
-    <a href="/" class="btn btn-outline btn-small">Back to Chamber</a>
+    <a href="/map" class="btn btn-outline btn-small">All Maps</a>
   </div>
 </div>
 
 <% if (isDM) { %>
   <div id="upload-form" style="display:none; margin-bottom: 1rem;">
     <div class="card">
-      <form action="/map/upload" method="POST" enctype="multipart/form-data">
+      <form action="/map/<%= map.id %>/upload" method="POST" enctype="multipart/form-data">
         <div class="form-group">
           <label for="map_image">Map Image (JPG, PNG, GIF, WebP &mdash; max 5MB)</label>
           <input type="file" name="map_image" id="map_image" accept="image/*">
@@ -42,7 +42,7 @@
 <div id="map-add-modal" class="map-add-form" style="display:none;">
   <div class="card" style="max-width: 400px; margin: 0 auto;">
     <h3>Add Location</h3>
-    <form action="/map/locations" method="POST">
+    <form action="/map/<%= map.id %>/locations" method="POST">
       <input type="hidden" name="x" id="add-loc-x">
       <input type="hidden" name="y" id="add-loc-y">
       <div class="form-group">
@@ -100,7 +100,7 @@
               <td>
                 <div style="display: flex; gap: 0.25rem;">
                   <button type="button" class="btn btn-small btn-outline" data-table-edit-loc="<%= loc.id %>">Edit</button>
-                  <form action="/map/locations/<%= loc.id %>/delete" method="POST" class="inline-form">
+                  <form action="/map/<%= map.id %>/locations/<%= loc.id %>/delete" method="POST" class="inline-form">
                     <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this location?')">&times;</button>
                   </form>
                 </div>
@@ -148,13 +148,13 @@
 <script>
 (function() {
   var locations = <%- JSON.stringify(locations) %>;
-  var config = <%- JSON.stringify(config) %>;
+  var mapData = <%- JSON.stringify(map) %>;
   var isDM = <%= isDM ? 'true' : 'false' %>;
-  var mapImagePath = config && config.image_path ? '/maps/' + config.image_path : null;
+  var mapImagePath = mapData.image_path ? '/maps/' + mapData.image_path : null;
 
   var imgW = 1000, imgH = 700;
 
-  var map = L.map('map-container', {
+  var leafletMap = L.map('map-container', {
     crs: L.CRS.Simple,
     minZoom: -1,
     maxZoom: 3,
@@ -165,7 +165,7 @@
   var bounds = [[0, 0], [imgH, imgW]];
 
   if (mapImagePath) {
-    L.imageOverlay(mapImagePath, bounds).addTo(map);
+    L.imageOverlay(mapImagePath, bounds).addTo(leafletMap);
   } else {
     var svgPlaceholder = '<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="700" viewBox="0 0 1000 700">'
       + '<rect fill="#d4c5a9" width="1000" height="700"/>'
@@ -182,10 +182,10 @@
       + '</g>'
       + '</svg>';
     var svgUrl = 'data:image/svg+xml;base64,' + btoa(svgPlaceholder);
-    L.imageOverlay(svgUrl, bounds).addTo(map);
+    L.imageOverlay(svgUrl, bounds).addTo(leafletMap);
   }
 
-  map.fitBounds(bounds);
+  leafletMap.fitBounds(bounds);
 
   var iconColors = { pin: '#c0392b', city: '#2980b9', dungeon: '#8e44ad', tavern: '#27ae60', party: '#d4a843' };
 
@@ -213,20 +213,18 @@
     return d.innerHTML;
   }
 
-  // Build a lookup for edit by ID (avoids string escaping issues in popups)
   var locById = {};
   locations.forEach(function(loc) { locById[loc.id] = loc; });
 
-  // Add location markers
   locations.forEach(function(loc) {
     var ll = pctToLatLng(loc.x, loc.y);
-    var marker = L.marker(ll, { icon: makeIcon(loc.icon) }).addTo(map);
+    var marker = L.marker(ll, { icon: makeIcon(loc.icon) }).addTo(leafletMap);
     var popupContent = '<strong>' + escHtml(loc.name) + '</strong>';
     if (loc.description) popupContent += '<br>' + escHtml(loc.description);
     if (isDM) {
       popupContent += '<div style="margin-top:0.5rem; display:flex; gap:0.25rem;">'
         + '<button type="button" class="btn btn-small btn-outline" data-edit-loc="' + loc.id + '" style="font-size:0.75rem;padding:0.2rem 0.5rem;">Edit</button>'
-        + '<form action="/map/locations/' + loc.id + '/delete" method="POST">'
+        + '<form action="/map/<%= map.id %>/locations/' + loc.id + '/delete" method="POST">'
         + '<button type="submit" class="btn btn-small btn-danger" onclick="return confirm(\'Delete this location?\')" style="font-size:0.75rem;padding:0.2rem 0.5rem;">Delete</button></form>'
         + '</div>';
     }
@@ -243,9 +241,8 @@
     });
   });
 
-  // Add party marker
-  var partyX = config ? config.party_x : 50;
-  var partyY = config ? config.party_y : 50;
+  var partyX = mapData.party_x || 50;
+  var partyY = mapData.party_y || 50;
   var partyLL = pctToLatLng(partyX, partyY);
   var partyIcon = L.divIcon({
     className: 'map-marker-icon',
@@ -253,20 +250,20 @@
     iconSize: [18, 18],
     iconAnchor: [9, 9]
   });
-  var partyMarker = L.marker(partyLL, { icon: partyIcon, draggable: isDM }).addTo(map);
+  var partyMarker = L.marker(partyLL, { icon: partyIcon, draggable: isDM }).addTo(leafletMap);
   partyMarker.bindPopup('<strong>Party Location</strong>');
 
   if (isDM) {
     partyMarker.on('dragend', function() {
       var pct = latLngToPct(partyMarker.getLatLng());
-      fetch('/map/party', {
+      fetch('/map/<%= map.id %>/party', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ x: pct.x, y: pct.y })
       });
     });
 
-    map.on('click', function(e) {
+    leafletMap.on('click', function(e) {
       var pct = latLngToPct(e.latlng);
       if (pct.x < 0 || pct.x > 100 || pct.y < 0 || pct.y > 100) return;
       document.getElementById('add-loc-x').value = pct.x.toFixed(2);
@@ -277,7 +274,6 @@
     });
   }
 
-  // Fullscreen toggle
   var wrapper = document.getElementById('map-wrapper');
   var fsBtn = document.getElementById('map-fullscreen-btn');
   var isFullscreen = false;
@@ -291,7 +287,7 @@
       wrapper.classList.remove('map-fullscreen');
       fsBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg> Fullscreen';
     }
-    setTimeout(function() { map.invalidateSize(); }, 100);
+    setTimeout(function() { leafletMap.invalidateSize(); }, 100);
   });
 
   document.addEventListener('keydown', function(e) {
@@ -300,7 +296,6 @@
     }
   });
 
-  // Table edit buttons — use event delegation to avoid inline escaping issues
   document.addEventListener('click', function(e) {
     var btn = e.target.closest('[data-table-edit-loc]');
     if (btn) {
@@ -309,15 +304,13 @@
       if (l) openEditLocation(l.id, l.name, l.description || '', l.icon);
     }
 
-    // Center map on location when pin icon clicked
     var pinBtn = e.target.closest('[data-center-loc]');
     if (pinBtn) {
       var locId = parseInt(pinBtn.getAttribute('data-center-loc'), 10);
       var loc = locById[locId];
       if (loc) {
         var ll = pctToLatLng(loc.x, loc.y);
-        map.setView(ll, 1, { animate: true });
-        // Exit fullscreen if not active, scroll to map
+        leafletMap.setView(ll, 1, { animate: true });
         document.getElementById('map-wrapper').scrollIntoView({ behavior: 'smooth' });
       }
     }
@@ -326,7 +319,7 @@
 
 <% if (isDM) { %>
 function openEditLocation(id, name, desc, icon) {
-  document.getElementById('edit-loc-form').action = '/map/locations/' + id + '/edit';
+  document.getElementById('edit-loc-form').action = '/map/<%= map.id %>/locations/' + id + '/edit';
   document.getElementById('edit-loc-name').value = name;
   document.getElementById('edit-loc-desc').value = desc;
   document.getElementById('edit-loc-icon').value = icon;

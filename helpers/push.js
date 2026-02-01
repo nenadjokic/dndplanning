@@ -12,7 +12,15 @@ class PushService {
       const vapid = db.prepare('SELECT * FROM vapid_config WHERE id = 1').get();
       if (vapid) {
         const notifConfig = db.prepare('SELECT public_url FROM notification_config WHERE id = 1').get();
-        const subject = (notifConfig && notifConfig.public_url) ? notifConfig.public_url : 'mailto:questplanner@example.com';
+        let subject = 'mailto:questplanner@example.com';
+        if (notifConfig && notifConfig.public_url) {
+          const url = notifConfig.public_url;
+          if (url.startsWith('https://') || url.startsWith('mailto:')) {
+            subject = url;
+          } else if (url.startsWith('http://')) {
+            subject = url.replace('http://', 'https://');
+          }
+        }
         webpush.setVapidDetails(subject, vapid.public_key, vapid.private_key);
         this._configured = true;
       }
