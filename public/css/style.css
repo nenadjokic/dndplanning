@@ -22,6 +22,7 @@
   --border: #3a3a50;
   --radius: 8px;
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --bg-input: #2a2a3e;
   --font-heading: 'MedievalSharp', cursive;
   --font-body: 'Crimson Text', serif;
 }
@@ -39,6 +40,7 @@
   --gold-dim: #c4a55a;
   --border: #d4c9b5;
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --bg-input: #fff;
 }
 
 [data-theme="light"] .nav {
@@ -392,12 +394,48 @@ h3 { font-size: 1.25rem; }
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 70vh;
+  min-height: 80vh;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-page::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(ellipse at 20% 80%, rgba(212, 168, 67, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(212, 168, 67, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 100%, rgba(160, 120, 48, 0.08) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .auth-card {
   width: 100%;
   max-width: 420px;
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgba(212, 168, 67, 0.2);
+  -webkit-box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 60px rgba(212, 168, 67, 0.05);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 60px rgba(212, 168, 67, 0.05);
+}
+
+.auth-logo-wrap {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.auth-logo {
+  display: inline-block;
+  width: 96px;
+  height: 96px;
+  border-radius: 16px;
+  -webkit-box-shadow: 0 4px 20px rgba(212, 168, 67, 0.3);
+  box-shadow: 0 4px 20px rgba(212, 168, 67, 0.3);
 }
 
 .auth-card h1 {
@@ -415,6 +453,77 @@ h3 { font-size: 1.25rem; }
   text-align: center;
   margin-top: 1.25rem;
   color: var(--text-secondary);
+}
+
+/* Tavern fire glow particles */
+.tavern-embers {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.ember {
+  position: absolute;
+  bottom: -10px;
+  width: 3px;
+  height: 3px;
+  background: var(--gold);
+  border-radius: 50%;
+  opacity: 0;
+  -webkit-animation: ember-rise linear infinite;
+  animation: ember-rise linear infinite;
+}
+
+.ember:nth-child(1) { left: 15%; -webkit-animation-duration: 6s; animation-duration: 6s; -webkit-animation-delay: 0s; animation-delay: 0s; }
+.ember:nth-child(2) { left: 30%; -webkit-animation-duration: 8s; animation-duration: 8s; -webkit-animation-delay: 1s; animation-delay: 1s; width: 2px; height: 2px; }
+.ember:nth-child(3) { left: 50%; -webkit-animation-duration: 7s; animation-duration: 7s; -webkit-animation-delay: 2s; animation-delay: 2s; }
+.ember:nth-child(4) { left: 70%; -webkit-animation-duration: 9s; animation-duration: 9s; -webkit-animation-delay: 0.5s; animation-delay: 0.5s; width: 2px; height: 2px; }
+.ember:nth-child(5) { left: 85%; -webkit-animation-duration: 6.5s; animation-duration: 6.5s; -webkit-animation-delay: 3s; animation-delay: 3s; }
+.ember:nth-child(6) { left: 40%; -webkit-animation-duration: 10s; animation-duration: 10s; -webkit-animation-delay: 1.5s; animation-delay: 1.5s; width: 2px; height: 2px; }
+.ember:nth-child(7) { left: 60%; -webkit-animation-duration: 7.5s; animation-duration: 7.5s; -webkit-animation-delay: 4s; animation-delay: 4s; }
+.ember:nth-child(8) { left: 25%; -webkit-animation-duration: 8.5s; animation-duration: 8.5s; -webkit-animation-delay: 2.5s; animation-delay: 2.5s; width: 2px; height: 2px; }
+
+@-webkit-keyframes ember-rise {
+  0%   { bottom: -10px; opacity: 0; -webkit-transform: translateX(0); }
+  10%  { opacity: 0.4; }
+  50%  { opacity: 0.15; }
+  100% { bottom: 100vh; opacity: 0; -webkit-transform: translateX(20px); }
+}
+
+@keyframes ember-rise {
+  0%   { bottom: -10px; opacity: 0; transform: translateX(0); }
+  10%  { opacity: 0.4; }
+  50%  { opacity: 0.15; }
+  100% { bottom: 100vh; opacity: 0; transform: translateX(20px); }
+}
+
+/* Warm glow at bottom of auth page */
+.tavern-glow {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 200px;
+  background: linear-gradient(to top, rgba(212, 168, 67, 0.04) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 0;
+  -webkit-animation: glow-pulse 4s ease-in-out infinite;
+  animation: glow-pulse 4s ease-in-out infinite;
+}
+
+@-webkit-keyframes glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
 /* === Forms === */
@@ -2270,6 +2379,9 @@ h3 { font-size: 1.25rem; }
 }
 
 .sheet-tab {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
   background: none;
   border: none;
   border-bottom: 3px solid transparent;
@@ -2278,8 +2390,11 @@ h3 { font-size: 1.25rem; }
   font-size: 1rem;
   padding: 0.6rem 1.2rem;
   cursor: pointer;
+  -webkit-transition: all 0.2s;
   transition: all 0.2s;
   margin-bottom: -2px;
+  outline: none;
+  white-space: nowrap;
 }
 
 .sheet-tab:hover {
@@ -2300,10 +2415,17 @@ h3 { font-size: 1.25rem; }
 }
 
 .sheet-header-grid {
+  display: -webkit-grid;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.75rem;
   margin-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .sheet-header-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .sheet-header-grid input[type="text"] {
@@ -2323,9 +2445,16 @@ h3 { font-size: 1.25rem; }
 }
 
 .sheet-main-grid {
+  display: -webkit-grid;
   display: grid;
   grid-template-columns: 180px 260px 1fr;
   gap: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .sheet-main-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .sheet-col h3 {
@@ -2776,6 +2905,8 @@ h3 { font-size: 1.25rem; }
 
 /* === Characters Grid (Profile) === */
 .characters-grid {
+  display: -webkit-box;
+  display: -webkit-flex;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 1rem;
@@ -2784,10 +2915,14 @@ h3 { font-size: 1.25rem; }
 .character-card {
   background: var(--bg-card);
   border: 2px solid var(--border);
+  -webkit-border-radius: var(--radius);
   border-radius: var(--radius);
   padding: 1rem;
   text-align: center;
+  -webkit-transition: border-color 0.2s, transform 0.2s;
   transition: border-color 0.2s, transform 0.2s;
+  -webkit-box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .character-card:hover {

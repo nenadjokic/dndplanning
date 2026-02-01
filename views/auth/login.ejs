@@ -1,7 +1,22 @@
 <%- include('../partials/head', { pageTitle: 'Enter the Tavern' }) %>
 
 <div class="auth-page">
+  <div class="tavern-embers">
+    <div class="ember"></div>
+    <div class="ember"></div>
+    <div class="ember"></div>
+    <div class="ember"></div>
+    <div class="ember"></div>
+    <div class="ember"></div>
+    <div class="ember"></div>
+    <div class="ember"></div>
+  </div>
+  <div class="tavern-glow"></div>
+
   <div class="card auth-card">
+    <div class="auth-logo-wrap">
+      <img src="/icons/icon-192.png" alt="Quest Planner" class="auth-logo">
+    </div>
     <h1>Enter the Tavern</h1>
     <p class="subtitle">Sign in to join the quest planning</p>
     <form action="/login" method="POST">

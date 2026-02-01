@@ -24,11 +24,16 @@
       <div class="welcome-modal whatsnew-modal">
         <h2>What's New in v<%= appVersion %></h2>
         <div class="whatsnew-content">
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">What's New</h3>
           <ul class="whatsnew-list">
-            <li><strong>D&amp;D 5e Character Sheet</strong> &mdash; Full character sheet with 3 tabs (Stats &amp; Combat, Biography, Spellcasting); edit your own sheet or view others read-only</li>
-            <li><strong>Sheet on Profile Cards</strong> &mdash; "Create Sheet" / "View Sheet" buttons on your character cards; "Character Sheet Available" indicator on public profiles</li>
-            <li><strong>Sheet on Character Detail</strong> &mdash; "View Character Sheet" button on character detail pages for read-only access</li>
-            <li><strong>Visual Polish</strong> &mdash; Removed nav bar icon; refined character class/race styling with smaller gold text</li>
+            <li><strong>Tavern Login Page</strong> &mdash; Redesigned login with Quest Planner logo, warm ambient glow, and floating ember particles for a cozy tavern atmosphere</li>
+          </ul>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin: 0.75rem 0 0.5rem;">Bug Fixes</h3>
+          <ul class="whatsnew-list">
+            <li><strong>Safari Character Grid</strong> &mdash; Fixed characters not displaying in grid layout on Safari (MacBook); added missing CSS variable and vendor prefixes</li>
+            <li><strong>Character Card Outlines</strong> &mdash; Fixed missing card outlines/shadows on Safari by adding cross-browser box-shadow</li>
+            <li><strong>Character Sheet Tabs</strong> &mdash; Fixed tabs appearing as plain buttons on desktop Safari and Chrome; tabs now render correctly as tab controls on all platforms</li>
+            <li><strong>Sheet Layout</strong> &mdash; Improved character sheet responsive grid with better breakpoints for medium screens</li>
           </ul>
         </div>
         <div class="whatsnew-links">

@@ -1,6 +1,6 @@
-# Quest Planner v0.8.0 — D&D Session Scheduler
+# Quest Planner v0.8.1 — D&D Session Scheduler
 
-> **Latest release:** v0.8.0 (2026-02-01)
+> **Latest release:** v0.8.1 (2026-02-01)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -594,6 +594,15 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.8.1 (2026-02-01)
+
+- **Tavern Login Page** — redesigned login page with Quest Planner logo above the "Enter the Tavern" heading, warm ambient glow effect, and floating ember particles for a cozy tavern atmosphere
+- **Fix: Safari character grid** — characters were not displayed in grid layout on Safari (MacBook); added missing `--bg-input` CSS variable and `-webkit-` vendor prefixes for cross-browser grid support
+- **Fix: Character card outlines** — card outline/shadow was missing on Safari; added explicit `box-shadow` with vendor prefixes
+- **Fix: Character sheet tabs** — tab buttons appeared as plain OS buttons on desktop Safari and Chrome instead of styled tabs; added `appearance: none` and `-webkit-appearance: none` resets
+- **Fix: Character sheet layout** — added intermediate responsive breakpoint (900px) for medium-width screens so the sheet doesn't jump directly from 3-column to 1-column layout
+- **Improved sheet header grid** — added 768px breakpoint for 2-column header on tablets
 
 ### v0.8.0 (2026-02-01)
 
