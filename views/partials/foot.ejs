@@ -26,12 +26,14 @@
         <div class="whatsnew-content">
           <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">What's New</h3>
           <ul class="whatsnew-list">
-            <li><strong>Dice-Dice Collisions</strong> &mdash; Multiple dice now physically collide and bounce off each other using SAP broadphase</li>
-            <li><strong>Pre-determined Rolls</strong> &mdash; Each die starts showing a different number than the final result, then rolls to its target face with a smooth slerp correction</li>
+            <li><strong>Two-Phase Animation</strong> &mdash; Pure physics runs first for natural trajectories with inertia, then a smooth 400ms slerp corrects to the final result</li>
+            <li><strong>Real Dice-Dice Collisions</strong> &mdash; Dice now properly bounce off each other with dedicated contact materials</li>
+            <li><strong>Even Spawn Distribution</strong> &mdash; Multiple dice spread evenly around the play area for natural convergence and collision</li>
           </ul>
           <h3 style="color: var(--gold); font-size: 0.95rem; margin: 0.75rem 0 0.5rem;">Bug Fixes</h3>
           <ul class="whatsnew-list">
-            <li><strong>No More Ghost Dice</strong> &mdash; Dice can no longer pass through each other; proper collision response with friction and bounce</li>
+            <li><strong>D10/D100 Shape</strong> &mdash; Rebalanced pentagonal trapezohedron proportions for a proper D10 look</li>
+            <li><strong>Visible Face Transitions</strong> &mdash; Lower angular velocity so you can see faces change during the roll</li>
           </ul>
         </div>
         <div class="whatsnew-links">

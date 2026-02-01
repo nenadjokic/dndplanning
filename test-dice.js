@@ -22,17 +22,20 @@ function section(name) { console.log('\n═══ ' + name + ' ═══'); }
 /* ── Extracted: makeD10Verts ── */
 function makeD10Verts(r) {
   r = r || 0.8;
+  var poleY = r * 0.88;
+  var ringY = r * 0.31;
+  var ringR = r * 0.77;
   var v = [];
-  v.push([0, r * 1.1, 0]);
+  v.push([0, poleY, 0]);
   for (var i = 0; i < 5; i++) {
     var a = i * 2 * Math.PI / 5;
-    v.push([r * 0.72 * Math.cos(a), r * 0.28, r * 0.72 * Math.sin(a)]);
+    v.push([ringR * Math.cos(a), ringY, ringR * Math.sin(a)]);
   }
   for (var i = 0; i < 5; i++) {
     var a = (i * 2 * Math.PI / 5) + (Math.PI / 5);
-    v.push([r * 0.72 * Math.cos(a), -r * 0.28, r * 0.72 * Math.sin(a)]);
+    v.push([ringR * Math.cos(a), -ringY, ringR * Math.sin(a)]);
   }
-  v.push([0, -r * 1.1, 0]);
+  v.push([0, -poleY, 0]);
   return v;
 }
 
@@ -567,18 +570,18 @@ section('Physics Parameters');
   assert(gravity < 0, 'Gravity is negative (downward): ' + gravity);
   assert(Math.abs(gravity) >= 9.8, 'Gravity magnitude >= Earth gravity for snappier feel');
 
-  var linearDamping = 0.05;
-  var angularDamping = 0.15;
+  var linearDamping = 0.01;
+  var angularDamping = 0.05;
   assert(linearDamping < 0.5, 'Linear damping is low (' + linearDamping + ') — dice travel freely');
   assert(angularDamping < 0.5, 'Angular damping is low (' + angularDamping + ') — dice spin freely');
 
-  var groundFriction = 0.5;
-  var groundRestitution = 0.3;
+  var groundFriction = 0.6;
+  var groundRestitution = 0.35;
   assert(groundFriction > 0.2 && groundFriction < 1.0, 'Ground friction reasonable: ' + groundFriction);
   assert(groundRestitution > 0.1 && groundRestitution < 0.6, 'Ground restitution reasonable: ' + groundRestitution);
 
-  var sleepSpeedLimit = 0.15;
-  var sleepTimeLimit = 0.4;
+  var sleepSpeedLimit = 0.08;
+  var sleepTimeLimit = 0.6;
   assert(sleepSpeedLimit > 0 && sleepSpeedLimit < 1, 'Sleep speed limit reasonable: ' + sleepSpeedLimit);
   assert(sleepTimeLimit > 0.1 && sleepTimeLimit < 2, 'Sleep time limit reasonable: ' + sleepTimeLimit);
 
@@ -600,12 +603,12 @@ section('Spawn Position — Edge Spawn Pattern');
     var angle = Math.random() * Math.PI * 2;
     var px = Math.cos(angle) * spawnDist + (Math.random() - 0.5);
     var pz = Math.sin(angle) * spawnDist + (Math.random() - 0.5);
-    var py = 2.0 + Math.random() * 1.0;
+    var py = 1.5 + Math.random() * 0.5;
 
     var dist = Math.sqrt(px*px + pz*pz);
     if (dist < 2.5) allOutside = false;
     if (dist > 5.0) allReasonable = false;
-    if (py < 1.9 || py > 3.1) allReasonable = false;
+    if (py < 1.4 || py > 2.1) allReasonable = false;
   }
   assert(allOutside, 'All 100 spawn positions are outside center zone (dist > 2.5)');
   assert(allReasonable, 'All 100 spawn positions within bounds (dist < 5, height 1.9-3.1)');
@@ -617,9 +620,9 @@ section('Throw Velocity — Toward Center');
   var allTowardCenter = true;
   for (var trial = 0; trial < 100; trial++) {
     var angle = Math.random() * Math.PI * 2;
-    var throwSpeed = 6 + Math.random() * 4;
-    var vx = -Math.cos(angle) * throwSpeed + (Math.random() - 0.5) * 3;
-    var vz = -Math.sin(angle) * throwSpeed + (Math.random() - 0.5) * 3;
+    var throwSpeed = 5 + Math.random() * 3;
+    var vx = -Math.cos(angle) * throwSpeed + (Math.random() - 0.5) * 2;
+    var vz = -Math.sin(angle) * throwSpeed + (Math.random() - 0.5) * 2;
 
     // Spawn position direction
     var spawnDirX = Math.cos(angle);
