@@ -7,7 +7,10 @@ var rolling = false;
 
 var fabBtn, bubbleMenu, splitBtns, rollBtn, clearBtn;
 var resultsBanner, resultTotal, resultDetail;
-var historyEl, historyPollTimer;
+var historyEl, historyPollTimer, historyFadeTimer;
+var lastRollTimestamp = 0;  // epoch ms of most recent roll
+var FADE_DURATION = 5 * 60 * 1000; // 5 minutes in ms
+var cachedRolls = [];
 
 var activeOverlay = null;
 var activeRenderer = null;
@@ -81,29 +84,20 @@ function buildDOM() {
   resultsBanner.appendChild(resultTotal);
   resultsBanner.appendChild(resultDetail);
 
-  // Dice roll history sidebar / bottom drawer
+  // Dice roll history sidebar
   historyEl = document.createElement('div');
   historyEl.className = 'dice-history';
   historyEl.id = 'dice-history';
-
-  // Mobile grab handle
-  var grabHandle = document.createElement('div');
-  grabHandle.className = 'dice-history-handle';
-  historyEl.appendChild(grabHandle);
-
-  // Toggle expanded on mobile tap
-  grabHandle.addEventListener('click', function() {
-    historyEl.classList.toggle('expanded');
-  });
 
   document.body.appendChild(bubbleMenu);
   document.body.appendChild(fab);
   document.body.appendChild(resultsBanner);
   document.body.appendChild(historyEl);
 
-  // Start polling history
+  // Start polling history + inactivity fade
   fetchHistory();
   historyPollTimer = setInterval(fetchHistory, 10000);
+  historyFadeTimer = setInterval(applyInactivityFade, 3000);
 }
 
 function bindEvents() {
@@ -904,23 +898,41 @@ function postRollToServer(rollDesc, total, detailStr) {
 
 function fetchHistory() {
   fetch('/api/dice/history').then(function(r) { return r.json(); }).then(function(data) {
-    renderHistory(data.rolls || []);
+    cachedRolls = data.rolls || [];
+    // Update last roll timestamp from newest roll
+    if (cachedRolls.length > 0) {
+      var newest = new Date(cachedRolls[0].created_at + 'Z').getTime();
+      if (newest > lastRollTimestamp) lastRollTimestamp = newest;
+    }
+    renderHistory();
   }).catch(function() {});
 }
 
-function renderHistory(rolls) {
+function renderHistory() {
   if (!historyEl) return;
-  // Remove old items (keep handle)
   var old = historyEl.querySelectorAll('.dice-history-item');
   for (var i = 0; i < old.length; i++) old[i].remove();
 
-  // Rolls come newest-first from API; display oldest at top, newest at bottom
-  // Append in reverse (oldest first in DOM = top, newest last = bottom)
-  // Opacity: top items (oldest) fade out, bottom items (newest) are bright
-  for (var i = rolls.length - 1; i >= 0; i--) {
-    var roll = rolls[i];
-    // i=rolls.length-1 is oldest (top), i=0 is newest (bottom)
-    var opacity = 1.0 - (i * 0.09);
+  if (cachedRolls.length === 0) return;
+
+  // Inactivity fade: 0 (just rolled) to 1 (5 min idle)
+  var elapsed = Date.now() - lastRollTimestamp;
+  var fadeFactor = Math.min(elapsed / FADE_DURATION, 1.0);
+
+  // If fully faded, don't render anything
+  if (fadeFactor >= 1.0) return;
+
+  var globalAlpha = 1.0 - fadeFactor;
+
+  // Rolls come newest-first; append oldest first (top) to newest last (bottom)
+  for (var i = cachedRolls.length - 1; i >= 0; i--) {
+    var roll = cachedRolls[i];
+    // Position opacity: oldest (top) fades more, newest (bottom) brightest
+    var positionOpacity = 1.0 - (i * 0.09);
+    // Combine position fade with inactivity fade
+    var opacity = positionOpacity * globalAlpha;
+
+    if (opacity <= 0.01) continue; // skip invisible items
 
     var item = document.createElement('div');
     item.className = 'dice-history-item';
@@ -950,6 +962,13 @@ function renderHistory(rolls) {
     }
 
     historyEl.appendChild(item);
+  }
+}
+
+function applyInactivityFade() {
+  // Re-render with updated fade factor every 3 seconds
+  if (cachedRolls.length > 0 && lastRollTimestamp > 0) {
+    renderHistory();
   }
 }
 

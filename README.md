@@ -1,6 +1,6 @@
-# Quest Planner v0.9.10 — D&D Session Scheduler
+# Quest Planner v0.9.11 — D&D Session Scheduler
 
-> **Latest release:** v0.9.10 (2026-02-01)
+> **Latest release:** v0.9.11 (2026-02-01)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -596,6 +596,11 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.9.11 (2026-02-01)
+
+- **Inactivity fade** — Dice roll history gradually fades out over 5 minutes of inactivity; rolls disappear completely when idle and reappear bright when someone rolls again
+- **Fix: iPhone home gesture** — Replaced mobile bottom drawer with a narrower right sidebar; no more accidental app exits on iPhone when interacting with the history strip
 
 ### v0.9.10 (2026-02-01)
 
