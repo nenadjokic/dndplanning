@@ -185,10 +185,11 @@ db.exec(`
   );
 `);
 
-// Add class and race columns to characters table (idempotent)
+// Add class, race, and sheet_data columns to characters table (idempotent)
 for (const col of [
   "ALTER TABLE characters ADD COLUMN class TEXT",
-  "ALTER TABLE characters ADD COLUMN race TEXT"
+  "ALTER TABLE characters ADD COLUMN race TEXT",
+  "ALTER TABLE characters ADD COLUMN sheet_data TEXT"
 ]) {
   try { db.exec(col); } catch (e) { /* already exists */ }
 }

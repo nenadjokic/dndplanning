@@ -21,6 +21,12 @@
     </div>
   </div>
 
+  <% if (character.sheet_data) { %>
+    <div style="margin-top: 1rem;">
+      <a href="/profile/<%= profileUser.username %>/character/<%= character.id %>/sheet" class="btn btn-primary btn-small">View Character Sheet</a>
+    </div>
+  <% } %>
+
   <% if (character.description) { %>
     <div class="profile-section">
       <h3>Description / Backstory</h3>

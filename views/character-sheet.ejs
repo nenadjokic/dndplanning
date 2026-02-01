@@ -1,0 +1,370 @@
+<%- include('partials/head', { pageTitle: character.name + ' — Character Sheet' }) %>
+<%
+  const s = sheetData || {};
+  const disabled = editable ? '' : 'disabled';
+  const val = (key) => s[key] || '';
+  const checked = (key) => s[key] ? 'checked' : '';
+  const attacks = s.attacks || [];
+  const cantrips = s.cantrips || [];
+  const spells = s.spells || {};
+  const currency = s.currency || {};
+%>
+
+<div class="page-header">
+  <h1><%= character.name %> &mdash; Character Sheet</h1>
+  <a href="<%= backUrl %>" class="btn btn-outline">Back</a>
+</div>
+
+<div class="sheet-tabs">
+  <button type="button" class="sheet-tab active" data-tab="stats">Stats &amp; Combat</button>
+  <button type="button" class="sheet-tab" data-tab="bio">Biography</button>
+  <button type="button" class="sheet-tab" data-tab="spells">Spellcasting</button>
+</div>
+
+<% if (editable) { %><form method="POST" action="/profile/characters/<%= character.id %>/sheet"><% } %>
+
+<!-- TAB 1: Stats & Combat -->
+<div class="sheet-panel active" id="tab-stats">
+
+  <div class="sheet-header-grid">
+    <div class="form-group">
+      <label>Character Name</label>
+      <input type="text" name="character_name" value="<%= val('character_name') || character.name %>" <%= disabled %>>
+    </div>
+    <div class="form-group">
+      <label>Class &amp; Level</label>
+      <input type="text" name="class_level" value="<%= val('class_level') %>" placeholder="e.g. Fighter 5" <%= disabled %>>
+    </div>
+    <div class="form-group">
+      <label>Background</label>
+      <input type="text" name="background" value="<%= val('background') %>" <%= disabled %>>
+    </div>
+    <div class="form-group">
+      <label>Race</label>
+      <input type="text" name="race" value="<%= val('race') || character.race || '' %>" <%= disabled %>>
+    </div>
+    <div class="form-group">
+      <label>Alignment</label>
+      <input type="text" name="alignment" value="<%= val('alignment') %>" <%= disabled %>>
+    </div>
+    <div class="form-group">
+      <label>Experience Points</label>
+      <input type="text" name="xp" value="<%= val('xp') %>" <%= disabled %>>
+    </div>
+  </div>
+
+  <div class="sheet-main-grid">
+
+    <!-- Column 1: Ability Scores -->
+    <div class="sheet-col">
+      <h3>Ability Scores</h3>
+      <% const abilities = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA']; %>
+      <% for (const ab of abilities) { %>
+        <div class="sheet-ability-box">
+          <div class="sheet-ability-label"><%= ab %></div>
+          <input type="number" name="<%= ab.toLowerCase() %>_score" class="sheet-ability-score" value="<%= val(ab.toLowerCase() + '_score') %>" placeholder="10" <%= disabled %>>
+          <input type="text" name="<%= ab.toLowerCase() %>_mod" class="sheet-ability-mod" value="<%= val(ab.toLowerCase() + '_mod') %>" placeholder="+0" <%= disabled %>>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Column 2: Saves + Skills -->
+    <div class="sheet-col">
+      <div class="sheet-section">
+        <div class="sheet-section-header">
+          <label>Inspiration</label>
+          <input type="checkbox" name="inspiration" <%= checked('inspiration') %> <%= disabled %>>
+        </div>
+        <div class="sheet-section-header">
+          <label>Proficiency Bonus</label>
+          <input type="text" name="proficiency_bonus" class="sheet-small-input" value="<%= val('proficiency_bonus') %>" placeholder="+2" <%= disabled %>>
+        </div>
+      </div>
+
+      <h3>Saving Throws</h3>
+      <% const saveNames = ['Strength', 'Dexterity', 'Constitution', 'Intelligence', 'Wisdom', 'Charisma']; %>
+      <% const saveKeys = ['str', 'dex', 'con', 'int', 'wis', 'cha']; %>
+      <% for (let i = 0; i < 6; i++) { %>
+        <div class="sheet-save-row">
+          <input type="checkbox" name="save_<%= saveKeys[i] %>_prof" <%= checked('save_' + saveKeys[i] + '_prof') %> <%= disabled %>>
+          <input type="text" name="save_<%= saveKeys[i] %>_val" class="sheet-small-input" value="<%= val('save_' + saveKeys[i] + '_val') %>" placeholder="+0" <%= disabled %>>
+          <span><%= saveNames[i] %></span>
+        </div>
+      <% } %>
+
+      <h3>Skills</h3>
+      <%
+        const skills = [
+          ['acrobatics', 'Acrobatics', 'Dex'],
+          ['animal_handling', 'Animal Handling', 'Wis'],
+          ['arcana', 'Arcana', 'Int'],
+          ['athletics', 'Athletics', 'Str'],
+          ['deception', 'Deception', 'Cha'],
+          ['history', 'History', 'Int'],
+          ['insight', 'Insight', 'Wis'],
+          ['intimidation', 'Intimidation', 'Cha'],
+          ['investigation', 'Investigation', 'Int'],
+          ['medicine', 'Medicine', 'Wis'],
+          ['nature', 'Nature', 'Int'],
+          ['perception', 'Perception', 'Wis'],
+          ['performance', 'Performance', 'Cha'],
+          ['persuasion', 'Persuasion', 'Cha'],
+          ['religion', 'Religion', 'Int'],
+          ['sleight_of_hand', 'Sleight of Hand', 'Dex'],
+          ['stealth', 'Stealth', 'Dex'],
+          ['survival', 'Survival', 'Wis']
+        ];
+      %>
+      <% for (const [key, name, ab] of skills) { %>
+        <div class="sheet-skill-row">
+          <input type="checkbox" name="skill_<%= key %>_prof" <%= checked('skill_' + key + '_prof') %> <%= disabled %>>
+          <input type="text" name="skill_<%= key %>_val" class="sheet-small-input" value="<%= val('skill_' + key + '_val') %>" placeholder="+0" <%= disabled %>>
+          <span><%= name %> <small>(<%= ab %>)</small></span>
+        </div>
+      <% } %>
+
+      <div class="form-group" style="margin-top: 1rem;">
+        <label>Passive Wisdom (Perception)</label>
+        <input type="text" name="passive_perception" class="sheet-small-input" value="<%= val('passive_perception') %>" placeholder="10" <%= disabled %>>
+      </div>
+    </div>
+
+    <!-- Column 3: Combat + Personality -->
+    <div class="sheet-col">
+      <div class="sheet-combat-row">
+        <div class="sheet-combat-box">
+          <div class="sheet-combat-label">Armor Class</div>
+          <input type="text" name="ac" class="sheet-combat-val" value="<%= val('ac') %>" placeholder="10" <%= disabled %>>
+        </div>
+        <div class="sheet-combat-box">
+          <div class="sheet-combat-label">Initiative</div>
+          <input type="text" name="initiative" class="sheet-combat-val" value="<%= val('initiative') %>" placeholder="+0" <%= disabled %>>
+        </div>
+        <div class="sheet-combat-box">
+          <div class="sheet-combat-label">Speed</div>
+          <input type="text" name="speed" class="sheet-combat-val" value="<%= val('speed') %>" placeholder="30" <%= disabled %>>
+        </div>
+      </div>
+
+      <div class="sheet-hp-section">
+        <div class="form-group">
+          <label>Hit Point Maximum</label>
+          <input type="text" name="hp_max" value="<%= val('hp_max') %>" placeholder="0" <%= disabled %>>
+        </div>
+        <div class="sheet-hp-row">
+          <div class="form-group">
+            <label>Current HP</label>
+            <input type="text" name="hp_current" value="<%= val('hp_current') %>" placeholder="0" <%= disabled %>>
+          </div>
+          <div class="form-group">
+            <label>Temp HP</label>
+            <input type="text" name="hp_temp" value="<%= val('hp_temp') %>" placeholder="0" <%= disabled %>>
+          </div>
+        </div>
+        <div class="sheet-hp-row">
+          <div class="form-group">
+            <label>Hit Dice</label>
+            <input type="text" name="hit_dice" value="<%= val('hit_dice') %>" placeholder="e.g. 5d10" <%= disabled %>>
+          </div>
+          <div class="form-group">
+            <label>Death Saves (S/F)</label>
+            <input type="text" name="death_saves" value="<%= val('death_saves') %>" placeholder="0/0" <%= disabled %>>
+          </div>
+        </div>
+      </div>
+
+      <h3>Attacks &amp; Spellcasting</h3>
+      <div class="sheet-attacks">
+        <div class="sheet-attack-header">
+          <span>Name</span><span>Bonus</span><span>Damage/Type</span>
+        </div>
+        <% for (let i = 0; i < 10; i++) { %>
+          <% const atk = attacks[i] || {}; %>
+          <div class="sheet-attack-row">
+            <input type="text" name="attack_<%= i %>_name" value="<%= atk.name || '' %>" placeholder="<%= i < 3 ? 'Weapon name' : '' %>" <%= disabled %>>
+            <input type="text" name="attack_<%= i %>_bonus" value="<%= atk.bonus || '' %>" placeholder="+0" <%= disabled %>>
+            <input type="text" name="attack_<%= i %>_damage" value="<%= atk.damage || '' %>" placeholder="1d8+3" <%= disabled %>>
+          </div>
+        <% } %>
+      </div>
+
+      <div class="form-group">
+        <label>Personality Traits</label>
+        <textarea name="personality_traits" rows="3" class="sheet-textarea" <%= disabled %>><%= val('personality_traits') %></textarea>
+      </div>
+      <div class="form-group">
+        <label>Ideals</label>
+        <textarea name="ideals" rows="2" class="sheet-textarea" <%= disabled %>><%= val('ideals') %></textarea>
+      </div>
+      <div class="form-group">
+        <label>Bonds</label>
+        <textarea name="bonds" rows="2" class="sheet-textarea" <%= disabled %>><%= val('bonds') %></textarea>
+      </div>
+      <div class="form-group">
+        <label>Flaws</label>
+        <textarea name="flaws" rows="2" class="sheet-textarea" <%= disabled %>><%= val('flaws') %></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Features &amp; Traits</label>
+        <textarea name="features_traits" rows="4" class="sheet-textarea" <%= disabled %>><%= val('features_traits') %></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Other Proficiencies &amp; Languages</label>
+        <textarea name="proficiencies_languages" rows="3" class="sheet-textarea" <%= disabled %>><%= val('proficiencies_languages') %></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Equipment</label>
+        <textarea name="equipment" rows="4" class="sheet-textarea" <%= disabled %>><%= val('equipment') %></textarea>
+      </div>
+
+      <h3>Currency</h3>
+      <div class="sheet-currency-row">
+        <% const coins = ['CP', 'SP', 'EP', 'GP', 'PP']; %>
+        <% for (const coin of coins) { %>
+          <div class="sheet-currency-box">
+            <label><%= coin %></label>
+            <input type="text" name="currency_<%= coin.toLowerCase() %>" value="<%= currency[coin.toLowerCase()] || '' %>" placeholder="0" <%= disabled %>>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: Biography -->
+<div class="sheet-panel" id="tab-bio">
+  <div class="sheet-header-grid">
+    <div class="form-group">
+      <label>Age</label>
+      <input type="text" name="age" value="<%= val('age') %>" <%= disabled %>>
+    </div>
+    <div class="form-group">
+      <label>Height</label>
+      <input type="text" name="height" value="<%= val('height') %>" <%= disabled %>>
+    </div>
+    <div class="form-group">
+      <label>Weight</label>
+      <input type="text" name="weight" value="<%= val('weight') %>" <%= disabled %>>
+    </div>
+    <div class="form-group">
+      <label>Eyes</label>
+      <input type="text" name="eyes" value="<%= val('eyes') %>" <%= disabled %>>
+    </div>
+    <div class="form-group">
+      <label>Skin</label>
+      <input type="text" name="skin" value="<%= val('skin') %>" <%= disabled %>>
+    </div>
+    <div class="form-group">
+      <label>Hair</label>
+      <input type="text" name="hair" value="<%= val('hair') %>" <%= disabled %>>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>Character Appearance</label>
+    <textarea name="appearance" rows="4" class="sheet-textarea" <%= disabled %>><%= val('appearance') %></textarea>
+  </div>
+  <div class="form-group">
+    <label>Character Backstory</label>
+    <textarea name="backstory" rows="6" class="sheet-textarea" <%= disabled %>><%= val('backstory') %></textarea>
+  </div>
+  <div class="form-group">
+    <label>Allies &amp; Organizations</label>
+    <textarea name="allies" rows="4" class="sheet-textarea" <%= disabled %>><%= val('allies') %></textarea>
+  </div>
+  <div class="form-group">
+    <label>Additional Features &amp; Traits</label>
+    <textarea name="additional_features" rows="4" class="sheet-textarea" <%= disabled %>><%= val('additional_features') %></textarea>
+  </div>
+  <div class="form-group">
+    <label>Treasure</label>
+    <textarea name="treasure" rows="3" class="sheet-textarea" <%= disabled %>><%= val('treasure') %></textarea>
+  </div>
+</div>
+
+<!-- TAB 3: Spellcasting -->
+<div class="sheet-panel" id="tab-spells">
+  <div class="sheet-header-grid">
+    <div class="form-group">
+      <label>Spellcasting Class</label>
+      <input type="text" name="spell_class" value="<%= val('spell_class') %>" placeholder="e.g. Wizard" <%= disabled %>>
+    </div>
+    <div class="form-group">
+      <label>Spellcasting Ability</label>
+      <input type="text" name="spell_ability" value="<%= val('spell_ability') %>" placeholder="e.g. INT" <%= disabled %>>
+    </div>
+    <div class="form-group">
+      <label>Spell Save DC</label>
+      <input type="text" name="spell_save_dc" value="<%= val('spell_save_dc') %>" placeholder="0" <%= disabled %>>
+    </div>
+    <div class="form-group">
+      <label>Spell Attack Bonus</label>
+      <input type="text" name="spell_attack_bonus" value="<%= val('spell_attack_bonus') %>" placeholder="+0" <%= disabled %>>
+    </div>
+  </div>
+
+  <!-- Cantrips -->
+  <div class="sheet-spell-level">
+    <h3>Cantrips</h3>
+    <div class="sheet-spell-list">
+      <% for (let i = 0; i < 10; i++) { %>
+        <div class="sheet-spell-row">
+          <input type="text" name="cantrip_<%= i %>" value="<%= cantrips[i] || '' %>" placeholder="<%= i < 3 ? 'Cantrip name' : '' %>" <%= disabled %>>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Spell Levels 1-9 -->
+  <% for (let lvl = 1; lvl <= 9; lvl++) { %>
+    <% const lvlData = spells[lvl] || {}; %>
+    <div class="sheet-spell-level">
+      <div class="sheet-spell-level-header">
+        <h3>Level <%= lvl %></h3>
+        <div class="sheet-slots-row">
+          <label>Slots Total</label>
+          <input type="text" name="spell_<%= lvl %>_slots_total" class="sheet-small-input" value="<%= lvlData.slots_total || '' %>" placeholder="0" <%= disabled %>>
+          <label>Slots Used</label>
+          <input type="text" name="spell_<%= lvl %>_slots_used" class="sheet-small-input" value="<%= lvlData.slots_used || '' %>" placeholder="0" <%= disabled %>>
+        </div>
+      </div>
+      <div class="sheet-spell-list">
+        <% const lvlSpells = lvlData.spells || []; %>
+        <% for (let i = 0; i < 15; i++) { %>
+          <% const sp = lvlSpells[i] || {}; %>
+          <div class="sheet-spell-row">
+            <input type="checkbox" name="spell_<%= lvl %>_<%= i %>_prepared" <%= sp.prepared ? 'checked' : '' %> <%= disabled %>>
+            <input type="text" name="spell_<%= lvl %>_<%= i %>_name" value="<%= sp.name || '' %>" placeholder="<%= i < 2 ? 'Spell name' : '' %>" <%= disabled %>>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  <% } %>
+</div>
+
+<% if (editable) { %>
+  <div class="sheet-save-bar">
+    <button type="submit" class="btn btn-primary">Save Character Sheet</button>
+  </div>
+</form>
+<% } %>
+
+<script>
+(function() {
+  var tabs = document.querySelectorAll('.sheet-tab');
+  var panels = document.querySelectorAll('.sheet-panel');
+  tabs.forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      tabs.forEach(function(t) { t.classList.remove('active'); });
+      panels.forEach(function(p) { p.classList.remove('active'); });
+      tab.classList.add('active');
+      document.getElementById('tab-' + tab.getAttribute('data-tab')).classList.add('active');
+    });
+  });
+})();
+</script>
+
+<%- include('partials/foot') %>

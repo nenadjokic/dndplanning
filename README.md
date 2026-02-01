@@ -1,6 +1,6 @@
-# Quest Planner v0.7.5.2 — D&D Session Scheduler
+# Quest Planner v0.8.0 — D&D Session Scheduler
 
-> **Latest release:** v0.7.5.2 (2026-02-01)
+> **Latest release:** v0.8.0 (2026-02-01)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -57,6 +57,7 @@ If you enjoy Quest Planner, consider buying me a coffee:
   - Triggered by: session confirmation, @mentions in posts/replies/comments
 - **Light / Dark / Auto Theme** — Dark (Dungeon), Light (Parchment), Auto (switches at 6AM/7PM)
 - **Live Clock** — Current date and time in the nav bar, updates every second
+- **D&D 5e Character Sheet** — Full character sheet with 3 tabs (Stats & Combat, Biography, Spellcasting); owner-editable with read-only public view; stores all data as a JSON blob per character
 - **User Profile** — Avatar upload, birthday, about section (Markdown), multiple characters with avatars and descriptions
 - **Public Profiles** — View any guild member's profile page with avatar, birthday, about, and characters grid
 - **Push Notifications** — PWA push notifications for session events (create, confirm, cancel, complete, recap) via Web Push API
@@ -593,6 +594,18 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.8.0 (2026-02-01)
+
+- **D&D 5e Character Sheet** — full character sheet with 3 tabbed sections: Stats & Combat (ability scores, saving throws, 18 skills, AC/initiative/speed, HP, attacks, personality, equipment, currency), Biography (age, height, weight, appearance, backstory, allies, treasure), and Spellcasting (cantrips, spell levels 1-9 with slots and prepared checkboxes)
+- **Edit & read-only modes** — character owners get an editable form with sticky save bar; other logged-in users see the same layout with all fields disabled
+- **Sheet on profile cards** — "Create Sheet" / "View Sheet" button on each character card on your own profile; "Character Sheet Available" text indicator on public profile character cards
+- **Sheet in edit modal** — "Open Character Sheet" link in the character edit modal for quick access
+- **Sheet on character detail** — "View Character Sheet" button on the public character detail page
+- **JSON blob storage** — entire sheet stored as a single `sheet_data` TEXT column (JSON) on the `characters` table; avoids 100+ column sprawl
+- **Removed nav icon** — removed the app icon from the navigation bar brand; kept in welcome modal
+- **Class/race styling** — bumped character name to 1.05rem, reduced class/race meta to 0.75rem with gold-dim color
+- **DB migration** — added `sheet_data` column to the `characters` table
 
 ### v0.7.5.2 (2026-02-01)
 

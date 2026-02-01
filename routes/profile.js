@@ -209,6 +209,137 @@ router.post('/characters/:id/edit', requireLogin, charAvatarUpload.single('avata
   }
 });
 
+// Character sheet — edit (owner only)
+router.get('/characters/:id/sheet', requireLogin, (req, res) => {
+  const char = db.prepare('SELECT * FROM characters WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+  if (!char) {
+    req.flash('error', 'Character not found.');
+    return res.redirect('/profile');
+  }
+  let sheetData = null;
+  try { sheetData = char.sheet_data ? JSON.parse(char.sheet_data) : null; } catch (e) { /* invalid JSON */ }
+  res.render('character-sheet', {
+    character: char,
+    sheetData,
+    editable: true,
+    backUrl: '/profile'
+  });
+});
+
+// Character sheet — save (owner only)
+router.post('/characters/:id/sheet', requireLogin, (req, res) => {
+  const char = db.prepare('SELECT * FROM characters WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+  if (!char) {
+    req.flash('error', 'Character not found.');
+    return res.redirect('/profile');
+  }
+
+  const b = req.body;
+  const sheetData = {
+    character_name: b.character_name || '',
+    class_level: b.class_level || '',
+    background: b.background || '',
+    race: b.race || '',
+    alignment: b.alignment || '',
+    xp: b.xp || '',
+    // Ability scores
+    str_score: b.str_score || '', str_mod: b.str_mod || '',
+    dex_score: b.dex_score || '', dex_mod: b.dex_mod || '',
+    con_score: b.con_score || '', con_mod: b.con_mod || '',
+    int_score: b.int_score || '', int_mod: b.int_mod || '',
+    wis_score: b.wis_score || '', wis_mod: b.wis_mod || '',
+    cha_score: b.cha_score || '', cha_mod: b.cha_mod || '',
+    // Inspiration & proficiency
+    inspiration: b.inspiration ? true : false,
+    proficiency_bonus: b.proficiency_bonus || '',
+    // Saving throws
+    save_str_prof: b.save_str_prof ? true : false, save_str_val: b.save_str_val || '',
+    save_dex_prof: b.save_dex_prof ? true : false, save_dex_val: b.save_dex_val || '',
+    save_con_prof: b.save_con_prof ? true : false, save_con_val: b.save_con_val || '',
+    save_int_prof: b.save_int_prof ? true : false, save_int_val: b.save_int_val || '',
+    save_wis_prof: b.save_wis_prof ? true : false, save_wis_val: b.save_wis_val || '',
+    save_cha_prof: b.save_cha_prof ? true : false, save_cha_val: b.save_cha_val || '',
+    // Passive perception
+    passive_perception: b.passive_perception || '',
+    // Combat
+    ac: b.ac || '', initiative: b.initiative || '', speed: b.speed || '',
+    hp_max: b.hp_max || '', hp_current: b.hp_current || '', hp_temp: b.hp_temp || '',
+    hit_dice: b.hit_dice || '', death_saves: b.death_saves || '',
+    // Personality
+    personality_traits: b.personality_traits || '',
+    ideals: b.ideals || '',
+    bonds: b.bonds || '',
+    flaws: b.flaws || '',
+    features_traits: b.features_traits || '',
+    proficiencies_languages: b.proficiencies_languages || '',
+    equipment: b.equipment || '',
+    // Biography
+    age: b.age || '', height: b.height || '', weight: b.weight || '',
+    eyes: b.eyes || '', skin: b.skin || '', hair: b.hair || '',
+    appearance: b.appearance || '', backstory: b.backstory || '',
+    allies: b.allies || '', additional_features: b.additional_features || '',
+    treasure: b.treasure || '',
+    // Spellcasting header
+    spell_class: b.spell_class || '', spell_ability: b.spell_ability || '',
+    spell_save_dc: b.spell_save_dc || '', spell_attack_bonus: b.spell_attack_bonus || ''
+  };
+
+  // Skills
+  const skillKeys = ['acrobatics','animal_handling','arcana','athletics','deception','history','insight','intimidation','investigation','medicine','nature','perception','performance','persuasion','religion','sleight_of_hand','stealth','survival'];
+  for (const sk of skillKeys) {
+    sheetData['skill_' + sk + '_prof'] = b['skill_' + sk + '_prof'] ? true : false;
+    sheetData['skill_' + sk + '_val'] = b['skill_' + sk + '_val'] || '';
+  }
+
+  // Currency
+  sheetData.currency = {
+    cp: b.currency_cp || '', sp: b.currency_sp || '',
+    ep: b.currency_ep || '', gp: b.currency_gp || '', pp: b.currency_pp || ''
+  };
+
+  // Attacks (up to 10)
+  sheetData.attacks = [];
+  for (let i = 0; i < 10; i++) {
+    const name = b['attack_' + i + '_name'] || '';
+    const bonus = b['attack_' + i + '_bonus'] || '';
+    const damage = b['attack_' + i + '_damage'] || '';
+    if (name || bonus || damage) {
+      sheetData.attacks.push({ name, bonus, damage });
+    }
+  }
+
+  // Cantrips (up to 10)
+  sheetData.cantrips = [];
+  for (let i = 0; i < 10; i++) {
+    const c = b['cantrip_' + i] || '';
+    if (c) sheetData.cantrips.push(c);
+  }
+
+  // Spells per level 1-9
+  sheetData.spells = {};
+  for (let lvl = 1; lvl <= 9; lvl++) {
+    const lvlData = {
+      slots_total: b['spell_' + lvl + '_slots_total'] || '',
+      slots_used: b['spell_' + lvl + '_slots_used'] || '',
+      spells: []
+    };
+    for (let i = 0; i < 15; i++) {
+      const name = b['spell_' + lvl + '_' + i + '_name'] || '';
+      const prepared = b['spell_' + lvl + '_' + i + '_prepared'] ? true : false;
+      if (name || prepared) {
+        lvlData.spells.push({ name, prepared });
+      }
+    }
+    if (lvlData.slots_total || lvlData.slots_used || lvlData.spells.length > 0) {
+      sheetData.spells[lvl] = lvlData;
+    }
+  }
+
+  db.prepare('UPDATE characters SET sheet_data = ? WHERE id = ?').run(JSON.stringify(sheetData), char.id);
+  req.flash('success', 'Character sheet saved.');
+  res.redirect('/profile/characters/' + char.id + '/sheet');
+});
+
 // Delete character
 router.post('/characters/:id/delete', requireLogin, (req, res) => {
   const char = db.prepare('SELECT * FROM characters WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
@@ -231,6 +362,28 @@ router.get('/:username', requireLogin, (req, res) => {
   }
   const characters = db.prepare('SELECT * FROM characters WHERE user_id = ? ORDER BY sort_order, created_at').all(profileUser.id);
   res.render('profile-public', { profileUser, characters });
+});
+
+// Public character sheet — read-only
+router.get('/:username/character/:id/sheet', requireLogin, (req, res) => {
+  const profileUser = db.prepare('SELECT id, username, role, avatar FROM users WHERE username = ?').get(req.params.username);
+  if (!profileUser) {
+    req.flash('error', 'User not found.');
+    return res.redirect('/');
+  }
+  const character = db.prepare('SELECT * FROM characters WHERE id = ? AND user_id = ?').get(req.params.id, profileUser.id);
+  if (!character || !character.sheet_data) {
+    req.flash('error', 'Character sheet not found.');
+    return res.redirect('/profile/' + req.params.username);
+  }
+  let sheetData = null;
+  try { sheetData = JSON.parse(character.sheet_data); } catch (e) { /* invalid JSON */ }
+  res.render('character-sheet', {
+    character,
+    sheetData,
+    editable: false,
+    backUrl: '/profile/' + req.params.username + '/character/' + character.id
+  });
 });
 
 // Public character detail — read-only

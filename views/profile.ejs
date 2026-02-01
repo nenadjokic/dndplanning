@@ -99,6 +99,9 @@
           <% if (char.class || char.race) { %>
             <div class="character-card-meta"><%= [char.race, char.class].filter(Boolean).join(' ') %></div>
           <% } %>
+          <div style="margin-top: 0.35rem;">
+            <a href="/profile/characters/<%= char.id %>/sheet" class="btn btn-small btn-outline" onclick="event.stopPropagation();"><%= char.sheet_data ? 'View Sheet' : 'Create Sheet' %></a>
+          </div>
           <div class="character-card-actions">
             <button type="button" class="btn btn-small btn-outline" data-edit-char="<%= char.id %>">Edit</button>
             <form action="/profile/characters/<%= char.id %>/delete" method="POST" class="inline-form" onclick="event.stopPropagation();">
@@ -160,16 +163,17 @@
         <input type="file" name="avatar" id="edit-char-avatar" accept="image/*">
         <small class="form-hint">Upload new image to replace. Cropped to 256&times;256.</small>
       </div>
-      <div style="display: flex; gap: 0.5rem;">
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
         <button type="submit" class="btn btn-primary btn-small">Save</button>
         <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('edit-char-modal').style.display='none'">Cancel</button>
+        <a href="#" id="edit-char-sheet-link" class="btn btn-outline btn-small" style="margin-left: auto;">Open Character Sheet</a>
       </div>
     </form>
   </div>
 </div>
 
 <script>
-var charsData = <%- JSON.stringify(characters.map(function(c) { return { id: c.id, name: c.name, description: c.description || '', avatar: c.avatar, class: c.class || '', race: c.race || '' }; })) %>;
+var charsData = <%- JSON.stringify(characters.map(function(c) { return { id: c.id, name: c.name, description: c.description || '', avatar: c.avatar, class: c.class || '', race: c.race || '', hasSheet: !!c.sheet_data }; })) %>;
 var charsById = {};
 charsData.forEach(function(c) { charsById[c.id] = c; });
 
@@ -191,6 +195,7 @@ document.addEventListener('click', function(e) {
     } else {
       document.getElementById('edit-char-avatar-preview').style.display = 'none';
     }
+    document.getElementById('edit-char-sheet-link').href = '/profile/characters/' + id + '/sheet';
     document.getElementById('edit-char-modal').style.display = 'block';
   }
 });

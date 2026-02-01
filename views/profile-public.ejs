@@ -52,6 +52,9 @@
             <% if (char.class || char.race) { %>
               <div class="character-card-meta"><%= [char.race, char.class].filter(Boolean).join(' ') %></div>
             <% } %>
+            <% if (char.sheet_data) { %>
+              <div class="character-card-meta" style="color: var(--gold); font-style: normal; font-size: 0.7rem; margin-top: 0.25rem;">Character Sheet Available</div>
+            <% } %>
           </div>
         </a>
       <% } %>
