@@ -1,6 +1,6 @@
-# Quest Planner v0.8.3 — D&D Session Scheduler
+# Quest Planner v0.8.4 — D&D Session Scheduler
 
-> **Latest release:** v0.8.3 (2026-02-01)
+> **Latest release:** v0.8.4 (2026-02-01)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -595,6 +595,20 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.8.4 (2026-02-01)
+
+- **Fix: Dice not visible on desktop** — removed CSS canvas sizing conflict and bumped service worker cache to force fresh file loading on all browsers
+- **Fix: Numbers on all dice faces** — converted all polyhedra to non-indexed geometry with proper per-face UV mapping via face-plane projection; numbers now appear centered on every face of D4, D8, D10, D12, and D20
+- **Fix: D10 geometry spikes** — adjusted pentagonal trapezohedron vertex proportions for a rounder, more realistic shape
+- **Fix: Physics realism** — reduced gravity (-12 vs -30), added linear/angular damping (0.3), increased friction (0.6), lower angular velocity; dice now tumble naturally instead of shaking
+- **Fix: Roll duration** — dice settle in ~2 seconds (120 frames max) instead of 6 seconds
+- **No overlay background** — removed dark backdrop behind rolling dice for a cleaner look
+- **No shadows** — removed shadow rendering entirely for better performance and appearance
+- **Smaller face numbers** — font size adapts to digit count (35%/28%/22%) for clean centered display on all die types
+- **D4 bottom-face reading** — D4 result is now read from the ground face (standard convention) instead of ambiguous top-face detection
+- **D6 opposite faces** — D6 face values now follow standard convention where opposite faces sum to 7
+- **Proper texture cleanup** — canvas textures are now explicitly disposed alongside materials to prevent memory leaks
 
 ### v0.8.3 (2026-02-01)
 

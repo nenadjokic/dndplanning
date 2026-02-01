@@ -198,13 +198,11 @@
   height: 100%;
   z-index: 1002;
   pointer-events: auto;
-  background: rgba(0, 0, 0, 0.55);
+  background: transparent;
 }
 
 .dice-overlay canvas {
   display: block;
-  width: 100%;
-  height: 100%;
 }
 
 /* Results Banner */
