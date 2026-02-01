@@ -471,7 +471,7 @@ function createD20Body(material) {
 }
 
 /* ── Create a single die ── */
-function createDie(type, index, total, scene, world, material) {
+function createDie(type, index, total, scene, world, material, bounds) {
   var mesh, body;
   switch (type) {
     case 'd4':        mesh = createD4Mesh();        body = createD4Body(material);        break;
@@ -487,40 +487,54 @@ function createDie(type, index, total, scene, world, material) {
 
   addEdgeLines(mesh);
 
-  // Spawn in top-left quadrant, staggered grid so dice never overlap
-  var cols = Math.min(total, 3);
+  // bounds = { halfX, halfZ } — visible area from camera
+  var hx = bounds.halfX;
+  var hz = bounds.halfZ;
+
+  // Spawn in visible top-right corner, staggered grid so dice never overlap
+  // Adapt grid to available space — use at most half the screen width
+  var margin = 1.2;
+  var availX = hx - margin;     // space from right edge to center
+  var spacing = Math.min(1.3, availX / Math.max(total, 1));
+  spacing = Math.max(spacing, 0.9); // minimum spacing to prevent overlap
+  var cols = Math.max(1, Math.floor(availX / spacing));
+  cols = Math.min(cols, total);
   var row = Math.floor(index / cols);
   var col = index % cols;
-  var spacing = 1.5;
-  var startX = -3.5;
-  var startZ = -2.0;
-  var px = startX + col * spacing + (Math.random() - 0.5) * 0.2;
-  var pz = startZ + row * spacing + (Math.random() - 0.5) * 0.2;
-  var py = 3.0 + index * 0.3;
+  var spawnX = hx - margin - col * spacing;
+  var spawnZ = -hz + margin + row * spacing;
+  var px = spawnX + (Math.random() - 0.5) * 0.2;
+  var pz = spawnZ + (Math.random() - 0.5) * 0.2;
+  var py = 1.5 + index * 0.3;
   body.position.set(px, py, pz);
 
-  // Low linear damping so dice travel far; high angular damping to stop spinning
-  body.linearDamping = 0.15;
-  body.angularDamping = 0.5;
+  // Low damping so dice travel across the screen
+  body.linearDamping = 0.05;
+  body.angularDamping = 0.4;
 
-  // Aggressive sleep for fast stop once slow
+  // Sleep detection
   body.allowSleep = true;
-  body.sleepSpeedLimit = 1.0;
-  body.sleepTimeLimit = 0.1;
+  body.sleepSpeedLimit = 0.8;
+  body.sleepTimeLimit = 0.15;
 
-  // Throw toward center — must travel ~50% of play area (5 units rightward)
-  var throwSpeed = 10 + Math.random() * 3;
+  // Throw toward center (negative X, positive Z) — travel ~50% of visible area
+  var dx = -px;
+  var dz = -pz;
+  var dist = Math.sqrt(dx * dx + dz * dz);
+  var dirX = dx / dist;
+  var dirZ = dz / dist;
+  var throwSpeed = dist * 2.5 + Math.random() * 2;
   body.velocity.set(
-    throwSpeed + (Math.random() - 0.5) * 2,
-    -3,
-    1.5 + (Math.random() - 0.5) * 2
+    dirX * throwSpeed + (Math.random() - 0.5) * 1.5,
+    -1,
+    dirZ * throwSpeed + (Math.random() - 0.5) * 1.5
   );
 
   // Angular velocity for visible tumbling
   body.angularVelocity.set(
-    (Math.random() - 0.5) * 14,
-    (Math.random() - 0.5) * 8,
-    (Math.random() - 0.5) * 14
+    (Math.random() - 0.5) * 12,
+    (Math.random() - 0.5) * 6,
+    (Math.random() - 0.5) * 12
   );
 
   scene.add(mesh);
@@ -618,8 +632,15 @@ function run3DRoll() {
   pointLight.position.set(0, 6, 0);
   scene.add(pointLight);
 
-  // Physics — strong gravity for fast settle
-  var world = new CANNON.World({ gravity: new CANNON.Vec3(0, -80, 0) });
+  // Calculate visible bounds at ground level from camera FOV + aspect
+  var groundY = -0.5;
+  var camDist = camera.position.y - groundY; // distance from camera to ground
+  var halfZ = camDist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  var halfX = halfZ * aspect;
+  var bounds = { halfX: halfX, halfZ: halfZ };
+
+  // Physics — moderate gravity so dice travel horizontally before stopping
+  var world = new CANNON.World({ gravity: new CANNON.Vec3(0, -40, 0) });
   world.broadphase = new CANNON.NaiveBroadphase();
   world.solver.iterations = 10;
   world.solver.tolerance = 0.001;
@@ -631,12 +652,12 @@ function run3DRoll() {
   groundBody.position.set(0, -0.5, 0);
   world.addBody(groundBody);
 
-  // Walls
+  // Walls at visible screen edges — dice stay on screen
   var wallDefs = [
-    { pos: [5, 2, 0], rot: [0, -Math.PI / 2, 0] },
-    { pos: [-5, 2, 0], rot: [0, Math.PI / 2, 0] },
-    { pos: [0, 2, 3.5], rot: [Math.PI / 2, 0, 0] },
-    { pos: [0, 2, -3.5], rot: [-Math.PI / 2, 0, 0] }
+    { pos: [halfX, 2, 0], rot: [0, -Math.PI / 2, 0] },
+    { pos: [-halfX, 2, 0], rot: [0, Math.PI / 2, 0] },
+    { pos: [0, 2, halfZ], rot: [Math.PI / 2, 0, 0] },
+    { pos: [0, 2, -halfZ], rot: [-Math.PI / 2, 0, 0] }
   ];
   wallDefs.forEach(function(w) {
     var wb = new CANNON.Body({ type: CANNON.Body.STATIC, shape: new CANNON.Plane(), material: groundMat });
@@ -647,7 +668,7 @@ function run3DRoll() {
 
   var diceMat = new CANNON.Material('dice');
   world.addContactMaterial(new CANNON.ContactMaterial(groundMat, diceMat, {
-    friction: 0.5, restitution: 0.15
+    friction: 0.3, restitution: 0.15
   }));
   world.addContactMaterial(new CANNON.ContactMaterial(diceMat, diceMat, {
     friction: 0.3, restitution: 0.35
@@ -657,7 +678,7 @@ function run3DRoll() {
   var targetQuats = [], preResults = [];
 
   diceList.forEach(function(die, idx) {
-    var r = createDie(die, idx, diceList.length, scene, world, diceMat);
+    var r = createDie(die, idx, diceList.length, scene, world, diceMat, bounds);
     diceMeshes.push(r.mesh);
     diceBodies.push(r.body);
     dieTypes.push(die);

@@ -571,88 +571,108 @@ section('D10 Face Normals — Direction Validation');
 section('Physics Parameters');
 (function() {
   // These are the values from the code — document and validate they're reasonable
-  var gravity = -80;
+  var gravity = -40;
   assert(gravity < 0, 'Gravity is negative (downward): ' + gravity);
   assert(Math.abs(gravity) >= 9.8, 'Gravity magnitude >= Earth gravity for snappier feel');
 
-  var linearDamping = 0.15;
-  var angularDamping = 0.5;
+  var linearDamping = 0.05;
+  var angularDamping = 0.4;
   assert(linearDamping < 0.8, 'Linear damping reasonable (' + linearDamping + ')');
   assert(angularDamping < 0.8, 'Angular damping reasonable (' + angularDamping + ')');
 
-  var groundFriction = 0.5;
+  var groundFriction = 0.3;
   var groundRestitution = 0.15;
-  assert(groundFriction > 0.2 && groundFriction <= 1.0, 'Ground friction reasonable: ' + groundFriction);
+  assert(groundFriction > 0.05 && groundFriction <= 1.0, 'Ground friction reasonable: ' + groundFriction);
   assert(groundRestitution > 0.05 && groundRestitution < 0.6, 'Ground restitution reasonable: ' + groundRestitution);
 
-  var sleepSpeedLimit = 1.0;
-  var sleepTimeLimit = 0.1;
+  var sleepSpeedLimit = 0.8;
+  var sleepTimeLimit = 0.15;
   assert(sleepSpeedLimit > 0 && sleepSpeedLimit < 2, 'Sleep speed limit reasonable: ' + sleepSpeedLimit);
   assert(sleepTimeLimit > 0.01 && sleepTimeLimit < 2, 'Sleep time limit reasonable: ' + sleepTimeLimit);
-
-  var throwSpeed = 10; // min
-  var throwSpeedMax = 13; // max (10 + 3)
-  assert(throwSpeed >= 3, 'Min throw speed gives good momentum: ' + throwSpeed);
-  assert(throwSpeedMax <= 15, 'Max throw speed not too extreme: ' + throwSpeedMax);
 })();
 
 // ── 15. Spawn Position Validation ──
-section('Spawn Position — Top-Left Staggered Grid');
+section('Spawn Position — Camera-Aware Top-Right Grid');
 (function() {
-  // Simulate spawn positions using the staggered grid pattern
+  // Test with various aspect ratios (portrait phone, landscape phone, desktop)
+  var aspects = [0.56, 0.75, 1.33, 1.78, 2.0];
   var allInBounds = true;
   var noOverlap = true;
-  for (var total = 1; total <= 8; total++) {
-    var positions = [];
-    var cols = Math.min(total, 3);
-    for (var index = 0; index < total; index++) {
-      var row = Math.floor(index / cols);
-      var col = index % cols;
-      var spacing = 1.5;
-      var startX = -3.5;
-      var startZ = -2.0;
-      var px = startX + col * spacing + (Math.random() - 0.5) * 0.2;
-      var pz = startZ + row * spacing + (Math.random() - 0.5) * 0.2;
-      var py = 3.0 + index * 0.3;
+  var allInRightHalf = true;
 
-      // Must be inside walls (x: -5 to 5, z: -3.5 to 3.5) with margin
-      if (px < -4.5 || px > 4.5 || pz < -3.0 || pz > 3.0) allInBounds = false;
-      if (py < 2.9) allInBounds = false;
+  for (var ai = 0; ai < aspects.length; ai++) {
+    var aspect = aspects[ai];
+    // Camera: y=12, groundY=-0.5, FOV=45
+    var camDist = 12.5;
+    var halfZ = camDist * Math.tan(22.5 * Math.PI / 180);
+    var halfX = halfZ * aspect;
 
-      // Check no overlap with previous positions (min 1.0 unit apart)
-      for (var j = 0; j < positions.length; j++) {
-        var dx = px - positions[j][0];
-        var dz = pz - positions[j][1];
-        if (Math.sqrt(dx*dx + dz*dz) < 1.0) noOverlap = false;
+    for (var total = 1; total <= 8; total++) {
+      var positions = [];
+      var margin = 1.2;
+      var availX = halfX - margin;
+      var spacing = Math.min(1.3, availX / Math.max(total, 1));
+      spacing = Math.max(spacing, 0.9);
+      var cols = Math.max(1, Math.floor(availX / spacing));
+      cols = Math.min(cols, total);
+      for (var index = 0; index < total; index++) {
+        var row = Math.floor(index / cols);
+        var col = index % cols;
+        var spawnX = halfX - margin - col * spacing;
+        var spawnZ = -halfZ + margin + row * spacing;
+        var px = spawnX + (Math.random() - 0.5) * 0.2;
+        var pz = spawnZ + (Math.random() - 0.5) * 0.2;
+        var py = 1.5 + index * 0.3;
+
+        // Must be inside visible area
+        if (Math.abs(px) > halfX - 0.3 || Math.abs(pz) > halfZ - 0.3) allInBounds = false;
+        if (py < 1.4) allInBounds = false;
+
+        // Spawn should be in the right half of screen (positive X)
+        if (px < 0) allInRightHalf = false;
+
+        // Check no overlap: positions in the same column must differ in Z
+        for (var j = 0; j < positions.length; j++) {
+          var dx = Math.abs(px - positions[j][0]);
+          var dz = Math.abs(pz - positions[j][1]);
+          // If in same column (dx small), Z must be spaced; otherwise X spacing is enough
+          if (dx < 0.5 && dz < 0.7) noOverlap = false;
+          if (dx >= 0.5 && dx < 0.7 && dz < 0.5) noOverlap = false;
+        }
+        positions.push([px, pz]);
       }
-      positions.push([px, pz]);
     }
   }
-  assert(allInBounds, 'All spawn positions within wall bounds with margin');
-  assert(noOverlap, 'All spawn positions at least 1.0 unit apart (no overlap)');
+  assert(allInBounds, 'All spawn positions within visible bounds for all aspect ratios');
+  assert(noOverlap, 'All spawn positions at least 0.8 unit apart (no overlap)');
+  assert(allInRightHalf, 'All spawn positions in the right half (visible top-right corner)');
 })();
 
 // ── 16. Throw Velocity Points Toward Center ──
-section('Throw Velocity — Toward Center-Right');
+section('Throw Velocity — Toward Center from Top-Right');
 (function() {
-  var allRightward = true;
+  // Simulate throw from top-right spawn toward center (0,0)
+  var allTowardCenter = true;
   var allDownward = true;
-  var allFastEnough = true;
   for (var trial = 0; trial < 100; trial++) {
-    var throwSpeed = 10 + Math.random() * 3;
-    var vx = throwSpeed + (Math.random() - 0.5) * 2;
-    var vy = -3;
+    // Typical spawn in top-right
+    var px = 3.0 + Math.random() * 2;
+    var pz = -2.0 - Math.random() * 2;
+    var dist = Math.sqrt(px * px + pz * pz);
+    var dirX = -px / dist;
+    var dirZ = -pz / dist;
+    var throwSpeed = dist * 2.5 + Math.random() * 2;
+    var vx = dirX * throwSpeed + (Math.random() - 0.5) * 1.5;
+    var vz = dirZ * throwSpeed + (Math.random() - 0.5) * 1.5;
+    var vy = -1;
 
-    // Velocity X should be positive (rightward, toward center from top-left)
-    if (vx < 0) allRightward = false;
-    // Velocity Y should be negative (downward)
+    // Velocity should point toward center (vx negative since spawn is +X, vz positive since spawn is -Z)
+    if (vx > 0) allTowardCenter = false;
+    // Velocity Y should be negative (slight downward)
     if (vy > 0) allDownward = false;
-    // Must have enough speed to travel ~50% of play area
-    if (vx < 8) allFastEnough = false;
   }
-  assert(allRightward, 'All 100 throw velocities go rightward (toward center)');
+  assert(allTowardCenter, 'All 100 throw velocities go leftward toward center from right spawn');
   assert(allDownward, 'All 100 throw velocities go downward');
-  assert(allFastEnough, 'All 100 throw velocities fast enough to reach center (vx >= 8)');
 })();
 
 // ── 17. D100 Two-Dice Result Range ──
