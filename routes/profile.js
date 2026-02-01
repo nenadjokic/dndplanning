@@ -147,14 +147,16 @@ router.post('/character-avatar', requireLogin, (req, res) => {
 router.post('/characters', requireLogin, charAvatarUpload.single('avatar'), async (req, res) => {
   try {
     const { name, description } = req.body;
+    const charClass = req.body.class || null;
+    const charRace = req.body.race || null;
     if (!name || !name.trim()) {
       req.flash('error', 'Character name is required.');
       return res.redirect('/profile');
     }
     const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM characters WHERE user_id = ?').get(req.user.id);
     const order = (maxOrder.m || 0) + 1;
-    const result = db.prepare('INSERT INTO characters (user_id, name, description, sort_order) VALUES (?, ?, ?, ?)')
-      .run(req.user.id, name.trim(), description || null, order);
+    const result = db.prepare('INSERT INTO characters (user_id, name, description, class, race, sort_order) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(req.user.id, name.trim(), description || null, charClass, charRace, order);
 
     if (req.file) {
       const filename = await cropCharAvatar(req.file.buffer, result.lastInsertRowid);
@@ -180,6 +182,8 @@ router.post('/characters/:id/edit', requireLogin, charAvatarUpload.single('avata
     }
 
     const { name, description, remove_avatar } = req.body;
+    const charClass = req.body.class || null;
+    const charRace = req.body.race || null;
     if (!name || !name.trim()) {
       req.flash('error', 'Character name is required.');
       return res.redirect('/profile');
@@ -194,8 +198,8 @@ router.post('/characters/:id/edit', requireLogin, charAvatarUpload.single('avata
       avatar = null;
     }
 
-    db.prepare('UPDATE characters SET name = ?, description = ?, avatar = ? WHERE id = ?')
-      .run(name.trim(), description || null, avatar, char.id);
+    db.prepare('UPDATE characters SET name = ?, description = ?, class = ?, race = ?, avatar = ? WHERE id = ?')
+      .run(name.trim(), description || null, charClass, charRace, avatar, char.id);
     req.flash('success', 'Character updated.');
     res.redirect('/profile');
   } catch (err) {

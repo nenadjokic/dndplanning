@@ -9,15 +9,11 @@
   <h2>Theme</h2>
   <form action="/settings/theme" method="POST">
     <div class="form-group">
-      <label>
-        <input type="radio" name="theme" value="dark" <%= (settingsUser.theme || 'dark') === 'dark' ? 'checked' : '' %>> Dark (Dungeon)
-      </label>
-      <label style="margin-left: 1.5rem;">
-        <input type="radio" name="theme" value="light" <%= settingsUser.theme === 'light' ? 'checked' : '' %>> Light (Parchment)
-      </label>
-      <label style="margin-left: 1.5rem;">
-        <input type="radio" name="theme" value="auto" <%= settingsUser.theme === 'auto' ? 'checked' : '' %>> Auto (Light 6AM&ndash;7PM)
-      </label>
+      <div class="radio-group">
+        <label><input type="radio" name="theme" value="dark" <%= (settingsUser.theme || 'dark') === 'dark' ? 'checked' : '' %>> Dark (Dungeon)</label>
+        <label><input type="radio" name="theme" value="light" <%= settingsUser.theme === 'light' ? 'checked' : '' %>> Light (Parchment)</label>
+        <label><input type="radio" name="theme" value="auto" <%= settingsUser.theme === 'auto' ? 'checked' : '' %>> Auto (Light 6AM&ndash;7PM)</label>
+      </div>
     </div>
     <button type="submit" class="btn btn-primary btn-small">Save Theme</button>
   </form>
@@ -27,12 +23,10 @@
   <h2>Time Format</h2>
   <form action="/settings/time-format" method="POST">
     <div class="form-group">
-      <label>
-        <input type="radio" name="time_format" value="24h" <%= (user.time_format || '24h') === '24h' ? 'checked' : '' %>> 24-hour (14:30)
-      </label>
-      <label style="margin-left: 1.5rem;">
-        <input type="radio" name="time_format" value="12h" <%= user.time_format === '12h' ? 'checked' : '' %>> 12-hour (2:30 PM)
-      </label>
+      <div class="radio-group">
+        <label><input type="radio" name="time_format" value="24h" <%= (user.time_format || '24h') === '24h' ? 'checked' : '' %>> 24-hour (14:30)</label>
+        <label><input type="radio" name="time_format" value="12h" <%= user.time_format === '12h' ? 'checked' : '' %>> 12-hour (2:30 PM)</label>
+      </div>
     </div>
     <button type="submit" class="btn btn-primary btn-small">Save Time Format</button>
   </form>

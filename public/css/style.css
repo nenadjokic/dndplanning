@@ -426,6 +426,20 @@ h3 { font-size: 1.25rem; }
   color: var(--text-secondary);
 }
 
+.radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+}
+
+.radio-group label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: normal;
+  margin-bottom: 0;
+}
+
 .form-group input[type="text"],
 .form-group input[type="password"],
 .form-group input[type="datetime-local"],
@@ -2400,6 +2414,13 @@ h3 { font-size: 1.25rem; }
   font-size: 0.95rem;
 }
 
+.character-card-meta {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+  font-style: italic;
+}
+
 .character-card-actions {
   display: flex;
   gap: 0.35rem;
@@ -2452,6 +2473,13 @@ h3 { font-size: 1.25rem; }
   font-weight: bold;
   color: var(--gold);
   flex-shrink: 0;
+}
+
+.character-detail-meta {
+  font-size: 0.95rem;
+  color: var(--gold-dim);
+  font-style: italic;
+  margin-bottom: 0.25rem;
 }
 
 /* Clickable character card link */

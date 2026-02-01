@@ -56,9 +56,19 @@
           <label for="char-name">Character Name</label>
           <input type="text" name="name" id="char-name" required placeholder="e.g. Thorin Oakenshield">
         </div>
+        <div style="display: flex; gap: 0.75rem;">
+          <div class="form-group" style="flex: 1;">
+            <label for="char-class">Class</label>
+            <input type="text" name="class" id="char-class" placeholder="e.g. Paladin">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label for="char-race">Race</label>
+            <input type="text" name="race" id="char-race" placeholder="e.g. Dwarf">
+          </div>
+        </div>
         <div class="form-group">
           <label for="char-desc">Description / Backstory</label>
-          <textarea name="description" id="char-desc" rows="4" placeholder="Class, race, backstory... (Markdown supported)"></textarea>
+          <textarea name="description" id="char-desc" rows="4" placeholder="Backstory, traits, goals... (Markdown supported)"></textarea>
           <small class="form-hint">Supports Markdown: **bold**, *italic*, [links](url), lists, etc.</small>
         </div>
         <div class="form-group">
@@ -86,6 +96,9 @@
             <% } %>
           </div>
           <div class="character-card-name"><%= char.name %></div>
+          <% if (char.class || char.race) { %>
+            <div class="character-card-meta"><%= [char.race, char.class].filter(Boolean).join(' ') %></div>
+          <% } %>
           <div class="character-card-actions">
             <button type="button" class="btn btn-small btn-outline" data-edit-char="<%= char.id %>">Edit</button>
             <form action="/profile/characters/<%= char.id %>/delete" method="POST" class="inline-form" onclick="event.stopPropagation();">
@@ -121,6 +134,16 @@
         <label for="edit-char-name">Character Name</label>
         <input type="text" name="name" id="edit-char-name" required>
       </div>
+      <div style="display: flex; gap: 0.75rem;">
+        <div class="form-group" style="flex: 1;">
+          <label for="edit-char-class">Class</label>
+          <input type="text" name="class" id="edit-char-class" placeholder="e.g. Paladin">
+        </div>
+        <div class="form-group" style="flex: 1;">
+          <label for="edit-char-race">Race</label>
+          <input type="text" name="race" id="edit-char-race" placeholder="e.g. Dwarf">
+        </div>
+      </div>
       <div class="form-group">
         <label for="edit-char-desc">Description / Backstory</label>
         <textarea name="description" id="edit-char-desc" rows="4"></textarea>
@@ -146,7 +169,7 @@
 </div>
 
 <script>
-var charsData = <%- JSON.stringify(characters.map(function(c) { return { id: c.id, name: c.name, description: c.description || '', avatar: c.avatar }; })) %>;
+var charsData = <%- JSON.stringify(characters.map(function(c) { return { id: c.id, name: c.name, description: c.description || '', avatar: c.avatar, class: c.class || '', race: c.race || '' }; })) %>;
 var charsById = {};
 charsData.forEach(function(c) { charsById[c.id] = c; });
 
@@ -158,6 +181,8 @@ document.addEventListener('click', function(e) {
     if (!c) return;
     document.getElementById('edit-char-form').action = '/profile/characters/' + id + '/edit';
     document.getElementById('edit-char-name').value = c.name;
+    document.getElementById('edit-char-class').value = c.class;
+    document.getElementById('edit-char-race').value = c.race;
     document.getElementById('edit-char-desc').value = c.description;
     document.getElementById('edit-remove-avatar').checked = false;
     if (c.avatar) {

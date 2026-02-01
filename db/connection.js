@@ -158,6 +158,14 @@ db.exec(`
   );
 `);
 
+// Add class and race columns to characters table (idempotent)
+for (const col of [
+  "ALTER TABLE characters ADD COLUMN class TEXT",
+  "ALTER TABLE characters ADD COLUMN race TEXT"
+]) {
+  try { db.exec(col); } catch (e) { /* already exists */ }
+}
+
 // Notification config table (single-row)
 db.exec(`
   CREATE TABLE IF NOT EXISTS notification_config (

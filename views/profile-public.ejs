@@ -49,6 +49,9 @@
               <% } %>
             </div>
             <div class="character-card-name"><%= char.name %></div>
+            <% if (char.class || char.race) { %>
+              <div class="character-card-meta"><%= [char.race, char.class].filter(Boolean).join(' ') %></div>
+            <% } %>
           </div>
         </a>
       <% } %>

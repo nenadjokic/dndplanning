@@ -593,10 +593,13 @@ The admin can also check for updates from the **Guild Settings** page using the 
 
 ### v0.7.5.1 (2026-02-01)
 
+- **Character Class & Race** — characters now have Class and Race fields; displayed below the character name on profile grids and the detail page
+- **Character detail page** — dedicated page for viewing a character's full backstory, class, race, and description; accessible by clicking a character on any player profile
 - **Higher quality character thumbnails** — character avatars are now cropped to 256x256 (up from 128x128) for sharper thumbnails
-- **Character detail page** — dedicated page for viewing a character's full backstory and description; accessible by clicking a character on any player profile
-- **Improved player profiles** — public profiles now show a clean character grid with thumbnails and names; character descriptions are only shown on the detail page
+- **Improved player profiles** — public profiles now show a clean character grid with thumbnails, names, and class/race; click to view full details
 - **Clickable character cards** — on your own profile page, clicking any character card opens the edit modal directly
+- **Fix: Settings radio buttons** — Theme and Time Format radio buttons are now properly aligned on the same line
+- **DB migration** — added `class` and `race` columns to the `characters` table
 
 ### v0.7.5 (2026-02-01)
 
