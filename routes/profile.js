@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const sharp = require('sharp');
 const db = require('../db/connection');
 const { requireLogin } = require('../middleware/auth');
 const router = express.Router();
@@ -23,38 +24,41 @@ const avatarUpload = multer({
   fileFilter: (req, file, cb) => {
     const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
     const ext = path.extname(file.originalname).toLowerCase();
-    if (allowed.includes(ext)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed.'));
-    }
+    cb(null, allowed.includes(ext));
   }
 });
 
 const charAvatarUpload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, avatarDir),
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase();
-      cb(null, 'char-' + req.user.id + ext);
-    }
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 2 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
     const ext = path.extname(file.originalname).toLowerCase();
-    if (allowed.includes(ext)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed.'));
-    }
+    cb(null, allowed.includes(ext));
   }
 });
+
+async function cropCharAvatar(buffer, charId) {
+  const filename = 'char-' + charId + '.png';
+  const outPath = path.join(avatarDir, filename);
+  await sharp(buffer)
+    .resize(128, 128, { fit: 'cover', position: 'centre' })
+    .png()
+    .toFile(outPath);
+  return filename;
+}
+
+function deleteCharAvatar(filename) {
+  if (!filename) return;
+  const p = path.join(avatarDir, filename);
+  if (fs.existsSync(p)) fs.unlinkSync(p);
+}
 
 // Own profile — edit page
 router.get('/', requireLogin, (req, res) => {
   const profileUser = db.prepare('SELECT id, username, role, avatar, birthday, about, character_info, character_avatar FROM users WHERE id = ?').get(req.user.id);
-  res.render('profile', { profileUser });
+  const characters = db.prepare('SELECT * FROM characters WHERE user_id = ? ORDER BY sort_order, created_at').all(req.user.id);
+  res.render('profile', { profileUser, characters });
 });
 
 // Save profile info
@@ -97,9 +101,24 @@ router.post('/avatar', requireLogin, (req, res) => {
   });
 });
 
-// Character avatar upload
+// Legacy character avatar upload (kept for backwards compat)
 router.post('/character-avatar', requireLogin, (req, res) => {
-  charAvatarUpload.single('character_avatar')(req, res, (err) => {
+  const legacyUpload = multer({
+    storage: multer.diskStorage({
+      destination: (req, file, cb) => cb(null, avatarDir),
+      filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, 'char-' + req.user.id + ext);
+      }
+    }),
+    limits: { fileSize: 2 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+      const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+      const ext = path.extname(file.originalname).toLowerCase();
+      cb(null, allowed.includes(ext));
+    }
+  });
+  legacyUpload.single('character_avatar')(req, res, (err) => {
     if (err) {
       req.flash('error', err.message || 'Character avatar upload failed.');
       return res.redirect('/profile');
@@ -124,6 +143,81 @@ router.post('/character-avatar', requireLogin, (req, res) => {
   });
 });
 
+// Add new character
+router.post('/characters', requireLogin, charAvatarUpload.single('avatar'), async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    if (!name || !name.trim()) {
+      req.flash('error', 'Character name is required.');
+      return res.redirect('/profile');
+    }
+    const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM characters WHERE user_id = ?').get(req.user.id);
+    const order = (maxOrder.m || 0) + 1;
+    const result = db.prepare('INSERT INTO characters (user_id, name, description, sort_order) VALUES (?, ?, ?, ?)')
+      .run(req.user.id, name.trim(), description || null, order);
+
+    if (req.file) {
+      const filename = await cropCharAvatar(req.file.buffer, result.lastInsertRowid);
+      db.prepare('UPDATE characters SET avatar = ? WHERE id = ?').run(filename, result.lastInsertRowid);
+    }
+
+    req.flash('success', 'Character added!');
+    res.redirect('/profile');
+  } catch (err) {
+    console.error('Error adding character:', err);
+    req.flash('error', 'Failed to add character.');
+    res.redirect('/profile');
+  }
+});
+
+// Edit character
+router.post('/characters/:id/edit', requireLogin, charAvatarUpload.single('avatar'), async (req, res) => {
+  try {
+    const char = db.prepare('SELECT * FROM characters WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    if (!char) {
+      req.flash('error', 'Character not found.');
+      return res.redirect('/profile');
+    }
+
+    const { name, description, remove_avatar } = req.body;
+    if (!name || !name.trim()) {
+      req.flash('error', 'Character name is required.');
+      return res.redirect('/profile');
+    }
+
+    let avatar = char.avatar;
+    if (req.file) {
+      deleteCharAvatar(char.avatar);
+      avatar = await cropCharAvatar(req.file.buffer, char.id);
+    } else if (remove_avatar === '1') {
+      deleteCharAvatar(char.avatar);
+      avatar = null;
+    }
+
+    db.prepare('UPDATE characters SET name = ?, description = ?, avatar = ? WHERE id = ?')
+      .run(name.trim(), description || null, avatar, char.id);
+    req.flash('success', 'Character updated.');
+    res.redirect('/profile');
+  } catch (err) {
+    console.error('Error editing character:', err);
+    req.flash('error', 'Failed to update character.');
+    res.redirect('/profile');
+  }
+});
+
+// Delete character
+router.post('/characters/:id/delete', requireLogin, (req, res) => {
+  const char = db.prepare('SELECT * FROM characters WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+  if (!char) {
+    req.flash('error', 'Character not found.');
+    return res.redirect('/profile');
+  }
+  deleteCharAvatar(char.avatar);
+  db.prepare('DELETE FROM characters WHERE id = ?').run(char.id);
+  req.flash('success', 'Character removed.');
+  res.redirect('/profile');
+});
+
 // Public profile — read-only
 router.get('/:username', requireLogin, (req, res) => {
   const profileUser = db.prepare('SELECT id, username, role, avatar, birthday, about, character_info, character_avatar FROM users WHERE username = ?').get(req.params.username);
@@ -131,7 +225,8 @@ router.get('/:username', requireLogin, (req, res) => {
     req.flash('error', 'User not found.');
     return res.redirect('/');
   }
-  res.render('profile-public', { profileUser });
+  const characters = db.prepare('SELECT * FROM characters WHERE user_id = ? ORDER BY sort_order, created_at').all(profileUser.id);
+  res.render('profile-public', { profileUser, characters });
 });
 
 module.exports = router;

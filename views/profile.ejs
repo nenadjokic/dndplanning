@@ -28,49 +28,147 @@
 <div class="settings-section card">
   <h2>Profile Info</h2>
   <form action="/profile" method="POST">
+    <input type="hidden" name="character_info" value="<%= profileUser.character_info || '' %>">
     <div class="form-group">
       <label for="birthday">Birthday</label>
       <input type="date" id="birthday" name="birthday" value="<%= profileUser.birthday || '' %>">
     </div>
     <div class="form-group">
       <label for="about">About You</label>
-      <textarea id="about" name="about" rows="4" placeholder="Tell the party about yourself..."><%= profileUser.about || '' %></textarea>
+      <textarea id="about" name="about" rows="4" placeholder="Tell the party about yourself... (Markdown supported)"><%= profileUser.about || '' %></textarea>
+      <small class="form-hint">Supports Markdown: **bold**, *italic*, [links](url), lists, etc.</small>
     </div>
     <button type="submit" class="btn btn-primary btn-small">Save Profile</button>
   </form>
 </div>
 
 <div class="settings-section card">
-  <h2>My Character</h2>
-  <form action="/profile" method="POST">
-    <input type="hidden" name="birthday" value="<%= profileUser.birthday || '' %>">
-    <input type="hidden" name="about" value="<%= profileUser.about || '' %>">
-    <div class="form-group">
-      <label for="character_info">Character Info</label>
-      <textarea id="character_info" name="character_info" rows="4" placeholder="Describe your character, class, backstory..."><%= profileUser.character_info || '' %></textarea>
-    </div>
-    <button type="submit" class="btn btn-primary btn-small">Save Character</button>
-  </form>
+  <h2>My Characters</h2>
+  <p class="text-muted" style="margin-bottom: 1rem;">Create and manage your characters. Each character has a name, description, and avatar.</p>
 
-  <div class="profile-section" style="margin-top: 1.5rem;">
-    <h3>Character Avatar</h3>
-    <div class="avatar-section">
-      <div class="avatar-preview">
-        <% if (profileUser.character_avatar) { %>
-          <img src="/avatars/<%= profileUser.character_avatar %>" alt="Character Avatar" class="character-avatar-preview">
-        <% } else { %>
-          <div class="avatar-placeholder">?</div>
-        <% } %>
-      </div>
-      <form action="/profile/character-avatar" method="POST" enctype="multipart/form-data">
+  <button type="button" class="btn btn-primary btn-small" style="margin-bottom: 1rem;" onclick="document.getElementById('add-char-form').style.display = document.getElementById('add-char-form').style.display === 'none' ? 'block' : 'none'">+ Add Character</button>
+
+  <div id="add-char-form" style="display: none; margin-bottom: 1.5rem;">
+    <div class="card" style="border: 1px solid var(--gold-dim);">
+      <h3>New Character</h3>
+      <form action="/profile/characters" method="POST" enctype="multipart/form-data">
         <div class="form-group">
-          <label for="character_avatar">Upload character avatar (max 2MB, images only)</label>
-          <input type="file" id="character_avatar" name="character_avatar" accept="image/*">
+          <label for="char-name">Character Name</label>
+          <input type="text" name="name" id="char-name" required placeholder="e.g. Thorin Oakenshield">
         </div>
-        <button type="submit" class="btn btn-primary btn-small">Upload Character Avatar</button>
+        <div class="form-group">
+          <label for="char-desc">Description / Backstory</label>
+          <textarea name="description" id="char-desc" rows="4" placeholder="Class, race, backstory... (Markdown supported)"></textarea>
+          <small class="form-hint">Supports Markdown: **bold**, *italic*, [links](url), lists, etc.</small>
+        </div>
+        <div class="form-group">
+          <label for="char-avatar">Character Avatar (optional)</label>
+          <input type="file" name="avatar" id="char-avatar" accept="image/*">
+          <small class="form-hint">Will be center-cropped to 128&times;128.</small>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="submit" class="btn btn-primary btn-small">Add Character</button>
+          <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('add-char-form').style.display='none'">Cancel</button>
+        </div>
       </form>
     </div>
   </div>
+
+  <% if (characters.length > 0) { %>
+    <div class="characters-grid">
+      <% for (const char of characters) { %>
+        <div class="character-card">
+          <div class="character-card-avatar">
+            <% if (char.avatar) { %>
+              <img src="/avatars/<%= char.avatar %>" alt="<%= char.name %>" class="character-card-img">
+            <% } else { %>
+              <div class="character-card-placeholder"><%= char.name.charAt(0).toUpperCase() %></div>
+            <% } %>
+          </div>
+          <div class="character-card-name"><%= char.name %></div>
+          <div class="character-card-actions">
+            <button type="button" class="btn btn-small btn-outline" data-edit-char="<%= char.id %>">Edit</button>
+            <form action="/profile/characters/<%= char.id %>/delete" method="POST" class="inline-form">
+              <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this character?')">&times;</button>
+            </form>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  <% } else { %>
+    <p class="empty-state-text">No characters yet. Add your first character above!</p>
+  <% } %>
 </div>
+
+<% if (profileUser.character_info || profileUser.character_avatar) { %>
+<div class="settings-section card">
+  <h2>Legacy Character (from old profile)</h2>
+  <p class="text-muted">This character data is from the old single-character system. You can migrate it by creating a new character above.</p>
+  <% if (profileUser.character_avatar) { %>
+    <img src="/avatars/<%= profileUser.character_avatar %>" alt="Character" class="character-avatar-preview" style="margin-bottom: 0.5rem;">
+  <% } %>
+  <% if (profileUser.character_info) { %>
+    <p><%= profileUser.character_info %></p>
+  <% } %>
+</div>
+<% } %>
+
+<div id="edit-char-modal" class="map-add-form" style="display:none;">
+  <div class="card" style="max-width: 400px; margin: 0 auto;">
+    <h3>Edit Character</h3>
+    <form id="edit-char-form" method="POST" enctype="multipart/form-data">
+      <div class="form-group">
+        <label for="edit-char-name">Character Name</label>
+        <input type="text" name="name" id="edit-char-name" required>
+      </div>
+      <div class="form-group">
+        <label for="edit-char-desc">Description / Backstory</label>
+        <textarea name="description" id="edit-char-desc" rows="4"></textarea>
+        <small class="form-hint">Supports Markdown.</small>
+      </div>
+      <div class="form-group">
+        <label for="edit-char-avatar">Character Avatar</label>
+        <div id="edit-char-avatar-preview" style="display:none; margin-bottom:0.5rem;">
+          <img id="edit-char-avatar-img" src="" alt="" style="width:48px; height:48px; object-fit:cover; border-radius:8px; border:1px solid var(--border);">
+          <label style="display:inline-flex; align-items:center; gap:0.25rem; margin-left:0.5rem; font-weight:normal; font-size:0.85rem; cursor:pointer;">
+            <input type="checkbox" name="remove_avatar" value="1" id="edit-remove-avatar"> Remove
+          </label>
+        </div>
+        <input type="file" name="avatar" id="edit-char-avatar" accept="image/*">
+        <small class="form-hint">Upload new image to replace. Cropped to 128&times;128.</small>
+      </div>
+      <div style="display: flex; gap: 0.5rem;">
+        <button type="submit" class="btn btn-primary btn-small">Save</button>
+        <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('edit-char-modal').style.display='none'">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+var charsData = <%- JSON.stringify(characters.map(function(c) { return { id: c.id, name: c.name, description: c.description || '', avatar: c.avatar }; })) %>;
+var charsById = {};
+charsData.forEach(function(c) { charsById[c.id] = c; });
+
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('[data-edit-char]');
+  if (btn) {
+    var id = parseInt(btn.getAttribute('data-edit-char'), 10);
+    var c = charsById[id];
+    if (!c) return;
+    document.getElementById('edit-char-form').action = '/profile/characters/' + id + '/edit';
+    document.getElementById('edit-char-name').value = c.name;
+    document.getElementById('edit-char-desc').value = c.description;
+    document.getElementById('edit-remove-avatar').checked = false;
+    if (c.avatar) {
+      document.getElementById('edit-char-avatar-preview').style.display = 'block';
+      document.getElementById('edit-char-avatar-img').src = '/avatars/' + c.avatar;
+    } else {
+      document.getElementById('edit-char-avatar-preview').style.display = 'none';
+    }
+    document.getElementById('edit-char-modal').style.display = 'block';
+  }
+});
+</script>
 
 <%- include('partials/foot') %>

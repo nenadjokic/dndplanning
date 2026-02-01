@@ -60,6 +60,19 @@
 </div>
 
 <div class="card" style="margin-top: 1.5rem;">
+  <h2>Push Notifications</h2>
+  <p>Get notified on your device when quests are created, confirmed, completed, or cancelled.</p>
+  <div id="push-status">
+    <p id="push-status-text" class="text-muted">Checking push notification support...</p>
+    <button type="button" class="btn btn-primary btn-small" id="push-enable-btn" style="display:none;">Enable Push Notifications</button>
+    <button type="button" class="btn btn-outline btn-small" id="push-disable-btn" style="display:none;">Disable Push Notifications</button>
+  </div>
+  <div class="pwa-platform" style="margin-top: 1rem;">
+    <p class="form-hint"><strong>Requirements:</strong> Push notifications require HTTPS and a supported browser. On iOS, you must first install the app to your home screen (see instructions above), then enable notifications from within the installed app.</p>
+  </div>
+</div>
+
+<div class="card" style="margin-top: 1.5rem;">
   <h2>App Status</h2>
   <div id="pwa-status">
     <p id="pwa-installed-status" class="text-muted">Checking installation status...</p>
@@ -105,6 +118,104 @@
     statusText.textContent = 'Quest Planner is installed and running as an app!';
     statusText.style.color = 'var(--green-light)';
     installBtn.style.display = 'none';
+  });
+})();
+
+// Push notifications
+(function() {
+  var pushText = document.getElementById('push-status-text');
+  var enableBtn = document.getElementById('push-enable-btn');
+  var disableBtn = document.getElementById('push-disable-btn');
+  var vapidPublicKey = '<%= typeof vapidPublicKey !== "undefined" && vapidPublicKey ? vapidPublicKey : "" %>';
+
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    pushText.textContent = 'Push notifications are not supported in this browser.';
+    return;
+  }
+
+  if (!vapidPublicKey) {
+    pushText.textContent = 'Push notifications are not configured on this server.';
+    return;
+  }
+
+  function urlBase64ToUint8Array(base64String) {
+    var padding = '='.repeat((4 - base64String.length % 4) % 4);
+    var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    var rawData = window.atob(base64);
+    var outputArray = new Uint8Array(rawData.length);
+    for (var i = 0; i < rawData.length; i++) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  navigator.serviceWorker.ready.then(function(registration) {
+    return registration.pushManager.getSubscription().then(function(sub) {
+      if (sub) {
+        pushText.textContent = 'Push notifications are enabled!';
+        pushText.style.color = 'var(--green-light)';
+        disableBtn.style.display = 'inline-block';
+      } else {
+        pushText.textContent = 'Push notifications are not enabled.';
+        enableBtn.style.display = 'inline-block';
+      }
+    });
+  });
+
+  enableBtn.addEventListener('click', function() {
+    Notification.requestPermission().then(function(permission) {
+      if (permission !== 'granted') {
+        pushText.textContent = 'Notification permission denied. Please allow notifications in your browser settings.';
+        pushText.style.color = 'var(--red-light)';
+        return;
+      }
+      navigator.serviceWorker.ready.then(function(registration) {
+        return registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+        });
+      }).then(function(sub) {
+        return fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription: sub })
+        });
+      }).then(function(resp) {
+        return resp.json();
+      }).then(function(data) {
+        if (data.success) {
+          pushText.textContent = 'Push notifications are enabled!';
+          pushText.style.color = 'var(--green-light)';
+          enableBtn.style.display = 'none';
+          disableBtn.style.display = 'inline-block';
+        }
+      }).catch(function(err) {
+        pushText.textContent = 'Failed to enable push notifications: ' + err.message;
+        pushText.style.color = 'var(--red-light)';
+      });
+    });
+  });
+
+  disableBtn.addEventListener('click', function() {
+    navigator.serviceWorker.ready.then(function(registration) {
+      return registration.pushManager.getSubscription();
+    }).then(function(sub) {
+      if (sub) {
+        var endpoint = sub.endpoint;
+        return sub.unsubscribe().then(function() {
+          return fetch('/api/push/unsubscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: endpoint })
+          });
+        });
+      }
+    }).then(function() {
+      pushText.textContent = 'Push notifications are disabled.';
+      pushText.style.color = '';
+      disableBtn.style.display = 'none';
+      enableBtn.style.display = 'inline-block';
+    });
   });
 })();
 </script>

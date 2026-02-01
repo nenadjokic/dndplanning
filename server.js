@@ -34,6 +34,7 @@ app.locals.appVersion = require('./package.json').version;
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/avatars', express.static(path.join(__dirname, 'data', 'avatars')));
@@ -77,9 +78,33 @@ app.use('/analytics', analyticsRoutes);
 app.use('/dm-tools', dmToolsRoutes);
 
 // PWA install page
+const pushService = require('./helpers/push');
+
 app.get('/pwa', (req, res) => {
   if (!req.user) return res.redirect('/login');
-  res.render('pwa');
+  res.render('pwa', { vapidPublicKey: pushService.getPublicKey() });
+});
+
+// Push notification API
+app.get('/api/push/key', (req, res) => {
+  res.json({ publicKey: pushService.getPublicKey() });
+});
+
+app.post('/api/push/subscribe', (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  const { subscription } = req.body;
+  if (!subscription || !subscription.endpoint || !subscription.keys) {
+    return res.status(400).json({ error: 'Invalid subscription' });
+  }
+  pushService.subscribe(req.user.id, subscription);
+  res.json({ success: true });
+});
+
+app.post('/api/push/unsubscribe', (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  const { endpoint } = req.body;
+  if (endpoint) pushService.unsubscribe(endpoint);
+  res.json({ success: true });
 });
 
 app.listen(PORT, () => {

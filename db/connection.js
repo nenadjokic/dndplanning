@@ -116,6 +116,48 @@ db.exec(`
   );
 `);
 
+// Push notification subscriptions
+db.exec(`
+  CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    endpoint TEXT NOT NULL UNIQUE,
+    keys_p256dh TEXT NOT NULL,
+    keys_auth TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+// VAPID config (single-row, auto-generated)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS vapid_config (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    public_key TEXT NOT NULL,
+    private_key TEXT NOT NULL
+  );
+`);
+
+// Auto-generate VAPID keys if not present
+const vapidRow = db.prepare('SELECT * FROM vapid_config WHERE id = 1').get();
+if (!vapidRow) {
+  const webpush = require('web-push');
+  const vapidKeys = webpush.generateVAPIDKeys();
+  db.prepare('INSERT INTO vapid_config (id, public_key, private_key) VALUES (1, ?, ?)').run(vapidKeys.publicKey, vapidKeys.privateKey);
+}
+
+// Characters table (multiple characters per user)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS characters (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    name TEXT NOT NULL,
+    description TEXT,
+    avatar TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
 // Notification config table (single-row)
 db.exec(`
   CREATE TABLE IF NOT EXISTS notification_config (

@@ -1,6 +1,6 @@
-# Quest Planner v0.7.4 — D&D Session Scheduler
+# Quest Planner v0.7.5 — D&D Session Scheduler
 
-> **Latest release:** v0.7.4 (2026-02-01)
+> **Latest release:** v0.7.5 (2026-02-01)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -57,8 +57,9 @@ If you enjoy Quest Planner, consider buying me a coffee:
   - Triggered by: session confirmation, @mentions in posts/replies/comments
 - **Light / Dark / Auto Theme** — Dark (Dungeon), Light (Parchment), Auto (switches at 6AM/7PM)
 - **Live Clock** — Current date and time in the nav bar, updates every second
-- **User Profile** — Avatar upload, birthday, about section, character info with character avatar
-- **Public Profiles** — View any guild member's profile page with avatar, birthday, about, and character
+- **User Profile** — Avatar upload, birthday, about section (Markdown), multiple characters with avatars and descriptions
+- **Public Profiles** — View any guild member's profile page with avatar, birthday, about, and characters grid
+- **Push Notifications** — PWA push notifications for session events (create, confirm, cancel, complete, recap) via Web Push API
 - **Guild Members Directory** — `/players` page showing all members with links to their profiles
 - **User Settings** — Time format toggle, theme toggle, password change
 - **Unavailability Days** — Players mark dates they can't play; DM sees these when creating sessions
@@ -488,7 +489,8 @@ dndplanning/
 ├── helpers/
 │   ├── time.js            # Date/time formatting helpers (12h/24h)
 │   ├── notifications.js   # Notification creation, @mention parsing
-│   └── messenger.js       # Omni-channel messaging (Discord, Telegram, Viber)
+│   ├── messenger.js       # Omni-channel messaging (Discord, Telegram, Viber)
+│   └── push.js            # PWA push notification service (Web Push / VAPID)
 ├── middleware/
 │   ├── auth.js            # Auth middleware (login, DM check, user data, theme)
 │   └── flash.js           # Flash messages
@@ -501,7 +503,7 @@ dndplanning/
 │   ├── notifications.js   # Notification API (fetch, mark read)
 │   ├── history.js          # Session history page (completed D&D/RPG sessions)
 │   ├── players.js         # Guild members directory
-│   ├── profile.js         # User profile (avatar, birthday, about, character, public profiles)
+│   ├── profile.js         # User profile (avatar, birthday, about, multiple characters, public profiles)
 │   ├── sessions.js        # Session CRUD, slot confirmation, recap, comments, replies
 │   ├── settings.js        # User settings (theme, time, password, unavailability, calendar)
 │   ├── votes.js           # Player voting
@@ -525,7 +527,7 @@ dndplanning/
 │   ├── pwa.ejs            # PWA installation instructions page
 │   └── settings.ejs       # User settings page (theme, time, password, unavailability, calendar)
 ├── public/
-│   ├── css/style.css      # Dark + light theme, notifications, mentions, board, map, loot, analytics, PWA styles
+│   ├── css/style.css      # Dark + light theme, notifications, mentions, board, map, loot, analytics, PWA, characters styles
 │   ├── js/app.js          # Clock, notifications, time picker, unavailability warnings, theme recheck
 │   ├── manifest.json      # PWA web app manifest
 │   ├── sw.js              # Service worker for PWA offline support
@@ -588,6 +590,18 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.7.5 (2026-02-01)
+
+- **Push notifications** — PWA push notifications for session events (create, confirm, cancel, complete, recap) via Web Push API with auto-generated VAPID keys; enable/disable from the Install App page
+- **Multiple characters** — create and manage multiple characters on your profile, each with a name, description (Markdown), and avatar (center-cropped to 128x128)
+- **Characters grid** — profile and public profile pages display characters in a responsive thumbnail grid with avatars and names
+- **Markdown profiles** — About section and character descriptions now support full Markdown rendering (bold, italic, lists, links, etc.)
+- **Legacy character migration** — old single-character data shown in a "Legacy Character" section; users can recreate as a new character
+- **Fix: Favicon fetch** — DM Tools "Fetch Favicon" button now works correctly (added JSON body parser middleware)
+- **Fix: What's New popup** — popup now shows current version changelog instead of stale v0.7.0 content
+- **DB migration** — added `characters`, `push_subscriptions`, and `vapid_config` tables
+- **New dependency** — `web-push` for VAPID-based push notifications
 
 ### v0.7.4 (2026-02-01)
 

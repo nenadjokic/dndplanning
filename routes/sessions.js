@@ -3,6 +3,7 @@ const db = require('../db/connection');
 const { requireLogin, requireDM, requireAdmin } = require('../middleware/auth');
 const { notifyMentions, notifySessionConfirmed } = require('../helpers/notifications');
 const messenger = require('../helpers/messenger');
+const pushService = require('../helpers/push');
 const router = express.Router();
 
 router.get('/new', requireLogin, requireDM, (req, res) => {
@@ -78,6 +79,7 @@ router.post('/', requireLogin, requireDM, (req, res) => {
 
   const sessionId = createSession();
   messenger.send('session_created', { title, category: sessionCategory, link: '/sessions/' + sessionId, actorName: req.user.username }).catch(() => {});
+  pushService.sendToAll('New Quest Posted', `"${title}" — Vote now!`, '/sessions/' + sessionId).catch(() => {});
   req.flash('success', 'Quest session posted to the tavern board!');
   res.redirect('/sessions/' + sessionId);
 });
@@ -270,6 +272,7 @@ router.post('/:id/confirm', requireLogin, requireDM, (req, res) => {
     label: confirmedSlot ? confirmedSlot.label : '',
     link: '/sessions/' + session.id, actorName: req.user.username
   }).catch(() => {});
+  pushService.sendToAll('Quest Confirmed', `"${session.title}" on ${slotDate}`, '/sessions/' + session.id).catch(() => {});
 
   req.flash('success', 'The quest date has been proclaimed!');
   res.redirect('/sessions/' + session.id);
@@ -287,6 +290,7 @@ router.post('/:id/cancel', requireLogin, requireDM, (req, res) => {
     .run('cancelled', session.id);
 
   messenger.send('session_cancelled', { title: session.title, link: '/sessions/' + session.id, actorName: req.user.username }).catch(() => {});
+  pushService.sendToAll('Quest Cancelled', `"${session.title}" has been cancelled.`, '/sessions/' + session.id).catch(() => {});
 
   req.flash('success', 'The quest has been cancelled.');
   res.redirect('/sessions/' + session.id);
@@ -357,6 +361,7 @@ router.post('/:id/summary', requireLogin, requireDM, (req, res) => {
       title: session.title, summary: summary.trim(),
       link: '/sessions/' + session.id, actorName: req.user.username
     }).catch(() => {});
+    pushService.sendToAll('Quest Completed', `"${session.title}" — Recap available!`, '/sessions/' + session.id).catch(() => {});
     req.flash('success', 'Session recap saved and quest completed!');
   } else {
     db.prepare('UPDATE sessions SET summary = ? WHERE id = ?')
@@ -365,6 +370,7 @@ router.post('/:id/summary', requireLogin, requireDM, (req, res) => {
       title: session.title, summary: summary.trim(),
       link: '/sessions/' + session.id, actorName: req.user.username
     }).catch(() => {});
+    pushService.sendToAll('Recap Updated', `Recap updated for "${session.title}"`, '/sessions/' + session.id).catch(() => {});
     req.flash('success', 'Session recap updated.');
   }
 

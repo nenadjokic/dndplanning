@@ -29,7 +29,30 @@
   <% if (profileUser.about) { %>
     <div class="profile-section">
       <h3>About</h3>
-      <p><%= profileUser.about %></p>
+      <div class="recap-rendered"><%- renderMarkdown(profileUser.about) %></div>
+    </div>
+  <% } %>
+
+  <% if (characters.length > 0) { %>
+    <div class="profile-section">
+      <h3>Characters</h3>
+      <div class="characters-grid">
+        <% for (const char of characters) { %>
+          <div class="character-card character-card-public">
+            <div class="character-card-avatar">
+              <% if (char.avatar) { %>
+                <img src="/avatars/<%= char.avatar %>" alt="<%= char.name %>" class="character-card-img">
+              <% } else { %>
+                <div class="character-card-placeholder"><%= char.name.charAt(0).toUpperCase() %></div>
+              <% } %>
+            </div>
+            <div class="character-card-name"><%= char.name %></div>
+            <% if (char.description) { %>
+              <div class="character-card-desc recap-rendered"><%- renderMarkdown(char.description) %></div>
+            <% } %>
+          </div>
+        <% } %>
+      </div>
     </div>
   <% } %>
 
@@ -42,7 +65,7 @@
         </div>
       <% } %>
       <% if (profileUser.character_info) { %>
-        <p><%= profileUser.character_info %></p>
+        <div class="recap-rendered"><%- renderMarkdown(profileUser.character_info) %></div>
       <% } %>
     </div>
   <% } %>
