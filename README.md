@@ -1,6 +1,6 @@
-# Quest Planner v0.8.2 — D&D Session Scheduler
+# Quest Planner v0.8.3 — D&D Session Scheduler
 
-> **Latest release:** v0.8.2 (2026-02-01)
+> **Latest release:** v0.8.3 (2026-02-01)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -595,6 +595,13 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.8.3 (2026-02-01)
+
+- **Fix: 3D dice not rendering** — cannon-es is an ES module and was not loading as a global; converted dice-roller.js to an ES module with proper `import` statement; dice now physically tumble on screen with full 3D animation
+- **Visible dice overlay** — added dark semi-transparent backdrop behind dice so they stand out against page content
+- **Dice persist on screen** — 3D dice now stay visible for the full 10 seconds alongside the results banner, then both fade away together; hovering the banner also keeps the dice visible
+- **Brighter dice textures** — changed face number color from dark to light gold (#f0d9a0) for better readability on the brown dice surfaces
 
 ### v0.8.2 (2026-02-01)
 

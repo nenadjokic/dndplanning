@@ -30,7 +30,8 @@
           </ul>
           <h3 style="color: var(--gold); font-size: 0.95rem; margin: 0.75rem 0 0.5rem;">Bug Fixes</h3>
           <ul class="whatsnew-list">
-            <li>None</li>
+            <li><strong>3D Dice Rendering</strong> &mdash; Fixed dice not appearing on screen; cannon-es physics engine now loads correctly as an ES module</li>
+            <li><strong>Dice Visibility</strong> &mdash; Added dark overlay backdrop and brighter face textures; dice stay on screen for 10 seconds alongside the results banner</li>
           </ul>
         </div>
         <div class="whatsnew-links">
@@ -91,9 +92,8 @@
   <script src="/js/app.js"></script>
   <% if (typeof user !== 'undefined' && user) { %>
     <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-    <script src="https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"></script>
     <link rel="stylesheet" href="/css/dice-roller.css">
-    <script src="/js/dice-roller.js"></script>
+    <script type="module" src="/js/dice-roller.js"></script>
   <% } %>
 </body>
 </html>
