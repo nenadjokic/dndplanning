@@ -64,7 +64,7 @@
         <div class="form-group">
           <label for="char-avatar">Character Avatar (optional)</label>
           <input type="file" name="avatar" id="char-avatar" accept="image/*">
-          <small class="form-hint">Will be center-cropped to 128&times;128.</small>
+          <small class="form-hint">Will be center-cropped to 256&times;256.</small>
         </div>
         <div style="display: flex; gap: 0.5rem;">
           <button type="submit" class="btn btn-primary btn-small">Add Character</button>
@@ -77,7 +77,7 @@
   <% if (characters.length > 0) { %>
     <div class="characters-grid">
       <% for (const char of characters) { %>
-        <div class="character-card">
+        <div class="character-card" style="cursor: pointer;" data-edit-char="<%= char.id %>">
           <div class="character-card-avatar">
             <% if (char.avatar) { %>
               <img src="/avatars/<%= char.avatar %>" alt="<%= char.name %>" class="character-card-img">
@@ -88,8 +88,8 @@
           <div class="character-card-name"><%= char.name %></div>
           <div class="character-card-actions">
             <button type="button" class="btn btn-small btn-outline" data-edit-char="<%= char.id %>">Edit</button>
-            <form action="/profile/characters/<%= char.id %>/delete" method="POST" class="inline-form">
-              <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this character?')">&times;</button>
+            <form action="/profile/characters/<%= char.id %>/delete" method="POST" class="inline-form" onclick="event.stopPropagation();">
+              <button type="submit" class="btn btn-small btn-danger" onclick="event.stopPropagation(); return confirm('Delete this character?')">&times;</button>
             </form>
           </div>
         </div>
@@ -135,7 +135,7 @@
           </label>
         </div>
         <input type="file" name="avatar" id="edit-char-avatar" accept="image/*">
-        <small class="form-hint">Upload new image to replace. Cropped to 128&times;128.</small>
+        <small class="form-hint">Upload new image to replace. Cropped to 256&times;256.</small>
       </div>
       <div style="display: flex; gap: 0.5rem;">
         <button type="submit" class="btn btn-primary btn-small">Save</button>

@@ -42,7 +42,7 @@ async function cropCharAvatar(buffer, charId) {
   const filename = 'char-' + charId + '.png';
   const outPath = path.join(avatarDir, filename);
   await sharp(buffer)
-    .resize(128, 128, { fit: 'cover', position: 'centre' })
+    .resize(256, 256, { fit: 'cover', position: 'centre' })
     .png()
     .toFile(outPath);
   return filename;
@@ -227,6 +227,21 @@ router.get('/:username', requireLogin, (req, res) => {
   }
   const characters = db.prepare('SELECT * FROM characters WHERE user_id = ? ORDER BY sort_order, created_at').all(profileUser.id);
   res.render('profile-public', { profileUser, characters });
+});
+
+// Public character detail — read-only
+router.get('/:username/character/:id', requireLogin, (req, res) => {
+  const profileUser = db.prepare('SELECT id, username, role, avatar FROM users WHERE username = ?').get(req.params.username);
+  if (!profileUser) {
+    req.flash('error', 'User not found.');
+    return res.redirect('/');
+  }
+  const character = db.prepare('SELECT * FROM characters WHERE id = ? AND user_id = ?').get(req.params.id, profileUser.id);
+  if (!character) {
+    req.flash('error', 'Character not found.');
+    return res.redirect('/profile/' + req.params.username);
+  }
+  res.render('character-detail', { profileUser, character });
 });
 
 module.exports = router;

@@ -1,0 +1,29 @@
+<%- include('partials/head', { pageTitle: character.name + ' — ' + profileUser.username }) %>
+
+<div class="page-header">
+  <h1><%= character.name %></h1>
+  <a href="/profile/<%= profileUser.username %>" class="btn btn-outline">Back to Profile</a>
+</div>
+
+<div class="card character-detail-card">
+  <div class="character-detail-header">
+    <% if (character.avatar) { %>
+      <img src="/avatars/<%= character.avatar %>" alt="<%= character.name %>" class="character-detail-avatar">
+    <% } else { %>
+      <div class="character-detail-avatar-placeholder"><%= character.name.charAt(0).toUpperCase() %></div>
+    <% } %>
+    <div class="character-detail-info">
+      <h2 style="margin-top: 0; margin-bottom: 0.25rem;"><%= character.name %></h2>
+      <span class="text-muted">Played by <a href="/profile/<%= profileUser.username %>" class="profile-link"><%= profileUser.username %></a></span>
+    </div>
+  </div>
+
+  <% if (character.description) { %>
+    <div class="profile-section">
+      <h3>Description / Backstory</h3>
+      <div class="recap-rendered"><%- renderMarkdown(character.description) %></div>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/foot') %>

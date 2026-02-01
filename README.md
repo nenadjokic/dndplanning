@@ -1,6 +1,6 @@
-# Quest Planner v0.7.5 — D&D Session Scheduler
+# Quest Planner v0.7.5.1 — D&D Session Scheduler
 
-> **Latest release:** v0.7.5 (2026-02-01)
+> **Latest release:** v0.7.5.1 (2026-02-01)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -591,10 +591,17 @@ The admin can also check for updates from the **Guild Settings** page using the 
 
 ## Changelog
 
+### v0.7.5.1 (2026-02-01)
+
+- **Higher quality character thumbnails** — character avatars are now cropped to 256x256 (up from 128x128) for sharper thumbnails
+- **Character detail page** — dedicated page for viewing a character's full backstory and description; accessible by clicking a character on any player profile
+- **Improved player profiles** — public profiles now show a clean character grid with thumbnails and names; character descriptions are only shown on the detail page
+- **Clickable character cards** — on your own profile page, clicking any character card opens the edit modal directly
+
 ### v0.7.5 (2026-02-01)
 
 - **Push notifications** — PWA push notifications for session events (create, confirm, cancel, complete, recap) via Web Push API with auto-generated VAPID keys; enable/disable from the Install App page
-- **Multiple characters** — create and manage multiple characters on your profile, each with a name, description (Markdown), and avatar (center-cropped to 128x128)
+- **Multiple characters** — create and manage multiple characters on your profile, each with a name, description (Markdown), and avatar (center-cropped to 256x256)
 - **Characters grid** — profile and public profile pages display characters in a responsive thumbnail grid with avatars and names
 - **Markdown profiles** — About section and character descriptions now support full Markdown rendering (bold, italic, lists, links, etc.)
 - **Legacy character migration** — old single-character data shown in a "Legacy Character" section; users can recreate as a new character

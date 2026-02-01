@@ -32,12 +32,14 @@
       <div class="recap-rendered"><%- renderMarkdown(profileUser.about) %></div>
     </div>
   <% } %>
+</div>
 
-  <% if (characters.length > 0) { %>
-    <div class="profile-section">
-      <h3>Characters</h3>
-      <div class="characters-grid">
-        <% for (const char of characters) { %>
+<% if (characters.length > 0) { %>
+  <div class="settings-section card">
+    <h2>Characters</h2>
+    <div class="characters-grid">
+      <% for (const char of characters) { %>
+        <a href="/profile/<%= profileUser.username %>/character/<%= char.id %>" class="character-card-link">
           <div class="character-card character-card-public">
             <div class="character-card-avatar">
               <% if (char.avatar) { %>
@@ -47,28 +49,25 @@
               <% } %>
             </div>
             <div class="character-card-name"><%= char.name %></div>
-            <% if (char.description) { %>
-              <div class="character-card-desc recap-rendered"><%- renderMarkdown(char.description) %></div>
-            <% } %>
           </div>
-        <% } %>
-      </div>
+        </a>
+      <% } %>
     </div>
-  <% } %>
+  </div>
+<% } %>
 
-  <% if (profileUser.character_info || profileUser.character_avatar) { %>
-    <div class="profile-section">
-      <h3>Character</h3>
-      <% if (profileUser.character_avatar) { %>
-        <div style="margin-bottom: 1rem;">
-          <img src="/avatars/<%= profileUser.character_avatar %>" alt="Character" class="character-avatar-preview">
-        </div>
-      <% } %>
-      <% if (profileUser.character_info) { %>
-        <div class="recap-rendered"><%- renderMarkdown(profileUser.character_info) %></div>
-      <% } %>
-    </div>
-  <% } %>
-</div>
+<% if (profileUser.character_info || profileUser.character_avatar) { %>
+  <div class="settings-section card">
+    <h2>Legacy Character</h2>
+    <% if (profileUser.character_avatar) { %>
+      <div style="margin-bottom: 1rem;">
+        <img src="/avatars/<%= profileUser.character_avatar %>" alt="Character" class="character-avatar-preview">
+      </div>
+    <% } %>
+    <% if (profileUser.character_info) { %>
+      <div class="recap-rendered"><%- renderMarkdown(profileUser.character_info) %></div>
+    <% } %>
+  </div>
+<% } %>
 
 <%- include('partials/foot') %>
