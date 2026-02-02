@@ -51,6 +51,40 @@
     </div>
   <% } %>
 
+  <% if (session.status === 'open') { %>
+    <div class="dm-actions">
+      <h3>Your Availability</h3>
+      <form action="/votes/<%= session.id %>" method="POST">
+        <div class="vote-slots">
+          <% for (const slot of slots) { %>
+            <div class="vote-slot-card">
+              <div class="vote-slot-header">
+                <div class="slot-date"><%= formatDate(slot.date_time, { weekday: 'long', month: 'long', day: 'numeric', showTime: false }) %></div>
+                <div class="slot-time"><%= formatTime(slot.date_time) %></div>
+                <% if (slot.label) { %><div class="slot-label"><%= slot.label %></div><% } %>
+              </div>
+              <div class="vote-options">
+                <label class="vote-option vote-available">
+                  <input type="radio" name="vote_<%= slot.id %>" value="available" <%= myVotes[slot.id] === 'available' ? 'checked' : '' %>>
+                  <span class="vote-icon">&#10003;</span> Available
+                </label>
+                <label class="vote-option vote-maybe">
+                  <input type="radio" name="vote_<%= slot.id %>" value="maybe" <%= myVotes[slot.id] === 'maybe' ? 'checked' : '' %>>
+                  <span class="vote-icon">?</span> Maybe
+                </label>
+                <label class="vote-option vote-unavailable">
+                  <input type="radio" name="vote_<%= slot.id %>" value="unavailable" <%= myVotes[slot.id] === 'unavailable' ? 'checked' : '' %>>
+                  <span class="vote-icon">&#10007;</span> Unavailable
+                </label>
+              </div>
+            </div>
+          <% } %>
+        </div>
+        <button type="submit" class="btn btn-primary" onclick="return confirm('Submit your availability for this quest?')">Submit Availability</button>
+      </form>
+    </div>
+  <% } %>
+
   <h2>Party Availability</h2>
   <% if (players.length === 0) { %>
     <p class="empty-state-text">No adventurers have joined the guild yet.</p>

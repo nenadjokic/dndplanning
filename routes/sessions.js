@@ -99,7 +99,7 @@ router.get('/:id', requireLogin, (req, res) => {
 
   const slots = db.prepare('SELECT * FROM slots WHERE session_id = ? ORDER BY date_time').all(session.id);
 
-  const players = db.prepare("SELECT id, username FROM users WHERE role = 'player' ORDER BY username").all();
+  const players = db.prepare("SELECT id, username FROM users ORDER BY username").all();
 
   // Build allUsersMap for avatars
   const allUsers = db.prepare('SELECT id, username, avatar FROM users').all();
@@ -202,7 +202,13 @@ router.get('/:id', requireLogin, (req, res) => {
 
   if (isDM) {
     const myPreference = preferenceMap[req.user.id] || null;
-    res.render('dm/session-detail', { session, slots, players, voteMap, slotSummary, preferences, preferenceMap, myPreference, allUsersMap, unavailabilityMap, sessionPosts, sessionReplyMap, locationName });
+    const myVotes = {};
+    for (const v of votes) {
+      if (v.user_id === req.user.id) {
+        myVotes[v.slot_id] = v.status;
+      }
+    }
+    res.render('dm/session-detail', { session, slots, players, voteMap, slotSummary, preferences, preferenceMap, myPreference, myVotes, allUsersMap, unavailabilityMap, sessionPosts, sessionReplyMap, locationName });
   } else {
     // Get this player's votes
     const myVotes = {};

@@ -1,6 +1,6 @@
-# Quest Planner v0.9.19 — D&D Session Scheduler
+# Quest Planner v0.9.20 — D&D Session Scheduler
 
-> **Latest release:** v0.9.19 (2026-02-02)
+> **Latest release:** v0.9.20 (2026-02-02)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -596,6 +596,10 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.9.20 (2026-02-02)
+
+- **DM/Admin Availability Voting** — Admins and DMs can now vote on session availability just like players, while keeping the preferred date option; their votes appear in the Party Availability grid
 
 ### v0.9.19 (2026-02-02)
 
