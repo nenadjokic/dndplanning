@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const db = require('../db/connection');
 const { requireLogin } = require('../middleware/auth');
+const { isGoogleEnabled } = require('../helpers/google');
 const router = express.Router();
 
 router.get('/', requireLogin, (req, res) => {
@@ -27,9 +28,7 @@ router.get('/', requireLogin, (req, res) => {
     notifPrefs[t] = row ? row.enabled === 1 : true; // default: enabled
   }
 
-  const googleEnabled = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
-
-  res.render('settings', { unavailabilities, calendarUrl, publicCalendarUrl, settingsUser: freshUser, notifPrefs, googleEnabled });
+  res.render('settings', { unavailabilities, calendarUrl, publicCalendarUrl, settingsUser: freshUser, notifPrefs, googleEnabled: isGoogleEnabled() });
 });
 
 router.post('/time-format', requireLogin, (req, res) => {
@@ -136,7 +135,7 @@ router.post('/notifications', requireLogin, (req, res) => {
 
 // --- Google Account Link/Unlink ---
 router.get('/google/link', requireLogin, (req, res) => {
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+  if (!isGoogleEnabled()) {
     req.flash('error', 'Google sign-in is not configured.');
     return res.redirect('/settings');
   }

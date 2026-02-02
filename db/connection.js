@@ -214,6 +214,17 @@ db.exec(`
   INSERT OR IGNORE INTO notification_config (id) VALUES (1);
 `);
 
+// Google OAuth config (single-row, admin-managed)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS google_oauth_config (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    enabled INTEGER NOT NULL DEFAULT 0,
+    client_id TEXT,
+    client_secret TEXT
+  );
+  INSERT OR IGNORE INTO google_oauth_config (id) VALUES (1);
+`);
+
 // User notification preferences (per-type opt-in/out)
 db.exec(`
   CREATE TABLE IF NOT EXISTS user_notification_prefs (

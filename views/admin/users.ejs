@@ -61,6 +61,51 @@
 </div>
 
 <div class="card comms-section" style="margin-top: 1.5rem;">
+  <h2>Google Login</h2>
+  <p class="text-muted" style="margin-bottom: 1rem;">Allow guild members to sign in with their Google account.</p>
+
+  <div class="discord-setup-guide" style="margin-bottom: 1rem; padding: 1rem; background: rgba(66, 133, 244, 0.08); border: 1px solid rgba(66, 133, 244, 0.3); border-radius: var(--radius);">
+    <h3 style="color: #4285F4; margin-bottom: 0.5rem; font-size: 1rem;">Google OAuth Setup Guide</h3>
+    <ol style="margin: 0; padding-left: 1.25rem; font-size: 0.88rem; color: var(--text-secondary); line-height: 1.7;">
+      <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">console.cloud.google.com/apis/credentials</a></li>
+      <li>Create a new project (or select an existing one)</li>
+      <li>Click <strong>"+ CREATE CREDENTIALS"</strong> &rarr; <strong>"OAuth client ID"</strong></li>
+      <li>If prompted, configure the <strong>OAuth consent screen</strong> first:
+        <ul style="margin: 0.25rem 0; padding-left: 1rem;">
+          <li>User Type: <strong>External</strong></li>
+          <li>App name: <strong>Quest Planner</strong></li>
+          <li>User support email: your email</li>
+          <li>Authorized domains: your domain (e.g. <code>example.com</code>)</li>
+          <li>Scopes: add <strong>email</strong> and <strong>profile</strong></li>
+        </ul>
+      </li>
+      <li>Back in Credentials, create an <strong>OAuth client ID</strong>:
+        <ul style="margin: 0.25rem 0; padding-left: 1rem;">
+          <li>Application type: <strong>Web application</strong></li>
+          <li>Authorized redirect URIs: add <code><span id="google-redirect-uri-hint"></span></code></li>
+        </ul>
+      </li>
+      <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> and paste them below</li>
+    </ol>
+  </div>
+
+  <form action="/admin/google-oauth" method="POST" id="google-oauth-form">
+    <div class="form-group">
+      <label><input type="checkbox" name="google_enabled" value="1" id="google_enabled"> Enable Google Login</label>
+    </div>
+    <div class="form-group">
+      <label for="google_client_id">Client ID</label>
+      <input type="text" name="google_client_id" id="google_client_id" class="form-input" placeholder="e.g. 123456789-abc.apps.googleusercontent.com">
+    </div>
+    <div class="form-group">
+      <label for="google_client_secret">Client Secret</label>
+      <input type="text" name="google_client_secret" id="google_client_secret" class="form-input" placeholder="e.g. GOCSPX-...">
+    </div>
+    <button type="submit" class="btn btn-primary">Save</button>
+  </form>
+</div>
+
+<div class="card comms-section" style="margin-top: 1.5rem;">
   <h2>Communications Center</h2>
   <p class="text-muted" style="margin-bottom: 1rem;">Configure a messaging provider to broadcast session events to your guild.</p>
 
@@ -201,7 +246,25 @@ function testConnection() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', loadCommsConfig);
+function loadGoogleOAuthConfig() {
+  // Show redirect URI hint
+  var hint = document.getElementById('google-redirect-uri-hint');
+  if (hint) hint.textContent = window.location.origin + '/auth/google/callback';
+
+  fetch('/admin/google-oauth/config')
+    .then(function(r) { return r.json(); })
+    .then(function(cfg) {
+      if (cfg.enabled) document.getElementById('google_enabled').checked = true;
+      if (cfg.client_id) document.getElementById('google_client_id').value = cfg.client_id;
+      if (cfg.client_secret) document.getElementById('google_client_secret').value = cfg.client_secret;
+    })
+    .catch(function() {});
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  loadCommsConfig();
+  loadGoogleOAuthConfig();
+});
 </script>
 
 <%- include('../partials/foot') %>

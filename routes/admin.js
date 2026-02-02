@@ -234,6 +234,37 @@ router.post('/notifications', requireLogin, requireAdmin, async (req, res) => {
   res.redirect('/admin/users');
 });
 
+// --- Google OAuth Config ---
+
+router.get('/google-oauth/config', requireLogin, requireAdmin, (req, res) => {
+  const config = db.prepare('SELECT * FROM google_oauth_config WHERE id = 1').get();
+  if (!config) return res.json({});
+
+  const mask = (val) => val ? val.slice(0, 6) + '****' + val.slice(-4) : '';
+  res.json({
+    enabled: config.enabled ? true : false,
+    client_id: mask(config.client_id),
+    client_secret: mask(config.client_secret)
+  });
+});
+
+router.post('/google-oauth', requireLogin, requireAdmin, (req, res) => {
+  const { google_enabled, google_client_id, google_client_secret } = req.body;
+  const enabled = google_enabled ? 1 : 0;
+
+  const current = db.prepare('SELECT * FROM google_oauth_config WHERE id = 1').get();
+  const isMasked = (val) => val && val.includes('****');
+
+  const clientId = isMasked(google_client_id) ? current.client_id : (google_client_id || null);
+  const clientSecret = isMasked(google_client_secret) ? current.client_secret : (google_client_secret || null);
+
+  db.prepare('UPDATE google_oauth_config SET enabled = ?, client_id = ?, client_secret = ? WHERE id = 1')
+    .run(enabled, clientId, clientSecret);
+
+  req.flash('success', 'Google Login settings saved.');
+  res.redirect('/admin/users');
+});
+
 router.post('/notifications/test', requireLogin, requireAdmin, async (req, res) => {
   try {
     await messenger.test();

@@ -1,6 +1,6 @@
-# Quest Planner v0.9.16 — D&D Session Scheduler
+# Quest Planner v0.9.17 — D&D Session Scheduler
 
-> **Latest release:** v0.9.16 (2026-02-02)
+> **Latest release:** v0.9.17 (2026-02-02)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -596,6 +596,10 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.9.17 (2026-02-02)
+
+- **Google Login Admin UI** — Google OAuth credentials are now configured from Guild Settings (stored in the database) instead of .env variables; includes a step-by-step setup guide with the correct redirect URI
 
 ### v0.9.16 (2026-02-02)
 

@@ -2,14 +2,8 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
 const db = require('../db/connection');
+const { getGoogleConfig, isGoogleEnabled } = require('../helpers/google');
 const router = express.Router();
-
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-
-function isGoogleEnabled() {
-  return !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
-}
 
 router.get('/login', (req, res) => {
   if (req.user) return res.redirect('/');
@@ -85,9 +79,10 @@ function getGoogleRedirectUri(req) {
 
 router.get('/auth/google', (req, res) => {
   if (!isGoogleEnabled()) return res.redirect('/login');
+  const cfg = getGoogleConfig();
   const redirectUri = getGoogleRedirectUri(req);
   const url = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
-    client_id: GOOGLE_CLIENT_ID,
+    client_id: cfg.client_id,
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'openid email profile',
@@ -99,6 +94,7 @@ router.get('/auth/google', (req, res) => {
 
 router.get('/auth/google/callback', async (req, res) => {
   if (!isGoogleEnabled()) return res.redirect('/login');
+  const cfg = getGoogleConfig();
   const { code } = req.query;
   if (!code) {
     req.flash('error', 'Google sign-in was cancelled.');
@@ -110,8 +106,8 @@ router.get('/auth/google/callback', async (req, res) => {
     // Exchange code for tokens
     const tokenRes = await axios.post('https://oauth2.googleapis.com/token', {
       code,
-      client_id: GOOGLE_CLIENT_ID,
-      client_secret: GOOGLE_CLIENT_SECRET,
+      client_id: cfg.client_id,
+      client_secret: cfg.client_secret,
       redirect_uri: redirectUri,
       grant_type: 'authorization_code'
     });
