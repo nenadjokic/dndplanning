@@ -1,6 +1,6 @@
-# Quest Planner v0.9.17 — D&D Session Scheduler
+# Quest Planner v0.9.18 — D&D Session Scheduler
 
-> **Latest release:** v0.9.17 (2026-02-02)
+> **Latest release:** v0.9.18 (2026-02-02)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -596,6 +596,11 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.9.18 (2026-02-02)
+
+- **Natural Dice Physics** — Dice now spawn from a random cloud above the scene, roll in the direction they spin (rotation-coupled translation), scatter across a wider table area, and slide to a natural stop with softer gravity and lower damping
+- **Improved D10/D100 Shape** — Taller poles (`h = r*1.5`), wider ring radius (`r*0.9`), narrower mid-section (`ringY = r*0.25`) for a more realistic pentagonal trapezohedron profile
 
 ### v0.9.17 (2026-02-02)
 

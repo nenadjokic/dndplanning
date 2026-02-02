@@ -453,21 +453,21 @@ function createD8Body(material) {
 /* ── D10 / D100 geometry ── */
 function makeD10Verts(r) {
   r = r || 0.8;
-  // Elongated pentagonal trapezohedron — taller than wide like a real D10
-  var poleY = r * 1.1;
-  var ringY = r * 0.30;
-  var ringR = r * 0.62;
+  // Pentagonal trapezohedron — taller poles, wider ring for sharper profile
+  var h = r * 1.5;
+  var ringY = r * 0.25;
+  var ringR = r * 0.9;
   var v = [];
-  v.push([0, poleY, 0]);
+  v.push([0, h, 0]);
   for (var i = 0; i < 5; i++) {
-    var a = i * 2 * Math.PI / 5;
+    var a = (i * 2 * Math.PI) / 5;
     v.push([ringR * Math.cos(a), ringY, ringR * Math.sin(a)]);
   }
   for (var i = 0; i < 5; i++) {
-    var a = (i * 2 * Math.PI / 5) + (Math.PI / 5);
+    var a = (i * 2 * Math.PI) / 5 + Math.PI / 5;
     v.push([ringR * Math.cos(a), -ringY, ringR * Math.sin(a)]);
   }
-  v.push([0, -poleY, 0]);
+  v.push([0, -h, 0]);
   return v;
 }
 
@@ -609,7 +609,7 @@ function createD20Body(material) {
 }
 
 /* ── Create a single die ── */
-function createDie(type, index, total, scene, world, material) {
+function createDie(type, index, total, scene, world, material, bounds) {
   var mesh, body;
   switch (type) {
     case 'd4':        mesh = createD4Mesh();        body = createD4Body(material);        break;
@@ -625,33 +625,46 @@ function createDie(type, index, total, scene, world, material) {
 
   addEdgeLines(mesh);
 
-  // Spawn above screen center — stagger horizontally so dice don't overlap
-  var spread = 1.2;
-  var halfSpan = (total - 1) * spread / 2;
-  var px = -halfSpan + index * spread + (Math.random() - 0.5) * 0.3;
-  var pz = (Math.random() - 0.5) * 0.5;
-  var py = 4.0 + Math.random() * 1.0;
+  // Spawn from a cloud above the scene — random spread within visible bounds
+  var bx = bounds ? bounds.halfX : 3;
+  var bz = bounds ? bounds.halfZ : 3;
+  var px = (Math.random() - 0.5) * bx * 0.6;
+  var pz = (Math.random() - 0.5) * bz * 0.6;
+  var py = 6 + Math.random() * 2;
   body.position.set(px, py, pz);
 
-  body.linearDamping = 0.1;
-  body.angularDamping = 0.3;
+  body.linearDamping = 0.05;
+  body.angularDamping = 0.15;
 
   body.allowSleep = true;
   body.sleepSpeedLimit = 0.8;
   body.sleepTimeLimit = 0.15;
-
-  // Random horizontal scatter + downward drop
-  body.velocity.set(
-    (Math.random() - 0.5) * 4,
-    -5 - Math.random() * 3,
-    (Math.random() - 0.5) * 4
-  );
 
   // Spin for tumbling
   body.angularVelocity.set(
     (Math.random() - 0.5) * 15,
     (Math.random() - 0.5) * 10,
     (Math.random() - 0.5) * 15
+  );
+
+  // Rotation-coupled translation — dice move in the direction they spin
+  var rollStrength = 3.5;
+  var dirX = body.angularVelocity.z;
+  var dirZ = -body.angularVelocity.x;
+  body.velocity.set(
+    dirX * rollStrength + (Math.random() - 0.5) * 1.5,
+    -4 - Math.random() * 2,
+    dirZ * rollStrength + (Math.random() - 0.5) * 1.5
+  );
+
+  // Casino impulse — small extra kick for natural scatter
+  body.applyImpulse(
+    new CANNON.Vec3(
+      (Math.random() - 0.5) * 2,
+      0,
+      (Math.random() - 0.5) * 2
+    ),
+    body.position
   );
 
   scene.add(mesh);
@@ -749,14 +762,14 @@ function run3DRoll() {
   pointLight.position.set(0, 6, 0);
   scene.add(pointLight);
 
-  // Calculate visible bounds at ground level for wall placement
+  // Calculate visible bounds at ground level for wall placement (wider for natural scatter)
   var tanHalfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   var groundDist = camera.position.y - (-0.5);
-  var halfZ = groundDist * tanHalfFov;
-  var halfX = halfZ * aspect;
+  var halfZ = groundDist * tanHalfFov * 1.3;
+  var halfX = halfZ * aspect * 1.3;
 
-  // Physics
-  var world = new CANNON.World({ gravity: new CANNON.Vec3(0, -50, 0) });
+  // Physics — softer gravity for longer, more natural rolls
+  var world = new CANNON.World({ gravity: new CANNON.Vec3(0, -30, 0) });
   world.broadphase = new CANNON.NaiveBroadphase();
   world.solver.iterations = 10;
   world.solver.tolerance = 0.001;
@@ -793,8 +806,9 @@ function run3DRoll() {
   var diceMeshes = [], diceBodies = [], dieTypes = [];
   var targetQuats = [], preResults = [];
 
+  var dieBounds = { halfX: halfX, halfZ: halfZ };
   diceList.forEach(function(die, idx) {
-    var r = createDie(die, idx, diceList.length, scene, world, diceMat);
+    var r = createDie(die, idx, diceList.length, scene, world, diceMat, dieBounds);
     diceMeshes.push(r.mesh);
     diceBodies.push(r.body);
     dieTypes.push(die);
@@ -826,7 +840,7 @@ function run3DRoll() {
   var elapsed = 0;
   var fixedStep = 1 / 120;
   var maxSubSteps = 10;
-  var maxTime = 1000; // 1s hard limit for physics
+  var maxTime = 1500; // 1.5s hard limit for physics
 
   // Phase: 'physics' = pure physics, 'correcting' = slerp to target after stopped
   var phase = 'physics';
