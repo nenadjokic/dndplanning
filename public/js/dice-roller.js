@@ -749,32 +749,57 @@ function run3DRoll() {
   pointLight.position.set(0, 6, 0);
   scene.add(pointLight);
 
-  // Calculate visible bounds at ground level for dice placement
+  // Calculate visible bounds at ground level (wider for natural scatter)
   var tanHalfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-  var groundDist = camera.position.y;
-  var halfZ = groundDist * tanHalfFov * 0.6;
-  var halfX = halfZ * aspect * 0.6;
+  var groundDist = camera.position.y - (-0.5);
+  var halfZ = groundDist * tanHalfFov * 1.3;
+  var halfX = halfZ * aspect * 1.3;
 
-  // Create dice meshes (no physics — smooth staged animation instead)
-  var diceMeshes = [], dieTypes = [];
+  // Physics world — controls position & collisions (NOT rotation)
+  var world = new CANNON.World({ gravity: new CANNON.Vec3(0, -30, 0) });
+  world.broadphase = new CANNON.NaiveBroadphase();
+  world.solver.iterations = 10;
+  world.solver.tolerance = 0.001;
+  world.allowSleep = true;
+
+  var groundMat = new CANNON.Material('ground');
+  var groundBody = new CANNON.Body({ type: CANNON.Body.STATIC, shape: new CANNON.Plane(), material: groundMat });
+  groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+  groundBody.position.set(0, -0.5, 0);
+  world.addBody(groundBody);
+
+  // Walls at visible screen edges
+  var wallDefs = [
+    { pos: [halfX, 2, 0], rot: [0, -Math.PI / 2, 0] },
+    { pos: [-halfX, 2, 0], rot: [0, Math.PI / 2, 0] },
+    { pos: [0, 2, halfZ], rot: [Math.PI / 2, 0, 0] },
+    { pos: [0, 2, -halfZ], rot: [-Math.PI / 2, 0, 0] }
+  ];
+  wallDefs.forEach(function(w) {
+    var wb = new CANNON.Body({ type: CANNON.Body.STATIC, shape: new CANNON.Plane(), material: groundMat });
+    wb.position.set(w.pos[0], w.pos[1], w.pos[2]);
+    wb.quaternion.setFromEuler(w.rot[0], w.rot[1], w.rot[2]);
+    world.addBody(wb);
+  });
+
+  var diceMat = new CANNON.Material('dice');
+  world.addContactMaterial(new CANNON.ContactMaterial(groundMat, diceMat, {
+    friction: 0.6, restitution: 0.2
+  }));
+  world.addContactMaterial(new CANNON.ContactMaterial(diceMat, diceMat, {
+    friction: 0.4, restitution: 0.3
+  }));
+
+  // Create dice — physics bodies for position/collision, staged quats for face rotation
+  var diceMeshes = [], diceBodies = [], dieTypes = [];
   var preResults = [], targetQuats = [];
   var stageQuats = []; // stageQuats[i] = [q0, q1, q2, q3] — 3 random + 1 final
 
+  var dieBounds = { halfX: halfX, halfZ: halfZ };
   diceList.forEach(function(die, idx) {
-    var mesh;
-    switch (die) {
-      case 'd4':        mesh = createD4Mesh();        break;
-      case 'd6':        mesh = createD6Mesh();        break;
-      case 'd8':        mesh = createD8Mesh();        break;
-      case 'd10':       mesh = createD10Mesh();       break;
-      case 'd100tens':  mesh = createD100TensMesh();  break;
-      case 'd100units': mesh = createD10Mesh();       break;
-      case 'd12':       mesh = createD12Mesh();       break;
-      case 'd20':       mesh = createD20Mesh();       break;
-      default:          mesh = createD6Mesh();
-    }
-    addEdgeLines(mesh);
-    diceMeshes.push(mesh);
+    var r = createDie(die, idx, diceList.length, scene, world, diceMat, dieBounds);
+    diceMeshes.push(r.mesh);
+    diceBodies.push(r.body);
     dieTypes.push(die);
 
     // Pre-determine the actual result
@@ -789,43 +814,30 @@ function run3DRoll() {
     for (var s = 0; s < 3; s++) {
       var randVal = randomResult(die);
       var randFace = valueToFaceIndex(die, randVal);
-      quats.push(computeFaceQuaternion(mesh, randFace, targetDir));
+      quats.push(computeFaceQuaternion(r.mesh, randFace, targetDir));
     }
     var faceIdx = valueToFaceIndex(die, result);
-    quats.push(computeFaceQuaternion(mesh, faceIdx, targetDir));
+    quats.push(computeFaceQuaternion(r.mesh, faceIdx, targetDir));
     stageQuats.push(quats);
     targetQuats.push(quats[3]);
 
-    // Position: spread dice in a circle, start from above
-    var spread = Math.min(halfX, halfZ);
-    var px, pz;
-    if (diceList.length === 1) {
-      px = 0; pz = 0;
-    } else {
-      var angle = (idx / diceList.length) * Math.PI * 2 + Math.PI / 4;
-      var radius = Math.min(spread * 0.35, 1.2 + diceList.length * 0.15);
-      px = Math.cos(angle) * radius;
-      pz = Math.sin(angle) * radius;
-    }
-    mesh.userData.restPos = new THREE.Vector3(px, 0, pz);
-    mesh.userData.startPos = new THREE.Vector3(
-      px + (Math.random() - 0.5) * 0.4,
-      5 + Math.random() * 1.5,
-      pz + (Math.random() - 0.5) * 0.4
-    );
-    mesh.position.copy(mesh.userData.startPos);
-    mesh.quaternion.copy(quats[0]); // Start at first random face
-    scene.add(mesh);
+    // Set initial mesh orientation to first random face
+    r.mesh.quaternion.copy(quats[0]);
+    r.mesh.position.copy(r.body.position);
   });
 
-  // Staged animation — drop + 3 smooth face transitions (4 faces total)
-  var dropDuration = 0.35;   // seconds — dice fall into place
+  // Hybrid animation: physics for position, staged slerp for face rotation
   var stageDuration = 0.28;  // seconds per face-to-face transition
   var stages = 3;            // 3 transitions: face0→face1, face1→face2, face2→result
-  var stageDelay = 0.05;     // start rotating slightly before landing
-  var totalDuration = dropDuration + stageDuration * stages;
+  var stageTotal = stageDuration * stages;
+  var fixedStep = 1 / 120;
+  var maxSubSteps = 10;
+  var maxTime = 1500;        // 1.5s hard limit for physics
   var startTime = performance.now();
+  var lastTime = startTime;
+  var elapsed = 0;
   var allSettled = false;
+  var physicsDone = false;
 
   function easeInOut(t) {
     return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
@@ -833,41 +845,57 @@ function run3DRoll() {
 
   function animate(now) {
     if (allSettled) return;
-    var elapsed = (now - startTime) / 1000;
+    var dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    elapsed += dt;
 
-    for (var i = 0; i < diceMeshes.length; i++) {
-      var mesh = diceMeshes[i];
+    // --- Physics: controls position & collisions ---
+    if (!physicsDone) {
+      world.step(fixedStep, dt, maxSubSteps);
 
-      // Drop animation (eased fall from above)
-      if (elapsed < dropDuration) {
-        var dt = easeInOut(Math.min(elapsed / dropDuration, 1));
-        mesh.position.lerpVectors(mesh.userData.startPos, mesh.userData.restPos, dt);
-      } else {
-        mesh.position.copy(mesh.userData.restPos);
+      // Check if all dice have stopped
+      var allSleeping = elapsed > 0.2;
+      for (var j = 0; j < diceBodies.length; j++) {
+        if (diceBodies[j].sleepState !== CANNON.Body.SLEEPING) {
+          allSleeping = false;
+          break;
+        }
       }
 
-      // Face rotation stages (start slightly before landing for overlap)
-      var stageTime = elapsed - (dropDuration - stageDelay);
-      if (stageTime > 0) {
-        var stageIdx = Math.floor(stageTime / stageDuration);
-        if (stageIdx >= stages) {
-          mesh.quaternion.copy(stageQuats[i][stages]);
-        } else {
-          var st = easeInOut(Math.min((stageTime - stageIdx * stageDuration) / stageDuration, 1));
-          mesh.quaternion.copy(
-            stageQuats[i][stageIdx].clone().slerp(stageQuats[i][stageIdx + 1], st)
-          );
+      if (allSleeping || elapsed * 1000 >= maxTime) {
+        for (var k = 0; k < diceBodies.length; k++) {
+          diceBodies[k].velocity.setZero();
+          diceBodies[k].angularVelocity.setZero();
         }
+        physicsDone = true;
+      }
+    }
+
+    // Copy position from physics bodies (but NOT rotation)
+    for (var i = 0; i < diceMeshes.length; i++) {
+      diceMeshes[i].position.copy(diceBodies[i].position);
+    }
+
+    // --- Staged face rotation: controls which number is shown ---
+    var stageTime = elapsed;
+    for (var i = 0; i < diceMeshes.length; i++) {
+      var stageIdx = Math.floor(stageTime / stageDuration);
+      if (stageIdx >= stages) {
+        diceMeshes[i].quaternion.copy(stageQuats[i][stages]);
+      } else {
+        var st = easeInOut(Math.min((stageTime - stageIdx * stageDuration) / stageDuration, 1));
+        diceMeshes[i].quaternion.copy(
+          stageQuats[i][stageIdx].clone().slerp(stageQuats[i][stageIdx + 1], st)
+        );
       }
     }
 
     renderer.render(scene, camera);
 
-    if (elapsed >= totalDuration) {
-      // Snap to exact final orientation
+    // Done when physics settled AND all face stages complete
+    if (physicsDone && elapsed >= stageTotal) {
       for (var i = 0; i < diceMeshes.length; i++) {
         diceMeshes[i].quaternion.copy(targetQuats[i]);
-        diceMeshes[i].position.copy(diceMeshes[i].userData.restPos);
       }
       renderer.render(scene, camera);
       allSettled = true;
