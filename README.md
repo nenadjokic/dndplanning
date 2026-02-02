@@ -1,6 +1,6 @@
-# Quest Planner v0.9.20 — D&D Session Scheduler
+# Quest Planner v0.9.21 — D&D Session Scheduler
 
-> **Latest release:** v0.9.20 (2026-02-02)
+> **Latest release:** v0.9.21 (2026-02-02)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -596,6 +596,11 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.9.21 (2026-02-02)
+
+- **Smooth Staged Dice Animation** — Dice now roll through 4 random face stages with smooth transitions instead of physics simulation, eliminating shaking/trembling
+- **Random Starting Face** — All dice now start showing a random face instead of always starting on the same number (e.g. D6 no longer always starts on 2)
 
 ### v0.9.20 (2026-02-02)
 

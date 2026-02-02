@@ -1,4 +1,4 @@
-var CACHE_NAME = 'quest-planner-v32';
+var CACHE_NAME = 'quest-planner-v33';
 var OFFLINE_URL = '/offline.html';
 
 self.addEventListener('install', function(event) {
