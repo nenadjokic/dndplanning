@@ -640,31 +640,18 @@ function createDie(type, index, total, scene, world, material, bounds) {
   body.sleepSpeedLimit = 0.8;
   body.sleepTimeLimit = 0.15;
 
-  // Spin for tumbling
+  // Gentle tumble — just enough spin to look natural as dice fall
   body.angularVelocity.set(
-    (Math.random() - 0.5) * 15,
-    (Math.random() - 0.5) * 10,
-    (Math.random() - 0.5) * 15
+    (Math.random() - 0.5) * 4,
+    (Math.random() - 0.5) * 3,
+    (Math.random() - 0.5) * 4
   );
 
-  // Rotation-coupled translation — dice move in the direction they spin
-  var rollStrength = 3.5;
-  var dirX = body.angularVelocity.z;
-  var dirZ = -body.angularVelocity.x;
+  // Mostly downward velocity with slight lateral drift for spread
   body.velocity.set(
-    dirX * rollStrength + (Math.random() - 0.5) * 1.5,
-    -4 - Math.random() * 2,
-    dirZ * rollStrength + (Math.random() - 0.5) * 1.5
-  );
-
-  // Casino impulse — small extra kick for natural scatter
-  body.applyImpulse(
-    new CANNON.Vec3(
-      (Math.random() - 0.5) * 2,
-      0,
-      (Math.random() - 0.5) * 2
-    ),
-    body.position
+    (Math.random() - 0.5) * 1.5,
+    -3 - Math.random() * 2,
+    (Math.random() - 0.5) * 1.5
   );
 
   scene.add(mesh);
@@ -825,12 +812,7 @@ function run3DRoll() {
     var targetQ = computeFaceQuaternion(r.mesh, faceIdx, targetDir);
     targetQuats.push(targetQ);
 
-    // Set initial orientation to a DIFFERENT face
-    var totalFaces = r.mesh.geometry.groups.length;
-    var initFace = faceIdx;
-    while (initFace === faceIdx) initFace = Math.floor(Math.random() * totalFaces);
-    var initQ = computeFaceQuaternion(r.mesh, initFace, targetDir);
-    r.body.quaternion.set(initQ.x, initQ.y, initQ.z, initQ.w);
+    // Random initial orientation — physics + slerp will handle landing on target
     r.mesh.position.copy(r.body.position);
     r.mesh.quaternion.copy(r.body.quaternion);
   });
