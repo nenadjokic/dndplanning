@@ -302,7 +302,8 @@ function isValidImageUrl(url) {
 
 router.post('/:id/comment', requireLogin, (req, res) => {
   const { content, image_url, poll_question } = req.body;
-  let pollOptions = req.body['poll_options[]'];
+  // Express with extended:true parses poll_options[] as poll_options
+  let pollOptions = req.body.poll_options || req.body['poll_options[]'];
   if (pollOptions && !Array.isArray(pollOptions)) pollOptions = [pollOptions];
 
   const session = db.prepare('SELECT id FROM sessions WHERE id = ?').get(req.params.id);

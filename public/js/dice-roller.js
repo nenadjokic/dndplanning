@@ -810,26 +810,25 @@ function run3DRoll() {
     }
     addEdgeLines(mesh);
 
-    // Spawn from corner, throw toward center
-    var corner = idx % 4;
-    var px, pz, vx, vz;
-    var spread = (idx * 0.3) % 1.5;
-    switch (corner) {
-      case 0: px = -halfX + spread; pz = -halfZ + spread; vx = 6 + Math.random() * 4; vz = 6 + Math.random() * 4; break;
-      case 1: px = halfX - spread; pz = -halfZ + spread; vx = -6 - Math.random() * 4; vz = 6 + Math.random() * 4; break;
-      case 2: px = halfX - spread; pz = halfZ - spread; vx = -6 - Math.random() * 4; vz = -6 - Math.random() * 4; break;
-      case 3: px = -halfX + spread; pz = halfZ - spread; vx = 6 + Math.random() * 4; vz = -6 - Math.random() * 4; break;
-    }
-    var py = 2 + Math.random() * 1.5;
+    // Spawn near center, drop from above with gentle spread
+    var spread = 1.5;
+    var px = (Math.random() - 0.5) * spread;
+    var pz = (Math.random() - 0.5) * spread;
+    var py = 6 + Math.random() * 2;
 
     body.position.set(px, py, pz);
-    body.velocity.set(vx, -2 - Math.random() * 2, vz);
+    // Light horizontal push for natural spread, gentle downward
+    body.velocity.set(
+      (Math.random() - 0.5) * 3,
+      -1,
+      (Math.random() - 0.5) * 3
+    );
 
     // Strong angular velocity for visible tumbling
     body.angularVelocity.set(
-      (Math.random() - 0.5) * 15,
-      (Math.random() - 0.5) * 10,
-      (Math.random() - 0.5) * 15
+      (Math.random() - 0.5) * 12,
+      (Math.random() - 0.5) * 12,
+      (Math.random() - 0.5) * 12
     );
 
     body.linearDamping = 0.1;
