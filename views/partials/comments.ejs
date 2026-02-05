@@ -5,6 +5,23 @@
     <div class="form-group">
       <textarea name="content" rows="2" class="mention-input" placeholder="Add a comment... Use @username to mention someone" required></textarea>
     </div>
+    <div class="form-group">
+      <input type="text" name="image_url" placeholder="Image/GIF URL (optional) - Giphy, Tenor, Imgur, or direct link">
+    </div>
+    <details class="poll-creator" style="margin-bottom: 0.75rem;">
+      <summary style="cursor: pointer; color: var(--gold); font-size: 0.9rem;">Add a Poll (optional)</summary>
+      <div style="margin-top: 0.5rem;">
+        <div class="form-group">
+          <input type="text" name="poll_question" placeholder="Poll question">
+        </div>
+        <div class="form-group">
+          <input type="text" name="poll_options[]" placeholder="Option 1" style="margin-bottom: 0.25rem;">
+          <input type="text" name="poll_options[]" placeholder="Option 2" style="margin-bottom: 0.25rem;">
+          <input type="text" name="poll_options[]" placeholder="Option 3 (optional)" style="margin-bottom: 0.25rem;">
+          <input type="text" name="poll_options[]" placeholder="Option 4 (optional)">
+        </div>
+      </div>
+    </details>
     <button type="submit" class="btn btn-primary btn-small">Post Comment</button>
   </form>
 
@@ -17,10 +34,46 @@
           <% } else { %>
             <span class="avatar-letter avatar-letter-sm"><%= post.username.charAt(0).toUpperCase() %></span>
           <% } %>
-          <a href="/profile/<%= post.username %>" class="profile-link"><strong><%= post.username %></strong></a>
+          <a href="/profile/<%= encodeURIComponent(post.username) %>" class="profile-link"><strong><%= post.username %></strong></a>
           <span class="text-muted" style="font-size: 0.8rem;"><%= formatDate(post.created_at, { month: 'short', day: 'numeric', year: 'numeric' }) %></span>
         </div>
         <div class="board-post-content mention-content"><%- post.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/@([\w.]+)/g, '<span class="mention">@$1</span>') %></div>
+        <% if (post.image_url) { %>
+          <div class="board-post-image"><img src="<%= post.image_url %>" alt="Attached image" loading="lazy"></div>
+        <% } %>
+
+        <% if (typeof postPolls !== 'undefined' && postPolls[post.id]) { %>
+          <% const poll = postPolls[post.id]; %>
+          <div class="poll-container" data-poll-id="<%= poll.id %>" data-session-id="<%= session.id %>">
+            <div class="poll-question"><%= poll.question %></div>
+            <div class="poll-options">
+              <% for (const opt of poll.options) { %>
+                <% const pct = poll.totalVotes > 0 ? Math.round((opt.votes / poll.totalVotes) * 100) : 0; %>
+                <button type="button" class="poll-option<%= poll.userVote === opt.id ? ' selected' : '' %>" data-option-id="<%= opt.id %>">
+                  <span class="poll-option-bar" style="width: <%= pct %>%;"></span>
+                  <span class="poll-option-text"><%= opt.option_text %></span>
+                  <span class="poll-option-count"><%= opt.votes %> (<%= pct %>%)</span>
+                </button>
+              <% } %>
+            </div>
+            <div class="poll-total"><%= poll.totalVotes %> vote<%= poll.totalVotes !== 1 ? 's' : '' %></div>
+          </div>
+        <% } %>
+
+        <% if (typeof postReactions !== 'undefined') { %>
+          <div class="reaction-buttons" data-post-id="<%= post.id %>" data-session-id="<%= session.id %>">
+            <% const pr = postReactions[post.id] || { likes: 0, dislikes: 0 }; %>
+            <% const upr = userPostReactions[post.id]; %>
+            <button type="button" class="reaction-btn<%= upr === 'like' ? ' active' : '' %>" data-type="like" title="Like">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+              <span class="reaction-count"><%= pr.likes %></span>
+            </button>
+            <button type="button" class="reaction-btn<%= upr === 'dislike' ? ' active' : '' %>" data-type="dislike" title="Dislike">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></svg>
+              <span class="reaction-count"><%= pr.dislikes %></span>
+            </button>
+          </div>
+        <% } %>
 
         <% if (sessionReplyMap[post.id] && sessionReplyMap[post.id].length > 0) { %>
           <div class="board-replies">
@@ -32,10 +85,27 @@
                   <% } else { %>
                     <span class="avatar-letter avatar-letter-sm"><%= reply.username.charAt(0).toUpperCase() %></span>
                   <% } %>
-                  <a href="/profile/<%= reply.username %>" class="profile-link"><strong><%= reply.username %></strong></a>
+                  <a href="/profile/<%= encodeURIComponent(reply.username) %>" class="profile-link"><strong><%= reply.username %></strong></a>
                   <span class="text-muted" style="font-size: 0.8rem;"><%= formatDate(reply.created_at, { month: 'short', day: 'numeric', year: 'numeric' }) %></span>
                 </div>
                 <div class="board-post-content mention-content"><%- reply.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/@([\w.]+)/g, '<span class="mention">@$1</span>') %></div>
+                <% if (reply.image_url) { %>
+                  <div class="board-post-image"><img src="<%= reply.image_url %>" alt="Attached image" loading="lazy"></div>
+                <% } %>
+                <% if (typeof replyReactions !== 'undefined') { %>
+                  <div class="reaction-buttons reply-reactions" data-reply-id="<%= reply.id %>" data-session-id="<%= session.id %>">
+                    <% const rr = replyReactions[reply.id] || { likes: 0, dislikes: 0 }; %>
+                    <% const urr = userReplyReactions[reply.id]; %>
+                    <button type="button" class="reaction-btn<%= urr === 'like' ? ' active' : '' %>" data-type="like" title="Like">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+                      <span class="reaction-count"><%= rr.likes %></span>
+                    </button>
+                    <button type="button" class="reaction-btn<%= urr === 'dislike' ? ' active' : '' %>" data-type="dislike" title="Dislike">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></svg>
+                      <span class="reaction-count"><%= rr.dislikes %></span>
+                    </button>
+                  </div>
+                <% } %>
               </div>
             <% } %>
           </div>

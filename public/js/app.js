@@ -491,9 +491,19 @@ document.addEventListener('DOMContentLoaded', function() {
     var container = btn.closest('.reaction-buttons');
     var postId = container.getAttribute('data-post-id');
     var replyId = container.getAttribute('data-reply-id');
+    var sessionId = container.getAttribute('data-session-id');
     var reactionType = btn.getAttribute('data-type');
 
-    var url = postId ? '/board/' + postId + '/react' : '/board/reply/' + replyId + '/react';
+    var url;
+    if (sessionId) {
+      // Session comments
+      url = postId
+        ? '/sessions/' + sessionId + '/comment/' + postId + '/react'
+        : '/sessions/' + sessionId + '/reply/' + replyId + '/react';
+    } else {
+      // Bulletin board
+      url = postId ? '/board/' + postId + '/react' : '/board/reply/' + replyId + '/react';
+    }
 
     fetch(url, {
       method: 'POST',
@@ -525,9 +535,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var container = btn.closest('.poll-container');
     var pollId = container.getAttribute('data-poll-id');
+    var sessionId = container.getAttribute('data-session-id');
     var optionId = btn.getAttribute('data-option-id');
 
-    fetch('/board/poll/' + pollId + '/vote', {
+    var url = sessionId
+      ? '/sessions/' + sessionId + '/poll/' + pollId + '/vote'
+      : '/board/poll/' + pollId + '/vote';
+
+    fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ option_id: optionId })

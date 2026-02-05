@@ -1,6 +1,6 @@
-# Quest Planner v0.9.23 — D&D Session Scheduler
+# Quest Planner v0.9.24 — D&D Session Scheduler
 
-> **Latest release:** v0.9.23 (2026-02-05)
+> **Latest release:** v0.9.24 (2026-02-05)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -596,6 +596,17 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.9.24 (2026-02-05)
+
+**Features:**
+- **Session Comment Features** — Reactions (like/dislike), images/GIF, and polls now work in session Quest Discussion comments, not just the Bulletin Board
+
+**Bug Fixes:**
+- **True Dice Physics Rolling** — Dice now physically roll across the screen with real physics-driven rotation, thrown from corners toward center; slerp correction at the end ensures correct face
+- **Poll Visibility** — Polls created on bulletin board posts now display correctly
+- **Username Migration** — Existing users with spaces or invalid characters in their username are automatically migrated to valid usernames (spaces replaced with underscores)
+- **Profile Link Encoding** — All profile links now use URL encoding to handle special characters in usernames
 
 ### v0.9.23 (2026-02-05)
 

@@ -47,7 +47,7 @@
         <% } else { %>
           <span class="avatar-letter avatar-letter-sm"><%= post.username.charAt(0).toUpperCase() %></span>
         <% } %>
-        <a href="/profile/<%= post.username %>" class="profile-link"><strong><%= post.username %></strong></a>
+        <a href="/profile/<%= encodeURIComponent(post.username) %>" class="profile-link"><strong><%= post.username %></strong></a>
         <span class="text-muted" style="font-size: 0.8rem;"><%= formatDate(post.created_at, { month: 'short', day: 'numeric', year: 'numeric' }) %></span>
         <% if (post.user_id === user.id || user.role === 'admin') { %>
           <form action="/board/<%= post.id %>/delete" method="POST" class="inline-form" style="margin-left: auto;">
@@ -101,7 +101,7 @@
                 <% } else { %>
                   <span class="avatar-letter avatar-letter-sm"><%= reply.username.charAt(0).toUpperCase() %></span>
                 <% } %>
-                <a href="/profile/<%= reply.username %>" class="profile-link"><strong><%= reply.username %></strong></a>
+                <a href="/profile/<%= encodeURIComponent(reply.username) %>" class="profile-link"><strong><%= reply.username %></strong></a>
                 <span class="text-muted" style="font-size: 0.8rem;"><%= formatDate(reply.created_at, { month: 'short', day: 'numeric', year: 'numeric' }) %></span>
               </div>
               <div class="board-post-content mention-content"><%- reply.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/@([\w.]+)/g, '<span class="mention">@$1</span>') %></div>

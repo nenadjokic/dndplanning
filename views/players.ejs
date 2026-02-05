@@ -27,7 +27,7 @@
 
 <div class="players-grid">
   <% for (const p of players) { %>
-    <a href="/profile/<%= p.username %>" class="card player-card">
+    <a href="/profile/<%= encodeURIComponent(p.username) %>" class="card player-card">
       <% if (p.avatar) { %>
         <img src="/avatars/<%= p.avatar %>" alt="<%= p.username %>" class="player-card-avatar">
       <% } else { %>

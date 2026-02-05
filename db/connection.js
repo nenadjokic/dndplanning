@@ -304,4 +304,29 @@ for (const sql of [
   try { db.exec(sql); } catch (e) { /* already exists */ }
 }
 
+// Fix existing usernames with spaces (migration)
+// Replace spaces and invalid characters with underscores
+(function migrateInvalidUsernames() {
+  const usersWithSpaces = db.prepare("SELECT id, username FROM users WHERE username LIKE '% %' OR username GLOB '*[^a-zA-Z0-9._-]*'").all();
+  for (const u of usersWithSpaces) {
+    // Sanitize: replace invalid chars with underscore, limit to 20 chars
+    let sanitized = u.username.replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 20);
+    // Ensure minimum length
+    if (sanitized.length < 3) sanitized = sanitized.padEnd(3, '0');
+
+    // Check for uniqueness, append number if needed
+    let finalName = sanitized;
+    let counter = 1;
+    while (db.prepare('SELECT id FROM users WHERE username = ? AND id != ?').get(finalName, u.id)) {
+      finalName = sanitized.substring(0, 17) + '_' + counter;
+      counter++;
+    }
+
+    if (finalName !== u.username) {
+      db.prepare('UPDATE users SET username = ? WHERE id = ?').run(finalName, u.id);
+      console.log(`Migrated username: "${u.username}" -> "${finalName}"`);
+    }
+  }
+})();
+
 module.exports = db;

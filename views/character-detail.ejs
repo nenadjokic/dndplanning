@@ -2,7 +2,7 @@
 
 <div class="page-header">
   <h1><%= character.name %></h1>
-  <a href="/profile/<%= profileUser.username %>" class="btn btn-outline">Back to Profile</a>
+  <a href="/profile/<%= encodeURIComponent(profileUser.username) %>" class="btn btn-outline">Back to Profile</a>
 </div>
 
 <div class="card character-detail-card">
@@ -17,7 +17,7 @@
       <% if (character.class || character.race) { %>
         <div class="character-detail-meta"><%= [character.race, character.class].filter(Boolean).join(' ') %></div>
       <% } %>
-      <span class="text-muted">Played by <a href="/profile/<%= profileUser.username %>" class="profile-link"><%= profileUser.username %></a></span>
+      <span class="text-muted">Played by <a href="/profile/<%= encodeURIComponent(profileUser.username) %>" class="profile-link"><%= profileUser.username %></a></span>
     </div>
   </div>
 

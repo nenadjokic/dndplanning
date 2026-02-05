@@ -39,7 +39,7 @@
     <h2>Characters</h2>
     <div class="characters-grid">
       <% for (const char of characters) { %>
-        <a href="/profile/<%= profileUser.username %>/character/<%= char.id %>" class="character-card-link">
+        <a href="/profile/<%= encodeURIComponent(profileUser.username) %>/character/<%= char.id %>" class="character-card-link">
           <div class="character-card character-card-public">
             <div class="character-card-avatar">
               <% if (char.avatar) { %>
