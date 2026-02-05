@@ -858,11 +858,10 @@ function run3DRoll() {
     targetQuats.push(computeFaceQuaternion(mesh, faceIdx, targetDir));
   });
 
-  // Animation: pure physics until settled, then slerp to final result
+  // Animation: pure physics until settled, then multi-step slerp through random faces to final result
   var fixedStep = 1 / 60;
   var maxSubSteps = 4;
   var maxTime = 4000;        // 4s max for physics
-  var slerpDuration = 0.3;   // 300ms to correct to final face
   var startTime = performance.now();
   var lastTime = startTime;
   var elapsed = 0;
@@ -872,6 +871,24 @@ function run3DRoll() {
   var slerpStartQuats = [];
   var frameInterval = 1000 / 60;
   var lastFrameTime = 0;
+
+  // Multi-step face transition: 3 random faces + final result = 4 waypoints
+  var faceWaypoints = []; // Array of arrays: faceWaypoints[dieIndex] = [q0, q1, q2, q3(final)]
+  var waypointDurations = [0.15, 0.15, 0.15, 0.2]; // Duration for each transition
+  var totalSlerpDuration = waypointDurations.reduce(function(a, b) { return a + b; }, 0);
+
+  // Helper to get a random face quaternion different from given ones
+  function getRandomFaceQuat(mesh, dieType, excludeFaces) {
+    var maxFaces = mesh.geometry.groups.length;
+    var attempts = 0;
+    var faceIdx;
+    do {
+      faceIdx = Math.floor(Math.random() * maxFaces);
+      attempts++;
+    } while (excludeFaces.indexOf(faceIdx) !== -1 && attempts < 20);
+    var targetDir = (dieType === 'd4') ? new THREE.Vector3(0, -1, 0) : new THREE.Vector3(0, 1, 0);
+    return { quat: computeFaceQuaternion(mesh, faceIdx, targetDir), faceIdx: faceIdx };
+  }
 
   function animate(now) {
     if (allSettled) return;
@@ -920,25 +937,56 @@ function run3DRoll() {
           diceBodies[k].velocity.setZero();
           diceBodies[k].angularVelocity.setZero();
         }
-        // Save current quaternions for slerp
+        // Save current quaternions and generate waypoints
         for (var m = 0; m < diceMeshes.length; m++) {
           slerpStartQuats.push(diceMeshes[m].quaternion.clone());
+
+          // Generate 3 random intermediate faces + final target
+          var finalFaceIdx = valueToFaceIndex(dieTypes[m], preResults[m]);
+          var usedFaces = [finalFaceIdx];
+          var waypoints = [diceMeshes[m].quaternion.clone()]; // Start from current position
+
+          for (var w = 0; w < 3; w++) {
+            var randFace = getRandomFaceQuat(diceMeshes[m], dieTypes[m], usedFaces);
+            waypoints.push(randFace.quat);
+            usedFaces.push(randFace.faceIdx);
+          }
+          waypoints.push(targetQuats[m]); // Final result
+          faceWaypoints.push(waypoints);
         }
         slerpStartTime = elapsed;
         physicsDone = true;
       }
     } else {
-      // Slerp phase: smoothly rotate to show correct face
+      // Multi-step slerp phase: transition through random faces to final result
       var slerpElapsed = elapsed - slerpStartTime;
-      var t = Math.min(slerpElapsed / slerpDuration, 1);
-      // Ease out
-      t = 1 - Math.pow(1 - t, 3);
 
-      for (var i = 0; i < diceMeshes.length; i++) {
-        diceMeshes[i].quaternion.copy(slerpStartQuats[i].clone().slerp(targetQuats[i], t));
+      // Determine which segment we're in and local progress
+      var segmentStart = 0;
+      var currentSegment = 0;
+      for (var s = 0; s < waypointDurations.length; s++) {
+        if (slerpElapsed < segmentStart + waypointDurations[s]) {
+          currentSegment = s;
+          break;
+        }
+        segmentStart += waypointDurations[s];
+        if (s === waypointDurations.length - 1) currentSegment = s;
       }
 
-      if (slerpElapsed >= slerpDuration) {
+      var segmentProgress = (slerpElapsed - segmentStart) / waypointDurations[currentSegment];
+      segmentProgress = Math.max(0, Math.min(1, segmentProgress));
+      // Ease in-out for smoother transitions
+      segmentProgress = segmentProgress < 0.5
+        ? 2 * segmentProgress * segmentProgress
+        : 1 - Math.pow(-2 * segmentProgress + 2, 2) / 2;
+
+      for (var i = 0; i < diceMeshes.length; i++) {
+        var fromQuat = faceWaypoints[i][currentSegment];
+        var toQuat = faceWaypoints[i][currentSegment + 1];
+        diceMeshes[i].quaternion.copy(fromQuat.clone().slerp(toQuat, segmentProgress));
+      }
+
+      if (slerpElapsed >= totalSlerpDuration) {
         for (var i = 0; i < diceMeshes.length; i++) {
           diceMeshes[i].quaternion.copy(targetQuats[i]);
         }
