@@ -1,6 +1,6 @@
-# Quest Planner v0.9.22 — D&D Session Scheduler
+# Quest Planner v0.9.23 — D&D Session Scheduler
 
-> **Latest release:** v0.9.22 (2026-02-02)
+> **Latest release:** v0.9.23 (2026-02-05)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -596,6 +596,22 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v0.9.23 (2026-02-05)
+
+**Features:**
+- **Like/Dislike Reactions** — React to bulletin board posts and replies with thumbs up/down; AJAX toggle with live count updates
+- **Images/GIF in Bulletin Board** — Add image or GIF URLs to posts and replies; supports Giphy, Tenor, Imgur, and direct image links
+- **Polls in Bulletin Board** — Create polls with 2-4 options when posting; users can vote and change their vote; live percentage display
+- **Admin Announcements** — Guild Master can post site-wide announcements displayed as a dismissible banner above navigation
+- **Last Seen in All Players** — Player directory now shows when each member was last active with relative time format
+- **Character Sheet Automation** — D&D 5e character sheets now auto-calculate ability modifiers, proficiency bonus, saving throws, skills, passive perception, initiative, spell save DC, and spell attack bonus based on class and level
+
+**Bug Fixes:**
+- **Username Validation** — Registration now validates usernames (3-20 chars, alphanumeric plus `.`, `_`, `-` only); Google OAuth usernames are sanitized
+- **PWA Mention Notifications** — @mentions in posts and comments now trigger push notifications on mobile devices
+- **Dice Chrome Performance** — Fixed Chrome freezing when rolling multiple dice by removing duplicate render loop, adding frame rate limiting, and reducing physics complexity
+- **Dice Physics Improvement** — Dice now roll farther with better bouncing and sliding; adjusted friction, restitution, and damping for more realistic physics
 
 ### v0.9.22 (2026-02-02)
 

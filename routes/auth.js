@@ -29,11 +29,31 @@ router.get('/register', (req, res) => {
   res.render('auth/register');
 });
 
+// Username validation helper
+function isValidUsername(username) {
+  const usernameRegex = /^[a-zA-Z0-9._-]+$/;
+  return username && username.length >= 3 && username.length <= 20 && usernameRegex.test(username);
+}
+
+function sanitizeUsername(username) {
+  // Remove invalid characters, keep alphanumeric, dots, underscores, dashes
+  let sanitized = username.replace(/[^a-zA-Z0-9._-]/g, '');
+  // Ensure length constraints
+  if (sanitized.length < 3) sanitized = sanitized.padEnd(3, '0');
+  if (sanitized.length > 20) sanitized = sanitized.substring(0, 20);
+  return sanitized;
+}
+
 router.post('/register', async (req, res) => {
   const { username, password, confirm_password } = req.body;
 
   if (!username || !password) {
     req.flash('error', 'Username and password are required.');
+    return res.redirect('/register');
+  }
+
+  if (!isValidUsername(username)) {
+    req.flash('error', 'Username must be 3-20 characters and contain only letters, numbers, dots, underscores, or dashes.');
     return res.redirect('/register');
   }
 
@@ -146,12 +166,15 @@ router.get('/auth/google/callback', async (req, res) => {
     }
 
     // Create new user account
-    const username = googleName || googleEmail.split('@')[0];
+    const rawUsername = googleName || googleEmail.split('@')[0];
+    // Sanitize the username to remove invalid characters
+    const sanitizedUsername = sanitizeUsername(rawUsername);
     // Ensure unique username
-    let finalUsername = username;
+    let finalUsername = sanitizedUsername;
     let suffix = 1;
     while (db.prepare('SELECT id FROM users WHERE username = ?').get(finalUsername)) {
-      finalUsername = username + suffix;
+      const baseName = sanitizedUsername.length > 17 ? sanitizedUsername.substring(0, 17) : sanitizedUsername;
+      finalUsername = baseName + suffix;
       suffix++;
     }
 

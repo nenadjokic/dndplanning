@@ -8,6 +8,19 @@ function attachUser(req, res, next) {
   res.locals.formatDate = (iso, opts) => formatDate(iso, '24h', opts);
   res.locals.formatTime = (iso) => formatTime(iso, '24h');
   res.locals.renderMarkdown = (text) => text ? marked(text) : '';
+  res.locals.announcement = null;
+
+  // Load active announcement (checking expiry)
+  const activeAnnouncement = db.prepare(`
+    SELECT * FROM announcements
+    WHERE active = 1
+    AND (expires_at IS NULL OR expires_at > datetime('now'))
+    ORDER BY created_at DESC
+    LIMIT 1
+  `).get();
+  if (activeAnnouncement) {
+    res.locals.announcement = activeAnnouncement;
+  }
 
   if (req.session.userId) {
     const user = db.prepare('SELECT id, username, role, avatar, time_format, calendar_token, theme, week_start, last_seen_version, google_id, google_email FROM users WHERE id = ?').get(req.session.userId);
@@ -17,6 +30,9 @@ function attachUser(req, res, next) {
       res.locals.timeFormat = user.time_format || '24h';
       res.locals.formatDate = (iso, opts) => formatDate(iso, user.time_format || '24h', opts);
       res.locals.formatTime = (iso) => formatTime(iso, user.time_format || '24h');
+
+      // Update last_heartbeat on every request
+      db.prepare('UPDATE users SET last_heartbeat = datetime(\'now\') WHERE id = ?').run(user.id);
 
       // Load all usernames for @mention autocomplete
       const allUsernames = db.prepare('SELECT username FROM users ORDER BY username').all().map(u => u.username);

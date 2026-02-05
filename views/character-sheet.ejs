@@ -366,5 +366,8 @@
   });
 })();
 </script>
+<% if (editable) { %>
+<script src="/js/character-sheet.js?v=<%= typeof appVersion !== 'undefined' ? appVersion : '1' %>"></script>
+<% } %>
 
 <%- include('partials/foot') %>

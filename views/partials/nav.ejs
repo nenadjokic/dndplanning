@@ -1,3 +1,11 @@
+<% if (typeof announcement !== 'undefined' && announcement) { %>
+  <div class="announcement-banner">
+    <div class="container">
+      <span class="announcement-icon">📢</span>
+      <span class="announcement-text"><%= announcement.content %></span>
+    </div>
+  </div>
+<% } %>
 <nav class="nav">
   <div class="nav-inner container">
     <a href="/" class="nav-brand">Quest Planner</a>
@@ -45,6 +53,10 @@
             <a href="/admin/users" class="hamburger-item">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
               Guild Settings
+            </a>
+            <a href="/admin/announcements" class="hamburger-item">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"></path></svg>
+              Announcements
             </a>
           <% } %>
           <a href="/board" class="hamburger-item">

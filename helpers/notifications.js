@@ -1,4 +1,5 @@
 const db = require('../db/connection');
+const pushService = require('./push');
 
 function isNotifEnabled(userId, notifType) {
   const pref = db.prepare('SELECT enabled FROM user_notification_prefs WHERE user_id = ? AND notif_type = ?').get(userId, notifType);
@@ -25,6 +26,8 @@ function notifyMentions(content, authorId, authorName, link) {
   for (const u of mentioned) {
     if (u.id !== authorId) {
       createNotification(u.id, 'mention', `${authorName} mentioned you`, link);
+      // Send PWA push notification
+      pushService.sendToUser(u.id, 'You were mentioned', `${authorName} mentioned you in a comment`, link).catch(() => {});
     }
   }
 }

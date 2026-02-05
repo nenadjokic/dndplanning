@@ -274,4 +274,63 @@ router.post('/notifications/test', requireLogin, requireAdmin, async (req, res) 
   }
 });
 
+// --- Announcements ---
+
+router.get('/announcements', requireLogin, requireAdmin, (req, res) => {
+  const announcements = db.prepare(`
+    SELECT a.*, u.username as created_by_name
+    FROM announcements a
+    JOIN users u ON a.created_by = u.id
+    ORDER BY a.created_at DESC
+  `).all();
+  res.render('admin/announcements', { announcements });
+});
+
+router.post('/announcements', requireLogin, requireAdmin, (req, res) => {
+  const { content, expires_at } = req.body;
+
+  if (!content || !content.trim()) {
+    req.flash('error', 'Announcement content is required.');
+    return res.redirect('/admin/announcements');
+  }
+
+  // Deactivate all other announcements
+  db.prepare('UPDATE announcements SET active = 0').run();
+
+  db.prepare('INSERT INTO announcements (content, created_by, expires_at) VALUES (?, ?, ?)').run(
+    content.trim(),
+    req.user.id,
+    expires_at || null
+  );
+
+  req.flash('success', 'Announcement posted.');
+  res.redirect('/admin/announcements');
+});
+
+router.post('/announcements/:id/toggle', requireLogin, requireAdmin, (req, res) => {
+  const announcement = db.prepare('SELECT * FROM announcements WHERE id = ?').get(req.params.id);
+  if (!announcement) {
+    req.flash('error', 'Announcement not found.');
+    return res.redirect('/admin/announcements');
+  }
+
+  if (announcement.active) {
+    db.prepare('UPDATE announcements SET active = 0 WHERE id = ?').run(announcement.id);
+    req.flash('success', 'Announcement deactivated.');
+  } else {
+    // Deactivate all others, activate this one
+    db.prepare('UPDATE announcements SET active = 0').run();
+    db.prepare('UPDATE announcements SET active = 1 WHERE id = ?').run(announcement.id);
+    req.flash('success', 'Announcement activated.');
+  }
+
+  res.redirect('/admin/announcements');
+});
+
+router.post('/announcements/:id/delete', requireLogin, requireAdmin, (req, res) => {
+  db.prepare('DELETE FROM announcements WHERE id = ?').run(req.params.id);
+  req.flash('success', 'Announcement deleted.');
+  res.redirect('/admin/announcements');
+});
+
 module.exports = router;

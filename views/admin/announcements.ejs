@@ -1,0 +1,73 @@
+<%- include('../partials/head', { pageTitle: 'Announcements' }) %>
+
+<div class="page-header">
+  <h1>Announcements</h1>
+  <a href="/admin/users" class="btn btn-outline">Back to Guild Settings</a>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem;">
+  <h2 style="margin-top: 0;">Post New Announcement</h2>
+  <form action="/admin/announcements" method="POST">
+    <div class="form-group">
+      <label for="content">Message</label>
+      <textarea id="content" name="content" rows="3" placeholder="Enter your announcement message..." required></textarea>
+    </div>
+    <div class="form-group">
+      <label for="expires_at">Expires At (optional)</label>
+      <input type="datetime-local" id="expires_at" name="expires_at">
+      <p class="form-hint">Leave blank for no expiration.</p>
+    </div>
+    <button type="submit" class="btn btn-primary">Post Announcement</button>
+  </form>
+</div>
+
+<% if (announcements.length > 0) { %>
+  <div class="card">
+    <h2 style="margin-top: 0;">All Announcements</h2>
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Message</th>
+            <th>Status</th>
+            <th>Created By</th>
+            <th>Created</th>
+            <th>Expires</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (const a of announcements) { %>
+            <tr>
+              <td><%= a.content.length > 60 ? a.content.substring(0, 60) + '...' : a.content %></td>
+              <td>
+                <% if (a.active) { %>
+                  <span class="role-badge role-admin">Active</span>
+                <% } else { %>
+                  <span class="role-badge role-player">Inactive</span>
+                <% } %>
+              </td>
+              <td><%= a.created_by_name %></td>
+              <td class="admin-date"><%= formatDate(a.created_at, { month: 'short', day: 'numeric' }) %></td>
+              <td class="admin-date"><%= a.expires_at ? formatDate(a.expires_at, { month: 'short', day: 'numeric' }) : 'Never' %></td>
+              <td>
+                <form action="/admin/announcements/<%= a.id %>/toggle" method="POST" class="inline-form">
+                  <button type="submit" class="btn btn-small btn-outline"><%= a.active ? 'Deactivate' : 'Activate' %></button>
+                </form>
+                <form action="/admin/announcements/<%= a.id %>/delete" method="POST" class="inline-form" style="margin-left: 0.25rem;">
+                  <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this announcement?')">&times;</button>
+                </form>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% } else { %>
+  <div class="card">
+    <p class="empty-state-text">No announcements yet. Create your first one above!</p>
+  </div>
+<% } %>
+
+<%- include('../partials/foot') %>

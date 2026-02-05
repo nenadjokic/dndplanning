@@ -633,12 +633,12 @@ function createDie(type, index, total, scene, world, material, bounds) {
   var py = 6 + Math.random() * 2;
   body.position.set(px, py, pz);
 
-  body.linearDamping = 0.05;
-  body.angularDamping = 0.15;
+  body.linearDamping = 0.01;
+  body.angularDamping = 0.05;
 
   body.allowSleep = true;
-  body.sleepSpeedLimit = 0.8;
-  body.sleepTimeLimit = 0.15;
+  body.sleepSpeedLimit = 0.3;
+  body.sleepTimeLimit = 0.3;
 
   // Gentle tumble — just enough spin to look natural as dice fall
   body.angularVelocity.set(
@@ -647,11 +647,11 @@ function createDie(type, index, total, scene, world, material, bounds) {
     (Math.random() - 0.5) * 4
   );
 
-  // Mostly downward velocity with slight lateral drift for spread
+  // Mostly downward velocity with strong lateral drift for rolling
   body.velocity.set(
-    (Math.random() - 0.5) * 1.5,
+    (Math.random() - 0.5) * 8,
     -3 - Math.random() * 2,
-    (Math.random() - 0.5) * 1.5
+    (Math.random() - 0.5) * 8
   );
 
   scene.add(mesh);
@@ -757,8 +757,8 @@ function run3DRoll() {
 
   // Physics world — controls position & collisions (NOT rotation)
   var world = new CANNON.World({ gravity: new CANNON.Vec3(0, -30, 0) });
-  world.broadphase = new CANNON.NaiveBroadphase();
-  world.solver.iterations = 10;
+  world.broadphase = new CANNON.SAPBroadphase(world);
+  world.solver.iterations = 6;
   world.solver.tolerance = 0.001;
   world.allowSleep = true;
 
@@ -784,10 +784,10 @@ function run3DRoll() {
 
   var diceMat = new CANNON.Material('dice');
   world.addContactMaterial(new CANNON.ContactMaterial(groundMat, diceMat, {
-    friction: 0.6, restitution: 0.2
+    friction: 0.3, restitution: 0.4
   }));
   world.addContactMaterial(new CANNON.ContactMaterial(diceMat, diceMat, {
-    friction: 0.4, restitution: 0.3
+    friction: 0.2, restitution: 0.5
   }));
 
   // Create dice — physics bodies for position/collision, staged quats for face rotation
@@ -830,14 +830,16 @@ function run3DRoll() {
   var stageDuration = 0.28;  // seconds per face-to-face transition
   var stages = 3;            // 3 transitions: face0→face1, face1→face2, face2→result
   var stageTotal = stageDuration * stages;
-  var fixedStep = 1 / 120;
-  var maxSubSteps = 10;
-  var maxTime = 1500;        // 1.5s hard limit for physics
+  var fixedStep = 1 / 60;    // 60Hz physics step
+  var maxSubSteps = 5;       // Reduced from 10 to prevent freeze
+  var maxTime = 2500;        // 2.5s hard limit for physics (extended for rolling)
   var startTime = performance.now();
   var lastTime = startTime;
   var elapsed = 0;
   var allSettled = false;
   var physicsDone = false;
+  var frameInterval = 1000 / 60; // Target 60fps
+  var lastFrameTime = 0;
 
   function easeInOut(t) {
     return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
@@ -845,6 +847,15 @@ function run3DRoll() {
 
   function animate(now) {
     if (allSettled) return;
+
+    // Frame rate limiting - skip frames if too soon
+    var frameDelta = now - lastFrameTime;
+    if (frameDelta < frameInterval * 0.8) {
+      requestAnimationFrame(animate);
+      return;
+    }
+    lastFrameTime = now;
+
     var dt = Math.min((now - lastTime) / 1000, 0.05);
     lastTime = now;
     elapsed += dt;
@@ -931,10 +942,8 @@ function run3DRoll() {
     rolling = false;
     activeOverlay = overlay;
     activeRenderer = renderer;
-    (function renderLoop() {
-      renderer.render(scene, camera);
-      activeRenderLoop = requestAnimationFrame(renderLoop);
-    })();
+    // Single final render - no continuous loop needed
+    renderer.render(scene, camera);
     showResults(results, total);
     cleanupTimeout = setTimeout(function() {
       doCleanup(overlay, renderer, diceMeshes);

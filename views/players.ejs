@@ -1,5 +1,25 @@
 <%- include('partials/head', { pageTitle: 'Guild Members' }) %>
 
+<%
+  // Helper function for relative time
+  function getRelativeTime(isoString) {
+    if (!isoString) return 'Never';
+    const now = new Date();
+    const then = new Date(isoString + 'Z');
+    const diffMs = now - then;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHr = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHr / 24);
+
+    if (diffSec < 60) return 'Just now';
+    if (diffMin < 60) return diffMin + 'm ago';
+    if (diffHr < 24) return diffHr + 'h ago';
+    if (diffDay < 7) return diffDay + 'd ago';
+    return then.toLocaleDateString();
+  }
+%>
+
 <div class="page-header">
   <h1>Guild Members</h1>
   <a href="/" class="btn btn-outline">Back to Quest Board</a>
@@ -16,6 +36,7 @@
       <div class="player-card-info">
         <strong><%= p.username %></strong>
         <span class="role-badge role-<%= p.role %>"><%= p.role === 'admin' ? 'Guild Master' : p.role === 'dm' ? 'Dungeon Master' : 'Adventurer' %></span>
+        <span class="player-last-seen">Last seen: <%= getRelativeTime(p.last_heartbeat) %></span>
       </div>
     </a>
   <% } %>

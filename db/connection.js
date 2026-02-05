@@ -236,4 +236,72 @@ db.exec(`
   );
 `);
 
+// Announcements (admin feature)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS announcements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    content TEXT NOT NULL,
+    active INTEGER DEFAULT 1,
+    created_by INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT DEFAULT (datetime('now')),
+    expires_at TEXT
+  );
+`);
+
+// Post/Reply Reactions (like/dislike)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS post_reactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    reaction_type TEXT NOT NULL CHECK(reaction_type IN ('like', 'dislike')),
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(post_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS reply_reactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    reply_id INTEGER NOT NULL REFERENCES replies(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    reaction_type TEXT NOT NULL CHECK(reaction_type IN ('like', 'dislike')),
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(reply_id, user_id)
+  );
+`);
+
+// Polls system
+db.exec(`
+  CREATE TABLE IF NOT EXISTS polls (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+    reply_id INTEGER REFERENCES replies(id) ON DELETE CASCADE,
+    question TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS poll_options (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    poll_id INTEGER NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
+    option_text TEXT NOT NULL,
+    sort_order INTEGER DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS poll_votes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    poll_id INTEGER NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
+    option_id INTEGER NOT NULL REFERENCES poll_options(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(poll_id, user_id)
+  );
+`);
+
+// Add image_url columns to posts and replies (idempotent)
+for (const sql of [
+  "ALTER TABLE posts ADD COLUMN image_url TEXT",
+  "ALTER TABLE replies ADD COLUMN image_url TEXT"
+]) {
+  try { db.exec(sql); } catch (e) { /* already exists */ }
+}
+
 module.exports = db;

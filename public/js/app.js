@@ -482,6 +482,76 @@ document.addEventListener('DOMContentLoaded', function() {
   setInterval(sendHeartbeat, 15000);
 })();
 
+// === Reactions (Like/Dislike) ===
+(function() {
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.reaction-btn');
+    if (!btn) return;
+
+    var container = btn.closest('.reaction-buttons');
+    var postId = container.getAttribute('data-post-id');
+    var replyId = container.getAttribute('data-reply-id');
+    var reactionType = btn.getAttribute('data-type');
+
+    var url = postId ? '/board/' + postId + '/react' : '/board/reply/' + replyId + '/react';
+
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reaction_type: reactionType })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      // Update UI
+      var btns = container.querySelectorAll('.reaction-btn');
+      btns.forEach(function(b) {
+        b.classList.remove('active');
+        var type = b.getAttribute('data-type');
+        var count = b.querySelector('.reaction-count');
+        if (type === 'like') count.textContent = data.likes;
+        else count.textContent = data.dislikes;
+        if (data.userReaction === type) b.classList.add('active');
+      });
+    })
+    .catch(function() {});
+  });
+})();
+
+// === Polls ===
+(function() {
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.poll-option');
+    if (!btn) return;
+
+    var container = btn.closest('.poll-container');
+    var pollId = container.getAttribute('data-poll-id');
+    var optionId = btn.getAttribute('data-option-id');
+
+    fetch('/board/poll/' + pollId + '/vote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ option_id: optionId })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      // Update UI
+      var options = container.querySelectorAll('.poll-option');
+      options.forEach(function(opt) {
+        var oid = parseInt(opt.getAttribute('data-option-id'));
+        var info = data.options.find(function(o) { return o.id === oid; });
+        if (info) {
+          var pct = data.totalVotes > 0 ? Math.round((info.votes / data.totalVotes) * 100) : 0;
+          opt.querySelector('.poll-option-bar').style.width = pct + '%';
+          opt.querySelector('.poll-option-count').textContent = info.votes + ' (' + pct + '%)';
+        }
+        opt.classList.toggle('selected', oid === data.userVote);
+      });
+      container.querySelector('.poll-total').textContent = data.totalVotes + ' vote' + (data.totalVotes !== 1 ? 's' : '');
+    })
+    .catch(function() {});
+  });
+})();
+
 // Admin: check for updates
 function checkForUpdate() {
   var resultDiv = document.getElementById('update-result');
