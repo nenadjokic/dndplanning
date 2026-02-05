@@ -872,22 +872,23 @@ function run3DRoll() {
   var frameInterval = 1000 / 60;
   var lastFrameTime = 0;
 
-  // Multi-step face transition: 2 random faces + final result = 3 waypoints (shorter, snappier)
-  var faceWaypoints = []; // Array of arrays: faceWaypoints[dieIndex] = [q0, q1, q2(final)]
-  var waypointDurations = [0.08, 0.08, 0.12]; // Duration for each transition (total 0.28s)
+  // Multi-step face transition: 5 smooth rolls + final snap = 6 waypoints
+  var faceWaypoints = []; // Array of arrays: faceWaypoints[dieIndex] = [q0, q1, q2, q3, q4, q5(final)]
+  var waypointDurations = [0.06, 0.06, 0.06, 0.06, 0.06, 0.1]; // 5 rolls + final (total 0.4s)
   var totalSlerpDuration = waypointDurations.reduce(function(a, b) { return a + b; }, 0);
 
-  // Helper to get a random face quaternion different from given ones
-  function getRandomFaceQuat(mesh, dieType, excludeFaces) {
-    var maxFaces = mesh.geometry.groups.length;
-    var attempts = 0;
-    var faceIdx;
-    do {
-      faceIdx = Math.floor(Math.random() * maxFaces);
-      attempts++;
-    } while (excludeFaces.indexOf(faceIdx) !== -1 && attempts < 20);
-    var targetDir = (dieType === 'd4') ? new THREE.Vector3(0, -1, 0) : new THREE.Vector3(0, 1, 0);
-    return { quat: computeFaceQuaternion(mesh, faceIdx, targetDir), faceIdx: faceIdx };
+  // Helper to create a rotation quaternion for rolling to the side (90 degree rotation around X or Z axis)
+  function createRollRotation() {
+    // Random horizontal axis (X or Z) for rolling motion
+    var axes = [
+      new THREE.Vector3(1, 0, 0),  // Roll forward/back
+      new THREE.Vector3(-1, 0, 0),
+      new THREE.Vector3(0, 0, 1),  // Roll left/right
+      new THREE.Vector3(0, 0, -1)
+    ];
+    var axis = axes[Math.floor(Math.random() * axes.length)];
+    var angle = Math.PI / 2; // 90 degrees - one face rotation
+    return new THREE.Quaternion().setFromAxisAngle(axis, angle);
   }
 
   function animate(now) {
@@ -937,21 +938,21 @@ function run3DRoll() {
           diceBodies[k].velocity.setZero();
           diceBodies[k].angularVelocity.setZero();
         }
-        // Save current quaternions and generate waypoints
+        // Save current quaternions and generate waypoints using smooth rolling rotations
         for (var m = 0; m < diceMeshes.length; m++) {
           slerpStartQuats.push(diceMeshes[m].quaternion.clone());
 
-          // Generate 2 random intermediate faces + final target
-          var finalFaceIdx = valueToFaceIndex(dieTypes[m], preResults[m]);
-          var usedFaces = [finalFaceIdx];
+          // Generate 5 rolling rotations (90 deg each) + final target
           var waypoints = [diceMeshes[m].quaternion.clone()]; // Start from current position
+          var currentQuat = diceMeshes[m].quaternion.clone();
 
-          for (var w = 0; w < 2; w++) {
-            var randFace = getRandomFaceQuat(diceMeshes[m], dieTypes[m], usedFaces);
-            waypoints.push(randFace.quat);
-            usedFaces.push(randFace.faceIdx);
+          // Apply 5 sequential 90-degree rolls in random directions
+          for (var w = 0; w < 5; w++) {
+            var rollQuat = createRollRotation();
+            currentQuat = currentQuat.clone().multiply(rollQuat);
+            waypoints.push(currentQuat.clone());
           }
-          waypoints.push(targetQuats[m]); // Final result
+          waypoints.push(targetQuats[m]); // Final result face
           faceWaypoints.push(waypoints);
         }
         slerpStartTime = elapsed;
