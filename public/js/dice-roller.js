@@ -872,9 +872,9 @@ function run3DRoll() {
   var frameInterval = 1000 / 60;
   var lastFrameTime = 0;
 
-  // Multi-step face transition: 3 random faces + final result = 4 waypoints
-  var faceWaypoints = []; // Array of arrays: faceWaypoints[dieIndex] = [q0, q1, q2, q3(final)]
-  var waypointDurations = [0.15, 0.15, 0.15, 0.2]; // Duration for each transition
+  // Multi-step face transition: 2 random faces + final result = 3 waypoints (shorter, snappier)
+  var faceWaypoints = []; // Array of arrays: faceWaypoints[dieIndex] = [q0, q1, q2(final)]
+  var waypointDurations = [0.08, 0.08, 0.12]; // Duration for each transition (total 0.28s)
   var totalSlerpDuration = waypointDurations.reduce(function(a, b) { return a + b; }, 0);
 
   // Helper to get a random face quaternion different from given ones
@@ -941,12 +941,12 @@ function run3DRoll() {
         for (var m = 0; m < diceMeshes.length; m++) {
           slerpStartQuats.push(diceMeshes[m].quaternion.clone());
 
-          // Generate 3 random intermediate faces + final target
+          // Generate 2 random intermediate faces + final target
           var finalFaceIdx = valueToFaceIndex(dieTypes[m], preResults[m]);
           var usedFaces = [finalFaceIdx];
           var waypoints = [diceMeshes[m].quaternion.clone()]; // Start from current position
 
-          for (var w = 0; w < 3; w++) {
+          for (var w = 0; w < 2; w++) {
             var randFace = getRandomFaceQuat(diceMeshes[m], dieTypes[m], usedFaces);
             waypoints.push(randFace.quat);
             usedFaces.push(randFace.faceIdx);
