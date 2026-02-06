@@ -727,6 +727,17 @@ The admin can also check for updates from the **Guild Settings** page using the 
 - **Responsive walls** — Invisible physics walls now match the visible screen edges, adapting to portrait/landscape
 - **Adaptive grid** — Grid columns and spacing auto-adjust to the available screen width; narrow portrait phones use fewer columns
 
+### v1.0.15 (2026-02-06)
+
+**What's New:**
+- **D10/D100 dice geometry fix:**
+  - Perfectly flat kite faces — uses mathematically correct pentagonal trapezohedron vertices
+  - No more visible seam lines — faces are truly planar with no curves or distortion
+  - Improved material rendering — added double-sided rendering for solid appearance
+
+**Bug Fixes:**
+- None
+
 ### v1.0.14 (2026-02-06)
 
 **What's New:**

@@ -326,7 +326,9 @@ function makeMat(text) {
   return new THREE.MeshStandardMaterial({
     map: createFaceTexture(text),
     roughness: 0.5,
-    metalness: 0.15
+    metalness: 0.15,
+    flatShading: true,  // Hide triangle edge lines on kite faces
+    side: THREE.DoubleSide  // Render both sides of faces
   });
 }
 
@@ -453,22 +455,36 @@ function createD8Body(material) {
 /* ── D10 / D100 geometry ── */
 function makeD10Verts(r) {
   r = r || 0.8;
-  // Pentagonal trapezohedron — taller poles, wider ring for sharper profile
-  var h = r * 1.5;
-  var ringY = r * 0.25;
-  var ringR = r * 0.9;
-  var v = [];
-  v.push([0, h, 0]);
-  for (var i = 0; i < 5; i++) {
-    var a = (i * 2 * Math.PI) / 5;
-    v.push([ringR * Math.cos(a), ringY, ringR * Math.sin(a)]);
+  // Pentagonal trapezohedron - exact mathematical vertices for perfectly flat faces
+  // Source: https://blender.stackexchange.com/questions/40548/
+  var baseVerts = [
+    [0.5257311, 0.381966, 0.8506508],
+    [-0.2008114, 0.618034, 0.8506508],
+    [-0.6498394, 0, 0.8506508],
+    [0.5257311, -1.618034, 0.8506508],
+    [1.051462, 0, -0.2008114],
+    [0.8506508, 0.618034, 0.2008114],
+    [-0.5257311, 1.618034, -0.8506508],
+    [-1.051462, 0, 0.2008114],
+    [-0.8506508, -0.618034, -0.2008114],
+    [0.2008114, -0.618034, -0.8506508],
+    [0.6498394, 0, -0.8506508],
+    [-0.5257311, -0.381966, -0.8506508]
+  ];
+
+  // Find bounding sphere radius to scale to desired size
+  var maxDist = 0;
+  for (var i = 0; i < baseVerts.length; i++) {
+    var v = baseVerts[i];
+    var dist = Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+    if (dist > maxDist) maxDist = dist;
   }
-  for (var i = 0; i < 5; i++) {
-    var a = (i * 2 * Math.PI) / 5 + Math.PI / 5;
-    v.push([ringR * Math.cos(a), -ringY, ringR * Math.sin(a)]);
-  }
-  v.push([0, -h, 0]);
-  return v;
+  var scale = r / maxDist;
+
+  // Uniform scale - original mathematically correct proportions
+  return baseVerts.map(function(v) {
+    return [v[0] * scale, v[1] * scale, v[2] * scale];
+  });
 }
 
 function buildD10Mesh(r, labels) {
@@ -481,33 +497,35 @@ function buildD10Mesh(r, labels) {
   }
 
   function kiteFace(p0, p1, p2, p3) {
+    // Calculate center for normal direction
     var cx = (p0[0]+p1[0]+p2[0]+p3[0])/4;
     var cy = (p0[1]+p1[1]+p2[1]+p3[1])/4;
     var cz = (p0[2]+p1[2]+p2[2]+p3[2])/4;
+
+    // Calculate face normal from diagonals
     var d1 = [p2[0]-p0[0], p2[1]-p0[1], p2[2]-p0[2]];
     var d2 = [p3[0]-p1[0], p3[1]-p1[1], p3[2]-p1[2]];
     var nx = d1[1]*d2[2]-d1[2]*d2[1], ny = d1[2]*d2[0]-d1[0]*d2[2], nz = d1[0]*d2[1]-d1[1]*d2[0];
     var len = Math.sqrt(nx*nx+ny*ny+nz*nz);
     nx/=len; ny/=len; nz/=len;
+
+    // Ensure normal points outward
     if (cx*nx+cy*ny+cz*nz < 0) { nx=-nx; ny=-ny; nz=-nz; }
     var n = [nx, ny, nz];
-    var e1 = [p1[0]-p0[0], p1[1]-p0[1], p1[2]-p0[2]];
-    var e2 = [p2[0]-p0[0], p2[1]-p0[1], p2[2]-p0[2]];
-    var tnx = e1[1]*e2[2]-e1[2]*e2[1], tny = e1[2]*e2[0]-e1[0]*e2[2], tnz = e1[0]*e2[1]-e1[1]*e2[0];
-    if (tnx*nx+tny*ny+tnz*nz > 0) {
-      pushTri(p0, p1, p2, n);
-      pushTri(p0, p2, p3, n);
-    } else {
-      pushTri(p0, p2, p1, n);
-      pushTri(p0, p3, p2, n);
-    }
+
+    // Split kite into 2 triangles (with ringY=0, faces are perfectly flat!)
+    pushTri(p0, p1, p2, n);
+    pushTri(p0, p2, p3, n);
   }
 
-  for (var i = 0; i < 5; i++) {
-    kiteFace(verts[0], verts[1+i], verts[6+i], verts[1+((i+1)%5)]);
-  }
-  for (var i = 0; i < 5; i++) {
-    kiteFace(verts[11], verts[6+((i+1)%5)], verts[1+((i+1)%5)], verts[6+i]);
+  // Face definitions from mathematically correct pentagonal trapezohedron
+  var faces = [
+    [3,0,1,2], [0,3,4,5], [1,0,5,6], [2,1,6,7], [3,2,7,8],
+    [4,3,9,10], [5,4,10,6], [7,6,11,8], [3,8,11,9], [10,9,11,6]
+  ];
+  for (var i = 0; i < faces.length; i++) {
+    var f = faces[i];
+    kiteFace(verts[f[0]], verts[f[1]], verts[f[2]], verts[f[3]]);
   }
 
   var geo = new THREE.BufferGeometry();
@@ -516,7 +534,7 @@ function buildD10Mesh(r, labels) {
   geo.clearGroups();
   var mats = [];
   for (var f = 0; f < 10; f++) {
-    geo.addGroup(f * 6, 6, f);
+    geo.addGroup(f * 6, 6, f);  // 2 triangles per face (6 vertices)
     mats.push(makeMat(labels[f]));
   }
   assignFaceUVs(geo);
@@ -526,9 +544,11 @@ function buildD10Mesh(r, labels) {
 function buildD10Body(r, material) {
   var v = makeD10Verts(r);
   var cv = v.map(function(p) { return new CANNON.Vec3(p[0], p[1], p[2]); });
-  var faces = [];
-  for (var i = 0; i < 5; i++) faces.push([0, 1 + i, 6 + i, 1 + ((i + 1) % 5)]);
-  for (var i = 0; i < 5; i++) faces.push([11, 6 + ((i + 1) % 5), 1 + ((i + 1) % 5), 6 + i]);
+  // Face definitions matching the mathematically correct pentagonal trapezohedron
+  var faces = [
+    [3,0,1,2], [0,3,4,5], [1,0,5,6], [2,1,6,7], [3,2,7,8],
+    [4,3,9,10], [5,4,10,6], [7,6,11,8], [3,8,11,9], [10,9,11,6]
+  ];
   return new CANNON.Body({ mass: 1, shape: new CANNON.ConvexPolyhedron({ vertices: cv, faces: faces }), material: material });
 }
 
@@ -831,11 +851,11 @@ function run3DRoll() {
       (Math.random() - 0.5) * 0.5
     );
 
-    body.linearDamping = 0.1;
-    body.angularDamping = 0.2;
+    body.linearDamping = 0.15; // More linear damping for realistic rolling
+    body.angularDamping = 0.35; // More angular damping - dice settle on faces faster
     body.allowSleep = true;
-    body.sleepSpeedLimit = 0.5;
-    body.sleepTimeLimit = 0.5;
+    body.sleepSpeedLimit = 0.3; // Lower threshold for sleep
+    body.sleepTimeLimit = 0.3; // Faster sleep after settling
 
     // Random initial orientation
     var initQ = new CANNON.Quaternion();
@@ -858,15 +878,15 @@ function run3DRoll() {
     targetQuats.push(computeFaceQuaternion(mesh, faceIdx, targetDir));
   });
 
-  // Animation: Very gentle physics (almost no movement), then smooth rolling animation
+  // Animation: Skip physics entirely, pure smooth rolling animation
   var fixedStep = 1 / 60;
   var maxSubSteps = 4;
-  var maxTime = 500;         // Very short physics phase (0.5s)
+  var maxTime = 500;
   var startTime = performance.now();
   var lastTime = startTime;
   var elapsed = 0;
   var allSettled = false;
-  var physicsDone = false;
+  var physicsDone = true;    // Skip physics - go straight to smooth rolling
   var slerpStartTime = 0;
   var slerpStartQuats = [];
   var frameInterval = 1000 / 60;
@@ -891,6 +911,138 @@ function run3DRoll() {
     return new THREE.Quaternion().setFromAxisAngle(axis, angle);
   }
 
+  // All dice spawn from the SAME point - they MUST collide!
+  var diceCount = diceMeshes.length;
+  var bounceDistance = 1.6; // Distance at which dice bounce (smaller for gentle touch)
+  var targetPositions = [];
+  var velocities = []; // Track velocity for bounce effect
+
+  // Generate positions for each die
+  for (var i = 0; i < diceMeshes.length; i++) {
+    // Target position: let them spread naturally from collisions
+    targetPositions.push({ x: 0, y: 0, z: 0 });
+
+    // Initial velocity: tiny random nudge to start the bounce chain
+    var angle = Math.random() * Math.PI * 2;
+    var initialSpeed = 0.05;
+    velocities.push({
+      x: Math.cos(angle) * initialSpeed,
+      y: 0,
+      z: Math.sin(angle) * initialSpeed
+    });
+
+    // ALL start from center with tiny random offset (so they're stacked)
+    var tinyOffset = 0.15;
+    var startX = (Math.random() - 0.5) * tinyOffset;
+    var startZ = (Math.random() - 0.5) * tinyOffset;
+    diceMeshes[i].position.set(startX, 10, startZ);
+    diceBodies[i].position.set(startX, 10, startZ);
+  }
+
+  // Collision detection and bounce - ONLY when dice are on the ground
+  function applyCollisions() {
+    var screenBoundary = 5.5; // Don't let dice go beyond this
+
+    for (var i = 0; i < diceMeshes.length; i++) {
+      // Only apply collision if die is near the ground (Y < 0.8)
+      if (diceMeshes[i].position.y > 0.8) continue;
+
+      for (var j = i + 1; j < diceMeshes.length; j++) {
+        // Both dice must be near ground
+        if (diceMeshes[j].position.y > 0.8) continue;
+
+        var dx = diceMeshes[j].position.x - diceMeshes[i].position.x;
+        var dz = diceMeshes[j].position.z - diceMeshes[i].position.z;
+        var distance = Math.sqrt(dx * dx + dz * dz);
+
+        if (distance < bounceDistance && distance > 0.01) {
+          // Collision! Apply VERY gentle bounce with weight
+          var overlap = bounceDistance - distance;
+          var pushForce = overlap * 0.13; // Heavier dice (was 0.18)
+
+          // Cap maximum push force
+          pushForce = Math.min(pushForce, 0.18);
+
+          // Normalize direction (or random if too close)
+          var dirX = dx / distance;
+          var dirZ = dz / distance;
+
+          if (distance < 0.1) {
+            var randomAngle = Math.random() * Math.PI * 2;
+            dirX = Math.cos(randomAngle);
+            dirZ = Math.sin(randomAngle);
+            pushForce = 0.06; // Even tinier nudge
+          }
+
+          // Push dice apart (ONLY X and Z, never Y!)
+          velocities[i].x -= dirX * pushForce;
+          velocities[i].z -= dirZ * pushForce;
+          velocities[j].x += dirX * pushForce;
+          velocities[j].z += dirZ * pushForce;
+        }
+      }
+    }
+
+    // Apply velocities, damping, and boundary check
+    for (var i = 0; i < diceMeshes.length; i++) {
+      if (diceMeshes[i].position.y <= 0.8) {
+        diceMeshes[i].position.x += velocities[i].x;
+        diceMeshes[i].position.z += velocities[i].z;
+        targetPositions[i].x += velocities[i].x;
+        targetPositions[i].z += velocities[i].z;
+
+        // Boundary check - bounce off screen edges
+        if (Math.abs(diceMeshes[i].position.x) > screenBoundary) {
+          diceMeshes[i].position.x = Math.sign(diceMeshes[i].position.x) * screenBoundary;
+          velocities[i].x *= -0.5; // Bounce back
+        }
+        if (Math.abs(diceMeshes[i].position.z) > screenBoundary) {
+          diceMeshes[i].position.z = Math.sign(diceMeshes[i].position.z) * screenBoundary;
+          velocities[i].z *= -0.5; // Bounce back
+        }
+
+        // Progressive damping - more realistic rolling physics
+        // Slower dice lose energy faster (like real friction)
+        var speed = Math.sqrt(velocities[i].x * velocities[i].x + velocities[i].z * velocities[i].z);
+        var dampingFactor = 0.72; // Base damping
+
+        // When very slow, apply extra damping to settle quickly on face
+        if (speed < 0.01) {
+          dampingFactor = 0.5; // Much stronger damping when nearly stopped
+        } else if (speed < 0.05) {
+          dampingFactor = 0.65; // Stronger damping when slowing down
+        }
+
+        velocities[i].x *= dampingFactor;
+        velocities[i].z *= dampingFactor;
+      }
+    }
+  }
+
+  // Drop animation variables
+  var dropDuration = 0.4; // 0.4s to drop per die
+  var dropStartTime = 0;
+  var dropDelays = []; // Each die drops with a delay
+  for (var i = 0; i < diceMeshes.length; i++) {
+    dropDelays.push(i * 0.015); // 0.015s between each die (super fast!)
+  }
+
+  // Generate waypoints immediately
+  for (var m = 0; m < diceMeshes.length; m++) {
+    slerpStartQuats.push(diceMeshes[m].quaternion.clone());
+
+    var waypoints = [diceMeshes[m].quaternion.clone()];
+    var currentQuat = diceMeshes[m].quaternion.clone();
+
+    for (var w = 0; w < 5; w++) {
+      var rollQuat = createRollRotation();
+      currentQuat = currentQuat.clone().multiply(rollQuat);
+      waypoints.push(currentQuat.clone());
+    }
+    waypoints.push(targetQuats[m]);
+    faceWaypoints.push(waypoints);
+  }
+
   function animate(now) {
     if (allSettled) return;
 
@@ -906,59 +1058,42 @@ function run3DRoll() {
     lastTime = now;
     elapsed += dt;
 
-    if (!physicsDone) {
-      // Run very gentle physics simulation
-      world.step(fixedStep, dt, maxSubSteps);
+    // Drop animation phase - each die drops with a delay
+    var maxDropTime = dropDuration + dropDelays[dropDelays.length - 1];
+    if (elapsed < maxDropTime) {
+      // Apply collision detection and bounce (only for grounded dice)
+      applyCollisions();
 
-      // Copy position and rotation from physics
       for (var i = 0; i < diceMeshes.length; i++) {
-        diceMeshes[i].position.copy(diceBodies[i].position);
-        diceMeshes[i].quaternion.set(
-          diceBodies[i].quaternion.x,
-          diceBodies[i].quaternion.y,
-          diceBodies[i].quaternion.z,
-          diceBodies[i].quaternion.w
-        );
-      }
+        var dieElapsed = elapsed - dropDelays[i];
 
-      // End physics quickly
-      var allSleeping = elapsed > 0.3;
-      for (var j = 0; j < diceBodies.length; j++) {
-        var b = diceBodies[j];
-        var speed = b.velocity.length() + b.angularVelocity.length();
-        if (speed > 0.1) {
-          allSleeping = false;
-          break;
+        if (dieElapsed < 0) {
+          // Not started yet - keep at top
+          diceMeshes[i].position.y = 10;
+        } else if (dieElapsed < dropDuration) {
+          // Dropping
+          var dropProgress = dieElapsed / dropDuration;
+          // Ease out cubic for smooth landing
+          dropProgress = 1 - Math.pow(1 - dropProgress, 3);
+
+          var startY = 10;
+          var endY = 0;
+          diceMeshes[i].position.y = startY + (endY - startY) * dropProgress;
+
+          // Gentle random rotation during drop
+          var rotSpeed = 0.02;
+          diceMeshes[i].rotation.x += rotSpeed * (Math.random() - 0.5);
+          diceMeshes[i].rotation.z += rotSpeed * (Math.random() - 0.5);
+        } else {
+          // Landed - keep on ground
+          diceMeshes[i].position.y = 0;
         }
       }
-
-      if (allSleeping || elapsed * 1000 >= maxTime) {
-        // Stop all motion
-        for (var k = 0; k < diceBodies.length; k++) {
-          diceBodies[k].velocity.setZero();
-          diceBodies[k].angularVelocity.setZero();
-        }
-        // Generate waypoints for smooth rolling
-        for (var m = 0; m < diceMeshes.length; m++) {
-          slerpStartQuats.push(diceMeshes[m].quaternion.clone());
-
-          var waypoints = [diceMeshes[m].quaternion.clone()];
-          var currentQuat = diceMeshes[m].quaternion.clone();
-
-          for (var w = 0; w < 5; w++) {
-            var rollQuat = createRollRotation();
-            currentQuat = currentQuat.clone().multiply(rollQuat);
-            waypoints.push(currentQuat.clone());
-          }
-          waypoints.push(targetQuats[m]);
-          faceWaypoints.push(waypoints);
-        }
-        slerpStartTime = elapsed;
-        physicsDone = true;
-      }
+    } else if (!physicsDone) {
+      // Physics skipped
     } else {
       // Multi-step slerp phase: transition through random faces to final result
-      var slerpElapsed = elapsed - slerpStartTime;
+      var slerpElapsed = elapsed - slerpStartTime - dropDuration;
 
       // Determine which segment we're in and local progress
       var segmentStart = 0;
