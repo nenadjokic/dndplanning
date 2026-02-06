@@ -114,6 +114,12 @@ router.post('/users/:id/delete', requireLogin, requireAdmin, (req, res) => {
     safeDelete('DELETE FROM poll_votes WHERE user_id = ?', targetId);
     // Delete polls created by this user (and cascade will handle options/votes)
     safeDelete('DELETE FROM polls WHERE created_by = ?', targetId);
+    // Delete announcements created by this user
+    safeDelete('DELETE FROM announcements WHERE created_by = ?', targetId);
+    // Delete post reactions by this user
+    safeDelete('DELETE FROM post_reactions WHERE user_id = ?', targetId);
+    // Delete reply reactions by this user
+    safeDelete('DELETE FROM reply_reactions WHERE user_id = ?', targetId);
     // Delete the user
     db.prepare('DELETE FROM users WHERE id = ?').run(targetId);
   });
@@ -122,8 +128,14 @@ router.post('/users/:id/delete', requireLogin, requireAdmin, (req, res) => {
     deleteUser();
     req.flash('success', 'User and all related data deleted.');
   } catch (err) {
-    console.error('[Delete User] Error:', err);
-    req.flash('error', 'Failed to delete user: ' + err.message);
+    console.error('[Delete User] Full Error:', err);
+    console.error('[Delete User] Stack:', err.stack);
+    // Try to get more details about which table is causing the issue
+    if (err.message.includes('FOREIGN KEY')) {
+      req.flash('error', 'Cannot delete user: some data still references this user. Check server logs for details.');
+    } else {
+      req.flash('error', 'Failed to delete user: ' + err.message);
+    }
   }
   res.redirect('/admin/users');
 });
