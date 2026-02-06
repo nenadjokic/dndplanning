@@ -675,14 +675,17 @@ document.addEventListener('DOMContentLoaded', function() {
     feedBar.classList.remove('hidden');
     feedBar.style.opacity = '1';
 
+    // After 20 seconds, completely hide the bar
     hideTimeout = setTimeout(function() {
-      feedBar.style.opacity = '0.5';
-      feedMessage.innerHTML = '<span class="activity-message-inner">No recent activity...</span>';
-    }, 15000);
+      feedBar.style.opacity = '0';
+      animTimeout = setTimeout(function() {
+        feedBar.classList.add('hidden');
+      }, 300); // Wait for fade out animation
+    }, 20000);
   }
 
-  // Set initial message
-  feedMessage.innerHTML = '<span class="activity-message-inner">Waiting for activity...</span>';
+  // Start with bar hidden
+  feedBar.classList.add('hidden');
 
   // Listen to SSE events
   if (typeof EventSource === 'undefined') return;

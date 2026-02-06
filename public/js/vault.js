@@ -297,6 +297,8 @@
     var search = document.getElementById('spells-search').value.trim();
     var level = document.getElementById('spells-level').value;
     var school = document.getElementById('spells-school').value;
+    var source = document.getElementById('spells-source').value;
+    var castType = document.getElementById('spells-casttype').value;
     var container = document.getElementById('spells-results');
     container.innerHTML = '<div class="vault-loading">Loading...</div>';
 
@@ -304,6 +306,8 @@
     if (search) params.push('search=' + encodeURIComponent(search));
     if (level) params.push('level=' + level);
     if (school) params.push('school=' + encodeURIComponent(school));
+    if (source) params.push('source=' + encodeURIComponent(source));
+    if (castType) params.push('castType=' + encodeURIComponent(castType));
 
     var url = '/vault/spells' + (params.length ? '?' + params.join('&') : '');
 
@@ -449,6 +453,7 @@
   function loadItems() {
     var search = document.getElementById('items-search').value.trim();
     var category = document.getElementById('items-category').value;
+    var rarity = document.getElementById('items-rarity').value;
     var magic = document.getElementById('items-magic').value;
     var container = document.getElementById('items-results');
     container.innerHTML = '<div class="vault-loading">Loading...</div>';
@@ -456,6 +461,7 @@
     var params = [];
     if (search) params.push('search=' + encodeURIComponent(search));
     if (category) params.push('category=' + encodeURIComponent(category));
+    if (rarity) params.push('rarity=' + encodeURIComponent(rarity));
     if (magic) params.push('magic=' + magic);
 
     var url = '/vault/items' + (params.length ? '?' + params.join('&') : '');
@@ -596,8 +602,11 @@
   document.getElementById('spells-search').addEventListener('input', debounceSearch(loadSpells));
   document.getElementById('spells-level').addEventListener('change', loadSpells);
   document.getElementById('spells-school').addEventListener('change', loadSpells);
+  document.getElementById('spells-source').addEventListener('change', loadSpells);
+  document.getElementById('spells-casttype').addEventListener('change', loadSpells);
   document.getElementById('items-search').addEventListener('input', debounceSearch(loadItems));
   document.getElementById('items-category').addEventListener('change', loadItems);
+  document.getElementById('items-rarity').addEventListener('change', loadItems);
   document.getElementById('items-magic').addEventListener('change', loadItems);
 
   function debounceSearch(fn) {

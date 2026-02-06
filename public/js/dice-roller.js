@@ -640,18 +640,18 @@ function createDie(type, index, total, scene, world, material, bounds) {
   body.sleepSpeedLimit = 0.3;
   body.sleepTimeLimit = 0.3;
 
-  // Gentle tumble — just enough spin to look natural as dice fall
+  // Minimal tumble - very gentle rotation
   body.angularVelocity.set(
-    (Math.random() - 0.5) * 4,
-    (Math.random() - 0.5) * 3,
-    (Math.random() - 0.5) * 4
+    (Math.random() - 0.5) * 0.5,
+    (Math.random() - 0.5) * 0.5,
+    (Math.random() - 0.5) * 0.5
   );
 
-  // Mostly downward velocity with strong lateral drift for rolling
+  // Very gentle drop - almost no horizontal movement
   body.velocity.set(
-    (Math.random() - 0.5) * 8,
-    -3 - Math.random() * 2,
-    (Math.random() - 0.5) * 8
+    (Math.random() - 0.5) * 0.5,
+    -0.5,
+    (Math.random() - 0.5) * 0.5
   );
 
   scene.add(mesh);
@@ -817,18 +817,18 @@ function run3DRoll() {
     var py = 6 + Math.random() * 2;
 
     body.position.set(px, py, pz);
-    // Light horizontal push for natural spread, gentle downward
+    // Minimal horizontal movement, gentle drop
     body.velocity.set(
-      (Math.random() - 0.5) * 3,
-      -1,
-      (Math.random() - 0.5) * 3
+      (Math.random() - 0.5) * 0.5,
+      -0.5,
+      (Math.random() - 0.5) * 0.5
     );
 
-    // Strong angular velocity for visible tumbling
+    // Gentle angular velocity
     body.angularVelocity.set(
-      (Math.random() - 0.5) * 12,
-      (Math.random() - 0.5) * 12,
-      (Math.random() - 0.5) * 12
+      (Math.random() - 0.5) * 0.5,
+      (Math.random() - 0.5) * 0.5,
+      (Math.random() - 0.5) * 0.5
     );
 
     body.linearDamping = 0.1;
@@ -858,10 +858,10 @@ function run3DRoll() {
     targetQuats.push(computeFaceQuaternion(mesh, faceIdx, targetDir));
   });
 
-  // Animation: pure physics until settled, then multi-step slerp through random faces to final result
+  // Animation: Very gentle physics (almost no movement), then smooth rolling animation
   var fixedStep = 1 / 60;
   var maxSubSteps = 4;
-  var maxTime = 4000;        // 4s max for physics
+  var maxTime = 500;         // Very short physics phase (0.5s)
   var startTime = performance.now();
   var lastTime = startTime;
   var elapsed = 0;
@@ -874,7 +874,7 @@ function run3DRoll() {
 
   // Multi-step face transition: 5 smooth rolls + final snap = 6 waypoints
   var faceWaypoints = []; // Array of arrays: faceWaypoints[dieIndex] = [q0, q1, q2, q3, q4, q5(final)]
-  var waypointDurations = [0.06, 0.06, 0.06, 0.06, 0.06, 0.1]; // 5 rolls + final (total 0.4s)
+  var waypointDurations = [0.3, 0.3, 0.3, 0.3, 0.3, 0.5]; // 5 rolls + final (total 2s - smooth and slower)
   var totalSlerpDuration = waypointDurations.reduce(function(a, b) { return a + b; }, 0);
 
   // Helper to create a rotation quaternion for rolling to the side (90 degree rotation around X or Z axis)
@@ -907,10 +907,10 @@ function run3DRoll() {
     elapsed += dt;
 
     if (!physicsDone) {
-      // Run physics simulation
+      // Run very gentle physics simulation
       world.step(fixedStep, dt, maxSubSteps);
 
-      // Copy BOTH position AND rotation from physics
+      // Copy position and rotation from physics
       for (var i = 0; i < diceMeshes.length; i++) {
         diceMeshes[i].position.copy(diceBodies[i].position);
         diceMeshes[i].quaternion.set(
@@ -921,12 +921,12 @@ function run3DRoll() {
         );
       }
 
-      // Check if all dice have stopped
-      var allSleeping = elapsed > 0.5;
+      // End physics quickly
+      var allSleeping = elapsed > 0.3;
       for (var j = 0; j < diceBodies.length; j++) {
         var b = diceBodies[j];
         var speed = b.velocity.length() + b.angularVelocity.length();
-        if (speed > 0.3) {
+        if (speed > 0.1) {
           allSleeping = false;
           break;
         }
@@ -938,21 +938,19 @@ function run3DRoll() {
           diceBodies[k].velocity.setZero();
           diceBodies[k].angularVelocity.setZero();
         }
-        // Save current quaternions and generate waypoints using smooth rolling rotations
+        // Generate waypoints for smooth rolling
         for (var m = 0; m < diceMeshes.length; m++) {
           slerpStartQuats.push(diceMeshes[m].quaternion.clone());
 
-          // Generate 5 rolling rotations (90 deg each) + final target
-          var waypoints = [diceMeshes[m].quaternion.clone()]; // Start from current position
+          var waypoints = [diceMeshes[m].quaternion.clone()];
           var currentQuat = diceMeshes[m].quaternion.clone();
 
-          // Apply 5 sequential 90-degree rolls in random directions
           for (var w = 0; w < 5; w++) {
             var rollQuat = createRollRotation();
             currentQuat = currentQuat.clone().multiply(rollQuat);
             waypoints.push(currentQuat.clone());
           }
-          waypoints.push(targetQuats[m]); // Final result face
+          waypoints.push(targetQuats[m]);
           faceWaypoints.push(waypoints);
         }
         slerpStartTime = elapsed;
@@ -1032,7 +1030,7 @@ function run3DRoll() {
     showResults(results, total);
     cleanupTimeout = setTimeout(function() {
       doCleanup(overlay, renderer, diceMeshes);
-    }, 2000);
+    }, 1000);
   }
 
   function doCleanup(ov, ren, meshes) {
@@ -1081,16 +1079,16 @@ function showResults(results, total) {
 
   resultsBanner.classList.add('visible');
   if (resultTimeout) clearTimeout(resultTimeout);
-  resultTimeout = setTimeout(function() { hideResults(); }, 4000);
+  resultTimeout = setTimeout(function() { hideResults(); }, 2000);
 
   resultsBanner.onmouseenter = function() {
     if (resultTimeout) clearTimeout(resultTimeout);
     if (cleanupTimeout) { clearTimeout(cleanupTimeout); cleanupTimeout = null; }
   };
   resultsBanner.onmouseleave = function() {
-    resultTimeout = setTimeout(function() { hideResults(); }, 3000);
+    resultTimeout = setTimeout(function() { hideResults(); }, 1500);
     if (activeOverlay) {
-      cleanupTimeout = setTimeout(function() { cleanupActiveRoll(); }, 3500);
+      cleanupTimeout = setTimeout(function() { cleanupActiveRoll(); }, 1750);
     }
   };
 }

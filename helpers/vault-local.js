@@ -60,8 +60,64 @@ const sourceMap = {
   'VRGR': "Van Richten's Guide to Ravenloft",
   'MPMM': "Mordenkainen Presents: Monsters of the Multiverse",
   'EE': "Elemental Evil Player's Companion",
-  'DMG': "Dungeon Master's Guide"
+  'DMG': "Dungeon Master's Guide",
+  'XDMG': "Dungeon Master's Guide (2024)",
+  'AAG': "Astral Adventurer's Guide",
+  'AI': "Acquisitions Incorporated",
+  'FTD': "Fizban's Treasury of Dragons",
+  'SCC': "Strixhaven: A Curriculum of Chaos",
+  'EGW': "Explorer's Guide to Wildemount",
+  'IDRotF': "Icewind Dale: Rime of the Frostmaiden",
+  'BMT': "The Book of Many Things",
+  'GGR': "Guildmasters' Guide to Ravnica",
+  'SatO': "Spelljammer: Adventures in Space",
+  'LLK': "Lost Laboratory of Kwalish",
+  'FRHoF': "From the Radiant Archive (Heroes of Fortune)",
+  'AitFR-AVT': "Adventures in the Radiant City"
 };
+
+// Item type mapping
+const itemTypeMap = {
+  'M': 'Melee Weapon',
+  'R': 'Ranged Weapon',
+  'LA': 'Light Armor',
+  'MA': 'Medium Armor',
+  'HA': 'Heavy Armor',
+  'S': 'Shield',
+  'A': 'Armor',
+  'P': 'Potion',
+  'RG': 'Ring',
+  'RD': 'Rod',
+  'SC': 'Scroll',
+  'ST': 'Staff',
+  'WD': 'Wand',
+  'SCF': 'Spellcasting Focus',
+  'AT': "Artisan's Tools",
+  'GS': 'Gaming Set',
+  'INS': 'Musical Instrument',
+  'T': 'Tools',
+  'G': 'Adventuring Gear',
+  '$A': 'Ammunition',
+  '$C': 'Trade Goods',
+  '$G': 'General Goods',
+  'MNT': 'Mount',
+  'VEH': 'Vehicle',
+  'TAH': 'Tack and Harness',
+  'AIR': 'Vehicle (Air)',
+  'SHP': 'Vehicle (Water)',
+  'SPC': 'Spelljamming Component',
+  'FD': 'Food and Drink',
+  'EXP': 'Explosive',
+  'OTH': 'Other'
+};
+
+// Get clean item type from pipe-delimited code (e.g., "RD|DMG" -> "RD")
+function getItemType(typeString) {
+  if (!typeString) return null;
+  // Split by pipe and take first part
+  const code = typeString.split('|')[0];
+  return itemTypeMap[code] || code;
+}
 
 // Get races list
 function getRacesList(search = '') {
@@ -348,8 +404,8 @@ function getClassDetails(name) {
 }
 
 // Get spells list
-function getSpellsList(search = '', level = null, school = null) {
-  let sql = 'SELECT id, name, level, school, casting_time, duration FROM dnd_spells WHERE 1=1';
+function getSpellsList(search = '', level = null, school = null, source = null, castType = null) {
+  let sql = 'SELECT id, name, level, school, casting_time, duration, source FROM dnd_spells WHERE 1=1';
   const params = [];
 
   if (search) {
@@ -367,7 +423,12 @@ function getSpellsList(search = '', level = null, school = null) {
     params.push(school);
   }
 
-  sql += ' ORDER BY level, name COLLATE NOCASE LIMIT 50';
+  if (source) {
+    sql += ' AND source = ?';
+    params.push(source);
+  }
+
+  sql += ' ORDER BY level, name COLLATE NOCASE LIMIT 100';
 
   const spells = db.prepare(sql).all(...params);
 
@@ -375,16 +436,30 @@ function getSpellsList(search = '', level = null, school = null) {
     const fullData = db.prepare('SELECT raw_data FROM dnd_spells WHERE id = ?').get(sp.id);
     const spell = JSON.parse(fullData.raw_data);
 
+    const isConcentration = spell.duration?.[0]?.concentration || false;
+    const isRitual = spell.meta?.ritual || false;
+
+    // Filter by cast type (concentration/ritual)
+    if (castType) {
+      if (castType === 'concentration' && !isConcentration) return null;
+      if (castType === 'ritual' && !isRitual) return null;
+      if (castType === 'action') {
+        const castTime = spell.time?.[0]?.unit;
+        if (castTime !== 'action') return null;
+      }
+    }
+
     return {
       key: sp.name.toLowerCase().replace(/\s+/g, '-'),
       name: sp.name,
       level: sp.level,
       school: sp.school || '',
       castingTime: sp.casting_time || 'Unknown',
-      concentration: spell.duration?.[0]?.concentration || false,
-      ritual: spell.meta?.ritual || false
+      concentration: isConcentration,
+      ritual: isRitual,
+      source: sp.source
     };
-  });
+  }).filter(Boolean);
 }
 
 // Get spell details
@@ -450,7 +525,7 @@ function getSpellDetails(name) {
 }
 
 // Get items list
-function getItemsList(search = '', category = null, magic = null) {
+function getItemsList(search = '', category = null, magic = null, rarity = null) {
   let sql = 'SELECT id, name, source, type, rarity, value, weight FROM dnd_items WHERE 1=1';
   const params = [];
 
@@ -460,26 +535,33 @@ function getItemsList(search = '', category = null, magic = null) {
   }
 
   if (category) {
-    sql += ' AND type = ?';
-    params.push(category);
+    // Match items where type starts with the category code (e.g., "M" or "M|XPHB")
+    sql += ' AND type LIKE ?';
+    params.push(`${category}%`);
   }
 
   // Note: 5e.tools doesn't have a direct "is_magic_item" field like Open5e
   // We can approximate by checking rarity
+  // IMPORTANT: This must come BEFORE the rarity filter to work properly
   if (magic === 'true') {
-    sql += ' AND rarity IS NOT NULL AND rarity NOT IN ("none", "")';
+    sql += " AND rarity IS NOT NULL AND rarity NOT IN ('none', '')";
   } else if (magic === 'false') {
-    sql += ' AND (rarity IS NULL OR rarity IN ("none", ""))';
+    sql += " AND (rarity IS NULL OR rarity IN ('none', ''))";
   }
 
-  sql += ' ORDER BY name COLLATE NOCASE LIMIT 50';
+  if (rarity && rarity !== 'none') {
+    sql += ' AND rarity = ?';
+    params.push(rarity);
+  }
+
+  sql += ' ORDER BY name COLLATE NOCASE LIMIT 100';
 
   const items = db.prepare(sql).all(...params);
 
   return items.map(i => ({
     key: i.name.toLowerCase().replace(/\s+/g, '-'),
     name: i.name,
-    category: i.type,
+    category: getItemType(i.type) || i.type,
     rarity: i.rarity || '',
     isMagic: i.rarity && i.rarity !== 'none',
     cost: i.value,
@@ -509,7 +591,7 @@ function getItemDetails(name) {
   return {
     name: fullData.name,
     desc: formatVaultMarkdown(desc),
-    category: fullData.type,
+    category: getItemType(fullData.type) || fullData.type,
     rarity: fullData.rarity || '',
     isMagic: fullData.rarity && fullData.rarity !== 'none',
     cost: fullData.value,

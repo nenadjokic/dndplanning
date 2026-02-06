@@ -727,6 +727,19 @@ The admin can also check for updates from the **Guild Settings** page using the 
 - **Responsive walls** — Invisible physics walls now match the visible screen edges, adapting to portrait/landscape
 - **Adaptive grid** — Grid columns and spacing auto-adjust to the available screen width; narrow portrait phones use fewer columns
 
+### v1.0.13 (2026-02-06)
+
+**What's New:**
+- **Vault enhanced filters:**
+  - Spells: Added Source/Book filter (PHB, XPHB, Xanathar's, Tasha's, etc.) and Cast Type filter (Concentration, Ritual, Action)
+  - Items: Fixed category filters to use correct database codes, added Rarity filter (Common, Uncommon, Rare, Very Rare, Legendary, Artifact), fixed Magic/Mundane filter
+- **Activity feed improvements:** Bottom activity bar now auto-hides after 20 seconds of inactivity with smooth fade-out animation
+- **Dice roller improvements:** Faster roll animations (2s total), smoother rolling motion with minimal physics movement
+
+**Bug Fixes:**
+- Fixed Vault Spells school filter (now sends correct single-letter codes)
+- Fixed Vault Items filters SQL syntax error (single quotes vs double quotes)
+
 ### v1.0.12 (2026-02-06)
 
 **Changes:**

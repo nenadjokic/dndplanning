@@ -52,14 +52,32 @@
       </select>
       <select id="spells-school" class="vault-filter-select">
         <option value="">All Schools</option>
-        <option value="Abjuration">Abjuration</option>
-        <option value="Conjuration">Conjuration</option>
-        <option value="Divination">Divination</option>
-        <option value="Enchantment">Enchantment</option>
-        <option value="Evocation">Evocation</option>
-        <option value="Illusion">Illusion</option>
-        <option value="Necromancy">Necromancy</option>
-        <option value="Transmutation">Transmutation</option>
+        <option value="A">Abjuration</option>
+        <option value="C">Conjuration</option>
+        <option value="D">Divination</option>
+        <option value="E">Enchantment</option>
+        <option value="V">Evocation</option>
+        <option value="I">Illusion</option>
+        <option value="N">Necromancy</option>
+        <option value="T">Transmutation</option>
+      </select>
+      <select id="spells-source" class="vault-filter-select">
+        <option value="">All Sources</option>
+        <option value="PHB">Player's Handbook</option>
+        <option value="XPHB">Player's Handbook (2024)</option>
+        <option value="XGE">Xanathar's Guide</option>
+        <option value="TCE">Tasha's Cauldron</option>
+        <option value="FTD">Fizban's Treasury</option>
+        <option value="SCC">Strixhaven</option>
+        <option value="EGW">Wildemount</option>
+        <option value="AAG">Astral Guide</option>
+        <option value="AI">Acquisitions Inc.</option>
+      </select>
+      <select id="spells-casttype" class="vault-filter-select">
+        <option value="">All Cast Types</option>
+        <option value="concentration">Concentration</option>
+        <option value="ritual">Ritual</option>
+        <option value="action">Action</option>
       </select>
     </div>
     <div class="vault-results" id="spells-results">
@@ -73,16 +91,36 @@
       <input type="text" class="vault-search" id="items-search" placeholder="Search items...">
       <select id="items-category" class="vault-filter-select">
         <option value="">All Categories</option>
-        <option value="Weapon">Weapons</option>
-        <option value="Armor">Armor</option>
-        <option value="Adventuring Gear">Adventuring Gear</option>
-        <option value="Tools">Tools</option>
-        <option value="Wondrous Item">Wondrous Items</option>
-        <option value="Potion">Potions</option>
-        <option value="Ring">Rings</option>
-        <option value="Rod">Rods</option>
-        <option value="Staff">Staffs</option>
-        <option value="Wand">Wands</option>
+        <option value="M">Melee Weapons</option>
+        <option value="R">Ranged Weapons</option>
+        <option value="A">Armor</option>
+        <option value="LA">Light Armor</option>
+        <option value="MA">Medium Armor</option>
+        <option value="HA">Heavy Armor</option>
+        <option value="S">Shields</option>
+        <option value="P">Potions</option>
+        <option value="RG">Rings</option>
+        <option value="RD">Rods</option>
+        <option value="SC">Scrolls</option>
+        <option value="ST">Staffs</option>
+        <option value="WD">Wands</option>
+        <option value="SCF">Spellcasting Focus</option>
+        <option value="G">Adventuring Gear</option>
+        <option value="AT">Artisan's Tools</option>
+        <option value="T">Tools</option>
+        <option value="$A">Ammunition</option>
+        <option value="FD">Food & Drink</option>
+        <option value="MNT">Mounts</option>
+        <option value="VEH">Vehicles</option>
+      </select>
+      <select id="items-rarity" class="vault-filter-select">
+        <option value="">All Rarities</option>
+        <option value="common">Common</option>
+        <option value="uncommon">Uncommon</option>
+        <option value="rare">Rare</option>
+        <option value="very rare">Very Rare</option>
+        <option value="legendary">Legendary</option>
+        <option value="artifact">Artifact</option>
       </select>
       <select id="items-magic" class="vault-filter-select">
         <option value="">All Items</option>

@@ -27,9 +27,16 @@
       <div class="welcome-modal whatsnew-modal">
         <h2>What's New in v<%= appVersion %></h2>
         <div class="whatsnew-content">
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Changes</h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">What's New</h3>
           <ul class="whatsnew-list">
-            <li><strong>Manual Update Instructions</strong> &mdash; Removed automatic web-based update feature; admin panel now shows manual instructions (<code>git pull && docker compose up -d --build</code>) when a new version is available</li>
+            <li><strong>Vault Enhanced Filters</strong> &mdash; Spells now have Source/Book and Cast Type filters; Items have fixed category filters, new Rarity filter, and working Magic/Mundane filter</li>
+            <li><strong>Activity Feed</strong> &mdash; Bottom activity bar now auto-hides after 20 seconds with smooth fade-out animation</li>
+            <li><strong>Dice Roller</strong> &mdash; Faster (2s) and smoother animations with minimal physics movement</li>
+          </ul>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Bug Fixes</h3>
+          <ul class="whatsnew-list">
+            <li>Fixed Vault Spells school filter</li>
+            <li>Fixed Vault Items filters SQL syntax error</li>
           </ul>
         </div>
         <div class="whatsnew-links">

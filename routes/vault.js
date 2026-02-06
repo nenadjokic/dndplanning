@@ -74,9 +74,11 @@ router.get('/spells', (req, res) => {
   const search = req.query.search || '';
   const level = req.query.level;
   const school = req.query.school;
+  const source = req.query.source;
+  const castType = req.query.castType;
 
   try {
-    const results = vaultLocal.getSpellsList(search, level, school);
+    const results = vaultLocal.getSpellsList(search, level, school, source, castType);
     res.json({ results });
   } catch (err) {
     console.error('[Vault Spells] Error:', err.message);
@@ -109,9 +111,10 @@ router.get('/items', (req, res) => {
   const search = req.query.search || '';
   const category = req.query.category;
   const magic = req.query.magic;
+  const rarity = req.query.rarity;
 
   try {
-    const results = vaultLocal.getItemsList(search, category, magic);
+    const results = vaultLocal.getItemsList(search, category, magic, rarity);
     res.json({ results });
   } catch (err) {
     console.error('[Vault Items] Error:', err.message);
