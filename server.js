@@ -36,6 +36,11 @@ const adminUpdatesRoutes = require('./routes/admin-updates');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy if behind reverse proxy (nginx, apache, etc.)
+if (process.env.TRUST_PROXY === 'true') {
+  app.set('trust proxy', 1);
+}
+
 // Enforce SESSION_SECRET in production
 if (!process.env.SESSION_SECRET) {
   console.error('ERROR: SESSION_SECRET environment variable is required.');
@@ -72,16 +77,27 @@ app.use(session({
   cookie: {
     maxAge: 7 * 24 * 60 * 60 * 1000,
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    // Only use secure cookies if explicitly enabled (for HTTPS sites)
+    secure: process.env.SECURE_COOKIES === 'true',
     sameSite: 'lax'
   }
 }));
 
 // Simple CSRF Protection (session-based)
 app.use((req, res, next) => {
+  // Check if session exists
+  if (!req.session) {
+    console.error('[Session Error] req.session is undefined');
+    return res.status(500).send('Session error - please check server configuration');
+  }
+
   // Generate CSRF token for session if it doesn't exist
   if (!req.session.csrfToken) {
     req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+    // Save session to ensure token persists
+    req.session.save((err) => {
+      if (err) console.error('[CSRF] Failed to save session:', err.message);
+    });
   }
 
   // Make token available to views
@@ -106,8 +122,21 @@ function csrfProtection(req, res, next) {
 
   // Check CSRF token
   const token = req.body._csrf || req.query._csrf || req.headers['x-csrf-token'];
-  if (!token || token !== req.session.csrfToken) {
-    return res.status(403).send('Invalid CSRF token');
+  const sessionToken = req.session?.csrfToken;
+
+  if (!token) {
+    console.error('[CSRF] No token provided in request:', req.method, req.path);
+    return res.status(403).send('Invalid CSRF token - no token provided');
+  }
+
+  if (!sessionToken) {
+    console.error('[CSRF] No token in session for:', req.method, req.path);
+    return res.status(403).send('Invalid CSRF token - session expired, please refresh');
+  }
+
+  if (token !== sessionToken) {
+    console.error('[CSRF] Token mismatch:', req.method, req.path);
+    return res.status(403).send('Invalid CSRF token - token mismatch');
   }
 
   next();
