@@ -108,6 +108,12 @@ router.post('/users/:id/delete', requireLogin, requireAdmin, (req, res) => {
       db.prepare('DELETE FROM slots WHERE session_id = ?').run(sid);
     }
     db.prepare('DELETE FROM sessions WHERE created_by = ?').run(targetId);
+    // Delete notification reads by this user
+    safeDelete('DELETE FROM notification_reads WHERE user_id = ?', targetId);
+    // Delete poll votes by this user
+    safeDelete('DELETE FROM poll_votes WHERE user_id = ?', targetId);
+    // Delete polls created by this user (and cascade will handle options/votes)
+    safeDelete('DELETE FROM polls WHERE created_by = ?', targetId);
     // Delete the user
     db.prepare('DELETE FROM users WHERE id = ?').run(targetId);
   });
