@@ -3,7 +3,7 @@ data/
 .env
 *.db
 
-# Playwright
+# Playwright & Testing
 /test-results/
 /playwright-report/
 /blob-report/
@@ -13,6 +13,10 @@ e2e/
 playwright.config.js
 playwright.config.ts
 .playwright-mcp/
+test-*.js
+*.spec.js
+*.test.js
+.github/workflows/playwright.yml
 
 # Claude AI
 .claude/
