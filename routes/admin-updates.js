@@ -102,6 +102,19 @@ router.get('/app-update/stream', requireLogin, requireAdmin, (req, res) => {
 
   sendMessage('start', '🚀 Starting application update...');
 
+  // Check if git is available
+  const { execSync } = require('child_process');
+  try {
+    execSync('git --version', { stdio: 'ignore' });
+  } catch (err) {
+    sendMessage('error', '❌ Git is not installed or not in PATH');
+    sendMessage('error', 'Please install git: apt-get install git (Debian/Ubuntu) or yum install git (CentOS/RHEL)');
+    sendMessage('error', 'Or update manually: git pull && docker compose up -d --build');
+    cleanup();
+    res.end();
+    return;
+  }
+
   // Step 1: Git pull
   sendMessage('progress', '📥 Pulling latest changes from GitHub...');
   const gitPull = spawn('git', ['pull', 'origin', 'main'], {
@@ -133,7 +146,14 @@ router.get('/app-update/stream', requireLogin, requireAdmin, (req, res) => {
 
   gitPull.on('error', (err) => {
     clearTimeout(gitTimeout);
-    sendMessage('error', `❌ Git command failed: ${err.message}`);
+    cleanup();
+    if (err.code === 'ENOENT') {
+      sendMessage('error', '❌ Git is not installed or not in PATH');
+      sendMessage('error', 'Install: apt-get install git (Debian/Ubuntu) or yum install git (CentOS/RHEL)');
+      sendMessage('error', 'Or update manually: git pull && docker compose up -d --build');
+    } else {
+      sendMessage('error', `❌ Git command failed: ${err.message}`);
+    }
     res.end();
   });
 
