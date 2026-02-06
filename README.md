@@ -1,6 +1,6 @@
-# Quest Planner v1.0.0 — D&D Session Scheduler
+# Quest Planner v1.0.15 — D&D Session Scheduler
 
-> **Latest release:** v1.0.0 (2026-02-06)
+> **Latest release:** v1.0.15 (2026-02-06)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -43,26 +43,35 @@ If you enjoy Quest Planner, consider buying me a coffee:
 ## Features
 
 - **Session Scheduling** — DM posts proposed time slots, players vote on availability
+- **Session Categories** — D&D, RPG, Game Night, Casual with color-coded left border badges
 - **Availability Grid** — Visual overview of who can play when (available / maybe / unavailable)
 - **DM Preferences** — DMs and admins can mark their preferred slot with a star
+- **DM/Admin Voting** — Admins and DMs can vote on session availability like players while retaining preferred date option
 - **Session Lifecycle** — Open -> Confirmed -> Completed / Cancelled / Reopened
 - **Session Recap** — DMs write a recap/summary when completing a session; supports full Markdown (headings, bold, lists, etc.); players see it read-only
 - **Session History** — Dedicated `/history` page showing all completed D&D/RPG sessions in reverse chronological order
 - **Date + Time Picker** — Separate date and time select (30-min increments, 12h/24h)
 - **Dynamic Unavailability Warnings** — Inline warnings when a selected date conflicts with player unavailability
 - **Bulletin Board** — Global post/reply board for tavern gossip and announcements
-- **Session Comments** — Per-session "Quest Discussion" threads with replies
+- **Social Reactions** — React to posts and replies with like/dislike buttons; live vote counts via real-time updates
+- **Polls & GIFs** — Create polls with 2-4 options and attach images/GIFs from Giphy, Tenor, or Imgur to posts, replies, and session comments
+- **Session Comments** — Per-session "Quest Discussion" threads with replies, supporting images, GIFs, and polls
 - **@Mentions** — Tag users with `@username`; mentioned names highlighted in gold
+- **Admin Announcements** — Guild Master can post dismissible site-wide banners for important messages displayed above navigation
 - **Notifications** — Bell icon in nav bar with unread badge, dropdown history, auto-polling
   - Triggered by: session confirmation, @mentions in posts/replies/comments
+- **Notification Preferences** — Users can choose which notification types they receive (session events, mentions, etc.) from Settings
 - **Light / Dark / Auto Theme** — Dark (Dungeon), Light (Parchment), Auto (switches at 6AM/7PM)
 - **Live Clock** — Current date and time in the nav bar, updates every second
-- **D&D 5e Character Sheet** — Full character sheet with 3 tabs (Stats & Combat, Biography, Spellcasting); owner-editable with read-only public view; stores all data as a JSON blob per character
+- **D&D 5e Character Sheet** — Full character sheet with 3 tabs (Stats & Combat, Biography, Spellcasting); owner-editable with read-only public view; auto-calculates ability modifiers, proficiency bonus, saving throws, skills, passive perception, initiative, spell save DC, and spell attack bonus based on class and level
+- **Ancient Lore Library (Vault)** — D&D 5e reference with 936 spells, 26 classes, 158 races, and 2,451 items from 5e.tools; searchable with advanced filters (level, school, source/book, cast type for spells; category and rarity for items); D&D Beyond-style cards with emoji icons, structured stats, Markdown descriptions, and spell scaling tables; admin can import/update data from Guild Settings
 - **User Profile** — Avatar upload, birthday, about section (Markdown), multiple characters with avatars and descriptions
 - **Public Profiles** — View any guild member's profile page with avatar, birthday, about, and characters grid
 - **Push Notifications** — PWA push notifications for session events (create, confirm, cancel, complete, recap) via Web Push API
 - **Guild Members Directory** — `/players` page showing all members with links to their profiles
-- **User Settings** — Time format toggle, theme toggle, password change
+- **Google OAuth Login** — Sign in with Google or link existing accounts; configurable from Guild Settings with step-by-step setup guide
+- **Password Reset** — Admins can generate temporary 8-character passwords for players who forget theirs
+- **User Settings** — Time format toggle, theme toggle, password change, notification preferences
 - **Unavailability Days** — Players mark dates they can't play; DM sees these when creating sessions
 - **Calendar Feed (iCal)** — Personal feed (sessions + unavailability) and public sessions-only feed
 - **Omni-Channel Notifications** — Broadcast session events (created, confirmed, cancelled, reopened, completed, recap) to Discord, Telegram, or Viber; configured per-guild in Guild Settings
@@ -77,7 +86,8 @@ If you enjoy Quest Planner, consider buying me a coffee:
 - **Completion & Recap Notifications** — Bot broadcasts when sessions are completed and when recaps are added/updated
 - **Map Pin Navigation** — Clickable pin icons in the location table center the map on that location
 - **PWA Support** — Progressive Web App with manifest, service worker, offline page; installable on mobile and desktop with dedicated install instructions page
-- **3D Dice Roller** — Interactive 3D dice roller (D4–D100) with Three.js rendering and cannon-es physics; floating D20 button, bubble menu for dice selection, results banner with auto-hide
+- **3D Dice Roller** — Interactive dice (D4–D100) with realistic physics (gravity, friction, collisions); perfectly flat pentagonal trapezohedron geometry for D10/D100; spawn cascade animation with 0.015s stagger; dice bound to screen; procedural rolling sound; hidden roll option; history sidebar on desktop / toast notifications on mobile; long-press to subtract dice on mobile with haptic feedback
+- **Active Players Presence** — Real-time footer showing online members with avatars, usernames, and activity duration; auto-dims away members (1+ min inactive); auto-removes after 5 minutes
 - **What's New Modal** — Post-update changelog popup shown to users on first login after a version update, with GitHub release link and support badges
 - **Auto-Update Check** — Admin can check for new releases from the Guild Settings page
 - **Welcome Popup** — First-login modal thanking users with support links
@@ -391,14 +401,18 @@ For access with a custom domain, add to `/etc/hosts` on the client machine:
 1. On the dashboard, see all posted sessions
 2. Click on a session with the **"Needs your vote"** badge
 3. For each slot, choose: **Available** / **Maybe** / **Unavailable**
-4. Click **"Submit Availability"**
-5. Add comments in the **Quest Discussion** section
+4. Click **"Submit Availability"** (confirmation dialog appears before submitting)
+5. Add comments in the **Quest Discussion** section with optional images/GIFs or polls
+6. React to comments with like/dislike buttons
 
 ### Bulletin Board
 
 - Click **"Bulletin Board"** in the nav bar
-- Post messages, reply to others, delete your own posts (admins can delete any)
+- Post messages with optional images/GIFs (Giphy, Tenor, Imgur URLs supported) or create polls with 2-4 options
+- Reply to posts, react with like/dislike buttons (live vote counts)
 - Use `@username` to mention someone (e.g., `@nenad.jokic`) — they'll receive a notification
+- Delete your own posts (admins can delete any)
+- Vote on polls and change your vote anytime (live percentage display)
 
 ### Settings
 
@@ -407,6 +421,8 @@ All users can access **Settings** (pencil icon in the nav bar) to:
 - Switch theme: Dark (Dungeon), Light (Parchment), or Auto (6AM-7PM)
 - Toggle between 12-hour and 24-hour time format
 - Change their password
+- Link or unlink Google account for Google OAuth login
+- Configure notification preferences (choose which notification types to receive)
 - Mark unavailability days with optional reasons
 - Generate a personal calendar feed URL (iCal) with sessions + unavailability
 - View the public sessions-only calendar feed URL (shareable, no auth required)
@@ -461,17 +477,39 @@ All users can access **Settings** (pencil icon in the nav bar) to:
 - Click any tool button to open it in a new tab
 - Edit or delete buttons at any time
 
+### Ancient Lore Library (Vault)
+
+- Click **"Vault"** in the navigation bar to browse D&D 5e reference content
+- **Races Tab**: Browse 158 playable races with racial traits, ability score bonuses, and special abilities
+- **Classes Tab**: View 26 character classes with features organized by level, proficiencies, and starting equipment
+- **Spells Tab**: Search 936 spells by name, filter by:
+  - **Level**: Cantrips (0) through 9th level spells
+  - **School**: Abjuration, Conjuration, Divination, Enchantment, Evocation, Illusion, Necromancy, Transmutation
+  - **Source/Book**: Player's Handbook, Xanathar's Guide, Tasha's Cauldron, and more
+  - **Cast Type**: Action, Bonus Action, Reaction, Concentration, Ritual
+  - Cantrips display damage scaling by character level in a table
+- **Items Tab**: Browse 2,451 items filterable by:
+  - **Category**: Weapons, Armor, Potions, Adventuring Gear, Tools, Magic Items, and more
+  - **Rarity**: Common, Uncommon, Rare, Very Rare, Legendary, Artifact
+  - **Type**: Magic or Mundane items
+- All content displayed in beautiful D&D Beyond-style cards with emoji icons, structured stats, and Markdown-rendered descriptions
+- **Admin**: Import or update the library data from Guild Settings → Ancient Lore Library → "Update Ancient Lore" button with real-time progress tracking
+
 ### Admin Features
 
 The Guild Master can access **Guild Settings** (cogwheel icon) to:
-- Manage user roles (promote/demote between DM and Player)
-- Check for application updates
+- **User Management** — Manage user roles (promote/demote between DM and Player)
+- **Password Reset** — Reset any player's password and generate a temporary 8-character password
+- **Google OAuth Setup** — Configure Google Login with client ID and secret; step-by-step setup guide with correct redirect URI
+- **Admin Announcements** — Post site-wide dismissible banners for important messages displayed above navigation
+- **Application Updates** — Check for new releases from GitHub with manual update instructions
 - **Communications Setup** — configure Discord, Telegram, or Viber to receive session event broadcasts:
   1. Select a provider from the dropdown
   2. Enter the required credentials (bot token, channel/chat ID)
   3. Optionally set a Public URL for clickable links in messages
   4. Click **Save**, then **Test Connection** to verify
   5. Session events (create, confirm, cancel, reopen, complete, recap) will be broadcast automatically
+- **Ancient Lore Library** — Import or update D&D 5e reference data from 5e.tools with real-time progress tracking
 
 ---
 
@@ -499,9 +537,9 @@ dndplanning/
 │   ├── auth.js            # Auth middleware (login, DM check, user data, theme)
 │   └── flash.js           # Flash messages
 ├── routes/
-│   ├── auth.js            # Register, login, logout (first-login flag)
-│   ├── admin.js           # User management, update check
-│   ├── board.js           # Bulletin board posts, replies, delete
+│   ├── auth.js            # Register, login, logout, Google OAuth (first-login flag)
+│   ├── admin.js           # User management, update check, announcements, password reset, Google OAuth config
+│   ├── board.js           # Bulletin board posts, replies, reactions, polls, images, delete
 │   ├── calendar.js        # Personal iCal feed + public sessions-only feed
 │   ├── dashboard.js       # Role-based redirect (DM/Player), welcome popup
 │   ├── notifications.js   # Notification API (fetch, mark read)
@@ -514,8 +552,10 @@ dndplanning/
 │   ├── map.js             # Multiple maps, locations, party marker, image upload
 │   ├── loot.js            # Party inventory (loot tracker)
 │   ├── analytics.js       # Session analytics and charts
-│   ├── dice.js            # Dice roll history API (save & retrieve rolls)
-│   └── dm-tools.js        # DM Tools streamdeck page
+│   ├── dice.js            # Dice roll history API (save & retrieve rolls, presence heartbeat)
+│   ├── dm-tools.js        # DM Tools streamdeck page
+│   ├── vault.js           # Ancient Lore Library (D&D 5e reference browser)
+│   └── dnd-data.js        # 5e.tools data import API (races, classes, spells, items)
 ├── views/                 # EJS templates
 │   ├── partials/          # Header (theme), footer (about/GPL/support), nav (bell/clock), flash, slot grid, comments
 │   ├── auth/              # Login, register pages
@@ -530,8 +570,9 @@ dndplanning/
 │   ├── map.ejs            # Single map view (Leaflet.js)
 │   ├── loot.ejs           # Party inventory page
 │   ├── analytics.ejs      # Session analytics page (Chart.js)
+│   ├── vault.ejs          # Ancient Lore Library (D&D 5e reference with tabs: races, classes, spells, items)
 │   ├── pwa.ejs            # PWA installation instructions page
-│   └── settings.ejs       # User settings page (theme, time, password, unavailability, calendar)
+│   └── settings.ejs       # User settings page (theme, time, password, unavailability, calendar, notification prefs)
 ├── public/
 │   ├── css/style.css      # Dark + light theme, notifications, mentions, board, map, loot, analytics, PWA, characters styles
 │   ├── js/app.js          # Clock, notifications, time picker, unavailability warnings, theme recheck
@@ -541,6 +582,7 @@ dndplanning/
 │   └── icons/             # PWA app icons (192x192, 512x512)
 └── data/                  # SQLite files + avatars + maps + thumbnails (not in git)
     ├── avatars/           # User avatar uploads
+    ├── character-avatars/ # Character avatar uploads (256x256)
     ├── maps/              # Uploaded world map images
     └── thumbnails/        # DM Tools thumbnails (128x128)
 ```
@@ -596,6 +638,50 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v1.0.15 (2026-02-06)
+
+**What's New:**
+- **D10/D100 dice geometry fix:**
+  - Perfectly flat kite faces — uses mathematically correct pentagonal trapezohedron vertices
+  - No more visible seam lines — faces are truly planar with no curves or distortion
+  - Improved material rendering — added double-sided rendering for solid appearance
+
+**Bug Fixes:**
+- None
+
+### v1.0.14 (2026-02-06)
+
+**What's New:**
+- **Dice roller physics overhaul:**
+  - Realistic weight and momentum — dice now have proper damping (72% friction) for natural settling
+  - Gentle collision detection — dice bounce off each other softly when grounded, preventing clipping
+  - Spawn animation — all dice drop from above (center position) with 0.015s stagger for visual cascade effect
+  - Boundary containment — dice stay within viewport bounds and won't fly off screen
+  - Ground-only collisions — collision forces only apply when dice are on the table for realistic behavior
+
+**Bug Fixes:**
+- None
+
+**Support the Project:**
+
+If you enjoy Quest Planner, consider supporting development:
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/nenadjokic)
+[![PayPal](https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/nenadjokicRS)
+
+### v1.0.13 (2026-02-06)
+
+**What's New:**
+- **Vault enhanced filters:**
+  - Spells: Added Source/Book filter (PHB, XPHB, Xanathar's, Tasha's, etc.) and Cast Type filter (Concentration, Ritual, Action)
+  - Items: Fixed category filters to use correct database codes, added Rarity filter (Common, Uncommon, Rare, Very Rare, Legendary, Artifact), fixed Magic/Mundane filter
+- **Activity feed improvements:** Bottom activity bar now auto-hides after 20 seconds of inactivity with smooth fade-out animation
+- **Dice roller improvements:** Faster roll animations (2s total), smoother rolling motion with minimal physics movement
+
+**Bug Fixes:**
+- Fixed Vault Spells school filter (now sends correct single-letter codes)
+- Fixed Vault Items filters SQL syntax error (single quotes vs double quotes)
 
 ### v0.9.28 (2026-02-05)
 
@@ -726,50 +812,6 @@ The admin can also check for updates from the **Guild Settings** page using the 
 - **Top-right corner to center** — Dice spawn in the visible top-right corner and travel diagonally toward the center of the screen
 - **Responsive walls** — Invisible physics walls now match the visible screen edges, adapting to portrait/landscape
 - **Adaptive grid** — Grid columns and spacing auto-adjust to the available screen width; narrow portrait phones use fewer columns
-
-### v1.0.15 (2026-02-06)
-
-**What's New:**
-- **D10/D100 dice geometry fix:**
-  - Perfectly flat kite faces — uses mathematically correct pentagonal trapezohedron vertices
-  - No more visible seam lines — faces are truly planar with no curves or distortion
-  - Improved material rendering — added double-sided rendering for solid appearance
-
-**Bug Fixes:**
-- None
-
-### v1.0.14 (2026-02-06)
-
-**What's New:**
-- **Dice roller physics overhaul:**
-  - Realistic weight and momentum — dice now have proper damping (72% friction) for natural settling
-  - Gentle collision detection — dice bounce off each other softly when grounded, preventing clipping
-  - Spawn animation — all dice drop from above (center position) with 0.015s stagger for visual cascade effect
-  - Boundary containment — dice stay within viewport bounds and won't fly off screen
-  - Ground-only collisions — collision forces only apply when dice are on the table for realistic behavior
-
-**Bug Fixes:**
-- None
-
-**Support the Project:**
-
-If you enjoy Quest Planner, consider supporting development:
-
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/nenadjokic)
-[![PayPal](https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/nenadjokicRS)
-
-### v1.0.13 (2026-02-06)
-
-**What's New:**
-- **Vault enhanced filters:**
-  - Spells: Added Source/Book filter (PHB, XPHB, Xanathar's, Tasha's, etc.) and Cast Type filter (Concentration, Ritual, Action)
-  - Items: Fixed category filters to use correct database codes, added Rarity filter (Common, Uncommon, Rare, Very Rare, Legendary, Artifact), fixed Magic/Mundane filter
-- **Activity feed improvements:** Bottom activity bar now auto-hides after 20 seconds of inactivity with smooth fade-out animation
-- **Dice roller improvements:** Faster roll animations (2s total), smoother rolling motion with minimal physics movement
-
-**Bug Fixes:**
-- Fixed Vault Spells school filter (now sends correct single-letter codes)
-- Fixed Vault Items filters SQL syntax error (single quotes vs double quotes)
 
 ### v1.0.12 (2026-02-06)
 
