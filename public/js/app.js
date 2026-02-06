@@ -641,36 +641,8 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 })();
 
-// Admin: check for updates
-function checkForUpdate() {
-  var resultDiv = document.getElementById('update-result');
-  if (!resultDiv) return;
-  resultDiv.innerHTML = '<p style="color: var(--text-secondary);">Checking...</p>';
-
-  fetch('/admin/check-update', { credentials: 'same-origin' })
-    .then(function(res) { return res.json(); })
-    .then(function(data) {
-      if (data.error) {
-        resultDiv.innerHTML = '<p style="color: var(--red-light);">' + data.error + '</p>';
-        return;
-      }
-      if (data.updateAvailable) {
-        resultDiv.innerHTML =
-          '<div class="flash flash-success">' +
-          '<strong>Update available!</strong> v' + data.currentVersion + ' &rarr; v' + data.latestVersion +
-          (data.releaseName ? ' &mdash; ' + data.releaseName : '') +
-          '<br><br>To update, run:<br>' +
-          '<code style="background: var(--bg-darker); padding: 0.3rem 0.6rem; border-radius: 4px;">git pull && docker compose up -d --build</code>' +
-          (data.releaseUrl ? '<br><br><a href="' + data.releaseUrl + '" target="_blank">View release notes</a>' : '') +
-          '</div>';
-      } else {
-        resultDiv.innerHTML = '<p style="color: var(--green-light);">You are running the latest version (v' + data.currentVersion + ').</p>';
-      }
-    })
-    .catch(function() {
-      resultDiv.innerHTML = '<p style="color: var(--red-light);">Could not check for updates.</p>';
-    });
-}
+// Note: checkForUpdate() and performAppUpdate() are defined in admin/users.ejs
+// They use Server-Sent Events for real-time progress updates
 
 // === Activity Feed Bar ===
 (function() {
