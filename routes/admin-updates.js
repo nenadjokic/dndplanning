@@ -69,20 +69,54 @@ router.get('/app-update/stream', requireLogin, requireAdmin, (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive'
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no' // Disable nginx buffering
   });
 
   const sendMessage = (type, message) => {
-    res.write(`data: ${JSON.stringify({ type, message })}\n\n`);
+    try {
+      res.write(`data: ${JSON.stringify({ type, message })}\n\n`);
+    } catch (err) {
+      console.error('[SSE] Failed to send message:', err.message);
+    }
   };
+
+  // Keepalive ping every 10 seconds
+  const keepAlive = setInterval(() => {
+    sendMessage('ping', '');
+  }, 10000);
+
+  // Cleanup function
+  const cleanup = () => {
+    clearInterval(keepAlive);
+  };
+
+  // Cleanup on client disconnect
+  req.on('close', () => {
+    cleanup();
+    console.log('[SSE] Client disconnected');
+  });
+
+  // Cleanup on response finish
+  res.on('finish', cleanup);
 
   sendMessage('start', '🚀 Starting application update...');
 
   // Step 1: Git pull
   sendMessage('progress', '📥 Pulling latest changes from GitHub...');
-  const gitPull = spawn('git', ['pull', 'origin', 'main']);
+  const gitPull = spawn('git', ['pull', 'origin', 'main'], {
+    cwd: process.cwd(),
+    timeout: 30000 // 30 second timeout
+  });
 
   let gitOutput = '';
+
+  // Timeout fallback (in case spawn timeout doesn't work)
+  const gitTimeout = setTimeout(() => {
+    gitPull.kill();
+    sendMessage('error', '❌ Git pull timed out after 30 seconds');
+    res.end();
+  }, 30000);
 
   gitPull.stdout.on('data', (data) => {
     const message = data.toString().trim();
@@ -97,7 +131,14 @@ router.get('/app-update/stream', requireLogin, requireAdmin, (req, res) => {
     if (message) sendMessage('progress', `  ${message}`);
   });
 
+  gitPull.on('error', (err) => {
+    clearTimeout(gitTimeout);
+    sendMessage('error', `❌ Git command failed: ${err.message}`);
+    res.end();
+  });
+
   gitPull.on('close', (code) => {
+    clearTimeout(gitTimeout);
     if (code !== 0) {
       sendMessage('error', `❌ Git pull failed with code ${code}`);
       res.end();

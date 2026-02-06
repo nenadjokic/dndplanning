@@ -358,17 +358,30 @@ function performAppUpdate() {
   eventSource.onmessage = function(e) {
     var data = JSON.parse(e.data);
 
-    progressText.textContent += data.message + '\n';
-    progressText.scrollTop = progressText.scrollHeight;
+    // Ignore keepalive pings
+    if (data.type === 'ping') return;
+
+    // Only show non-empty messages
+    if (data.message) {
+      progressText.textContent += data.message + '\n';
+      progressText.scrollTop = progressText.scrollHeight;
+    }
 
     if (data.type === 'progress') {
       progress = Math.min(progress + 10, 90);
       progressBar.style.width = progress + '%';
     } else if (data.type === 'complete') {
       progressBar.style.width = '100%';
+      progressText.textContent += '\n✅ Update complete! Reloading page...\n';
       setTimeout(function() {
         window.location.reload();
       }, 3000);
+    } else if (data.type === 'restart') {
+      progressBar.style.width = '95%';
+      progressText.textContent += '\n🔄 Server restarting... Page will reload in 5 seconds.\n';
+      setTimeout(function() {
+        window.location.reload();
+      }, 5000);
     } else if (data.type === 'error') {
       progressBar.style.background = 'var(--error)';
       btn.disabled = false;
@@ -378,11 +391,18 @@ function performAppUpdate() {
 
   eventSource.onerror = function() {
     eventSource.close();
-    if (progress < 100) {
-      progressText.textContent += '\n❌ Connection lost. Please refresh the page.\n';
+    // If we haven't reached 100%, it's a real error
+    if (progress < 90) {
+      progressText.textContent += '\n❌ Connection lost. Check server logs or try refreshing.\n';
       progressBar.style.background = 'var(--error)';
       btn.disabled = false;
       btn.textContent = '🚀 Update Now';
+    } else {
+      // If we're at 90%+, assume server is restarting
+      progressText.textContent += '\n🔄 Server restarting... Refreshing in 5 seconds.\n';
+      setTimeout(function() {
+        window.location.reload();
+      }, 5000);
     }
   };
 }
