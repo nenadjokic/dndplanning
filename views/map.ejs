@@ -21,6 +21,7 @@
   <div id="upload-form" style="display:none; margin-bottom: 1rem;">
     <div class="card">
       <form action="/map/<%= map.id %>/upload" method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="form-group">
           <label for="map_image">Map Image (JPG, PNG, GIF, WebP &mdash; max 5MB)</label>
           <input type="file" name="map_image" id="map_image" accept="image/*">
@@ -44,6 +45,7 @@
   <div class="card" style="max-width: 400px; margin: 0 auto;">
     <h3>Add Location</h3>
     <form action="/map/<%= map.id %>/locations" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <input type="hidden" name="x" id="add-loc-x">
       <input type="hidden" name="y" id="add-loc-y">
       <div class="form-group">
@@ -102,6 +104,7 @@
                 <div style="display: flex; gap: 0.25rem;">
                   <button type="button" class="btn btn-small btn-outline" data-table-edit-loc="<%= loc.id %>">Edit</button>
                   <form action="/map/<%= map.id %>/locations/<%= loc.id %>/delete" method="POST" class="inline-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this location?')">&times;</button>
                   </form>
                 </div>
@@ -120,6 +123,7 @@
   <div class="card" style="max-width: 400px; margin: 0 auto;">
     <h3>Edit Location</h3>
     <form id="edit-loc-form" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="form-group">
         <label for="edit-loc-name">Name</label>
         <input type="text" name="name" id="edit-loc-name" required>
@@ -226,6 +230,7 @@
       popupContent += '<div style="margin-top:0.5rem; display:flex; gap:0.25rem;">'
         + '<button type="button" class="btn btn-small btn-outline" data-edit-loc="' + loc.id + '" style="font-size:0.75rem;padding:0.2rem 0.5rem;">Edit</button>'
         + '<form action="/map/<%= map.id %>/locations/' + loc.id + '/delete" method="POST">'
+      + '<input type="hidden" name="_csrf" value="<%= csrfToken %>">'
         + '<button type="submit" class="btn btn-small btn-danger" onclick="return confirm(\'Delete this location?\')" style="font-size:0.75rem;padding:0.2rem 0.5rem;">Delete</button></form>'
         + '</div>';
     }

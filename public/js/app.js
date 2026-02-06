@@ -1,3 +1,9 @@
+// === CSRF Helper ===
+function getCsrfToken() {
+  var input = document.querySelector('input[name="_csrf"]');
+  return input ? input.value : '';
+}
+
 // === Live Clock ===
 (function() {
   var clockEl = document.getElementById('nav-clock');
@@ -36,6 +42,59 @@
     var theme = (h >= 6 && h < 19) ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', theme);
   }, 60000);
+})();
+
+// === Real-time updates via SSE ===
+(function() {
+  if (typeof EventSource === 'undefined') return;
+
+  var eventSource = new EventSource('/api/events');
+
+  eventSource.addEventListener('post-reaction', function(e) {
+    var data = JSON.parse(e.data);
+    var container = document.querySelector('.reaction-buttons[data-post-id="' + data.postId + '"]');
+    if (!container) return;
+    var likeBtn = container.querySelector('.reaction-btn[data-type="like"] .reaction-count');
+    var dislikeBtn = container.querySelector('.reaction-btn[data-type="dislike"] .reaction-count');
+    if (likeBtn) likeBtn.textContent = data.likes;
+    if (dislikeBtn) dislikeBtn.textContent = data.dislikes;
+  });
+
+  eventSource.addEventListener('reply-reaction', function(e) {
+    var data = JSON.parse(e.data);
+    var container = document.querySelector('.reaction-buttons[data-reply-id="' + data.replyId + '"]');
+    if (!container) return;
+    var likeBtn = container.querySelector('.reaction-btn[data-type="like"] .reaction-count');
+    var dislikeBtn = container.querySelector('.reaction-btn[data-type="dislike"] .reaction-count');
+    if (likeBtn) likeBtn.textContent = data.likes;
+    if (dislikeBtn) dislikeBtn.textContent = data.dislikes;
+  });
+
+  eventSource.addEventListener('poll-vote', function(e) {
+    var data = JSON.parse(e.data);
+    var container = document.querySelector('.poll-container[data-poll-id="' + data.pollId + '"]');
+    if (!container) return;
+    var options = container.querySelectorAll('.poll-option');
+    options.forEach(function(opt) {
+      var oid = parseInt(opt.getAttribute('data-option-id'));
+      var info = data.options.find(function(o) { return o.id === oid; });
+      if (info) {
+        var pct = data.totalVotes > 0 ? Math.round((info.votes / data.totalVotes) * 100) : 0;
+        opt.querySelector('.poll-option-bar').style.width = pct + '%';
+        opt.querySelector('.poll-option-count').textContent = info.votes + ' (' + pct + '%)';
+      }
+    });
+    var totalEl = container.querySelector('.poll-total');
+    if (totalEl) totalEl.textContent = data.totalVotes + ' vote' + (data.totalVotes !== 1 ? 's' : '');
+  });
+
+  eventSource.onerror = function() {
+    // Reconnect after 5 seconds if connection lost
+    setTimeout(function() {
+      eventSource.close();
+      eventSource = new EventSource('/api/events');
+    }, 5000);
+  };
 })();
 
 // === Hamburger Menu Toggle ===
@@ -152,14 +211,19 @@ function checkSlotUnavailability(dateInput) {
   }
 
   function fetchNotifications() {
-    fetch('/notifications/api')
+    fetch('/notifications/api', { credentials: 'same-origin' })
       .then(function(res) { return res.json(); })
       .then(renderNotifications)
       .catch(function() {});
   }
 
   function markRead() {
-    fetch('/notifications/read', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+    fetch('/notifications/read', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ _csrf: getCsrfToken() })
+    })
       .then(function() {
         badge.style.display = 'none';
         var items = list.querySelectorAll('.unread');
@@ -465,7 +529,9 @@ document.addEventListener('DOMContentLoaded', function() {
   function sendHeartbeat() {
     fetch('/api/dice/presence/heartbeat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ _csrf: getCsrfToken() })
     }).then(function(r) { return r.json(); }).then(function(data) {
       if (data.players) renderPlayers(data.players);
       if (data.lastDiceRollAt && data.lastDiceRollAt !== lastDiceRollAt) {
@@ -507,8 +573,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     fetch(url, {
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reaction_type: reactionType })
+      body: JSON.stringify({
+        reaction_type: reactionType,
+        _csrf: getCsrfToken()
+      })
     })
     .then(function(res) { return res.json(); })
     .then(function(data) {
@@ -544,8 +614,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     fetch(url, {
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ option_id: optionId })
+      body: JSON.stringify({
+        option_id: optionId,
+        _csrf: getCsrfToken()
+      })
     })
     .then(function(res) { return res.json(); })
     .then(function(data) {
@@ -573,7 +647,7 @@ function checkForUpdate() {
   if (!resultDiv) return;
   resultDiv.innerHTML = '<p style="color: var(--text-secondary);">Checking...</p>';
 
-  fetch('/admin/check-update')
+  fetch('/admin/check-update', { credentials: 'same-origin' })
     .then(function(res) { return res.json(); })
     .then(function(data) {
       if (data.error) {
@@ -597,3 +671,132 @@ function checkForUpdate() {
       resultDiv.innerHTML = '<p style="color: var(--red-light);">Could not check for updates.</p>';
     });
 }
+
+// === Activity Feed Bar ===
+(function() {
+  var feedBar = document.getElementById('activity-feed-bar');
+  if (!feedBar) return;
+
+  var feedMessage = feedBar.querySelector('.activity-message');
+  var hideTimeout;
+  var animTimeout;
+
+  function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  function showActivity(message, link) {
+    if (hideTimeout) clearTimeout(hideTimeout);
+    if (animTimeout) clearTimeout(animTimeout);
+
+    var content = '<span class="activity-message-inner">';
+    if (link) {
+      content += '<a href="' + link + '">' + message + '</a>';
+    } else {
+      content += message;
+    }
+    content += '</span>';
+
+    feedMessage.innerHTML = content;
+    feedBar.classList.remove('hidden');
+    feedBar.style.opacity = '1';
+
+    hideTimeout = setTimeout(function() {
+      feedBar.style.opacity = '0.5';
+      feedMessage.innerHTML = '<span class="activity-message-inner">No recent activity...</span>';
+    }, 15000);
+  }
+
+  // Set initial message
+  feedMessage.innerHTML = '<span class="activity-message-inner">Waiting for activity...</span>';
+
+  // Listen to SSE events
+  if (typeof EventSource === 'undefined') return;
+
+  var eventSource = new EventSource('/api/events');
+
+  eventSource.addEventListener('new-comment', function(e) {
+    var data = JSON.parse(e.data);
+    var msg = '<strong>' + escapeHtml(data.username) + '</strong> commented';
+    if (data.sessionTitle) {
+      msg += ' on "<strong>' + escapeHtml(data.sessionTitle) + '</strong>"';
+    }
+    if (data.content) {
+      msg += ': "' + escapeHtml(data.content.substring(0, 100)) + (data.content.length > 100 ? '..."' : '"');
+    }
+    var link = data.sessionId ? '/sessions/' + data.sessionId : '/board';
+    showActivity(msg, link);
+  });
+
+  eventSource.addEventListener('new-session', function(e) {
+    var data = JSON.parse(e.data);
+    var msg = '<strong>' + escapeHtml(data.username) + '</strong> created session: "<strong>' + escapeHtml(data.title) + '</strong>"';
+    showActivity(msg, data.sessionId ? '/sessions/' + data.sessionId : null);
+  });
+
+  eventSource.addEventListener('new-map', function(e) {
+    var data = JSON.parse(e.data);
+    var msg = '<strong>' + escapeHtml(data.username) + '</strong> uploaded map: "<strong>' + escapeHtml(data.name) + '</strong>"';
+    showActivity(msg, data.mapId ? '/map/' + data.mapId : '/map');
+  });
+
+  eventSource.addEventListener('new-loot', function(e) {
+    var data = JSON.parse(e.data);
+    var msg = '<strong>' + escapeHtml(data.username) + '</strong> added';
+    if (data.itemName) {
+      msg += ' "<strong>' + escapeHtml(data.itemName) + '</strong>"';
+    } else {
+      msg += ' items';
+    }
+    msg += ' to party loot';
+    showActivity(msg, '/loot');
+  });
+
+  eventSource.addEventListener('session-confirmed', function(e) {
+    var data = JSON.parse(e.data);
+    var msg = '<strong>' + escapeHtml(data.username) + '</strong> confirmed session: "<strong>' + escapeHtml(data.sessionTitle) + '</strong>"';
+    showActivity(msg, data.sessionId ? '/sessions/' + data.sessionId : null);
+  });
+
+  eventSource.addEventListener('session-cancelled', function(e) {
+    var data = JSON.parse(e.data);
+    var msg = '<strong>' + escapeHtml(data.username) + '</strong> cancelled session: "<strong>' + escapeHtml(data.sessionTitle) + '</strong>"';
+    showActivity(msg, data.sessionId ? '/sessions/' + data.sessionId : null);
+  });
+
+  eventSource.addEventListener('poll-created', function(e) {
+    var data = JSON.parse(e.data);
+    var msg = '<strong>' + escapeHtml(data.username) + '</strong> created poll: "<strong>' + escapeHtml(data.question) + '</strong>"';
+    showActivity(msg, data.sessionId ? '/sessions/' + data.sessionId : '/board');
+  });
+
+  eventSource.addEventListener('like-activity', function(e) {
+    var data = JSON.parse(e.data);
+    var msg = '<strong>' + escapeHtml(data.username) + '</strong> liked';
+    if (data.sessionTitle) {
+      msg += ' a comment on "<strong>' + escapeHtml(data.sessionTitle) + '</strong>"';
+    } else {
+      msg += ' a post';
+    }
+    var link = data.sessionId ? '/sessions/' + data.sessionId : '/board';
+    showActivity(msg, link);
+  });
+
+  eventSource.addEventListener('unavailability-added', function(e) {
+    var data = JSON.parse(e.data);
+    var msg = '<strong>' + escapeHtml(data.username) + '</strong> added unavailability';
+    if (data.date) {
+      msg += ' on <strong>' + data.date + '</strong>';
+    }
+    showActivity(msg, '/profile');
+  });
+
+  eventSource.onerror = function() {
+    setTimeout(function() {
+      eventSource.close();
+      eventSource = new EventSource('/api/events');
+    }, 5000);
+  };
+})();

@@ -15,6 +15,7 @@
     <div class="card" style="border: 1px solid var(--gold-dim);">
       <h3>Create Map</h3>
       <form action="/map" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="form-group">
           <label for="map_name">Map Name</label>
           <input type="text" name="name" id="map_name" required placeholder="e.g. World Map, Dungeon Level 1, Town of Phandalin">
@@ -63,6 +64,7 @@
               <% if (isDM) { %>
                 <td>
                   <form action="/map/<%= m.id %>/delete" method="POST" class="inline-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this map and all its locations?')">&times;</button>
                   </form>
                 </td>

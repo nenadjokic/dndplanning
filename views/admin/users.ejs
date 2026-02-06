@@ -32,6 +32,7 @@
                 <span class="text-muted">&mdash;</span>
               <% } else { %>
                 <form action="/admin/users/<%= u.id %>/role" method="POST" class="role-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                   <select name="role" class="role-select">
                     <option value="player" <%= u.role === 'player' ? 'selected' : '' %>>Adventurer</option>
                     <option value="dm" <%= u.role === 'dm' ? 'selected' : '' %>>Dungeon Master</option>
@@ -39,9 +40,11 @@
                   <button type="submit" class="btn btn-small btn-primary">Save</button>
                 </form>
                 <form action="/admin/users/<%= u.id %>/reset-password" method="POST" class="inline-form" style="margin-left: 0.5rem;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                   <button type="submit" class="btn btn-small btn-outline" onclick="return confirm('Reset password for <%= u.username %>?')" title="Reset Password">&#x1F511;</button>
                 </form>
                 <form action="/admin/users/<%= u.id %>/delete" method="POST" class="inline-form" style="margin-left: 0.5rem;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                   <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this user and ALL their data? This cannot be undone.')">&times;</button>
                 </form>
               <% } %>
@@ -56,8 +59,40 @@
 <div class="card" style="margin-top: 1.5rem;">
   <h2>Realm Updates</h2>
   <p>Current version: <strong>v<%= appVersion %></strong></p>
-  <button type="button" class="btn btn-outline btn-small" onclick="checkForUpdate()">Check for Updates</button>
+  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+    <button type="button" class="btn btn-outline btn-small" onclick="checkForUpdate()">Check for Updates</button>
+    <button type="button" class="btn btn-primary btn-small" onclick="performAppUpdate()" id="app-update-btn" style="display: none;">
+      🚀 Update Now
+    </button>
+  </div>
   <div id="update-result" style="margin-top: 1rem;"></div>
+  <div id="app-update-progress" style="margin-top: 1rem; display: none;">
+    <div style="background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
+      <div style="height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; margin-bottom: 0.5rem;">
+        <div id="app-progress-bar" style="height: 100%; background: var(--primary); width: 0%; transition: width 0.3s;"></div>
+      </div>
+      <div id="app-progress-text" style="font-size: 0.85rem; color: var(--text-secondary); max-height: 200px; overflow-y: auto; font-family: monospace; white-space: pre-wrap;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top: 1.5rem;">
+  <h2>📚 Ancient Lore Library</h2>
+  <p class="text-muted" style="margin-bottom: 1rem;">D&D 5e data from <a href="https://5e.tools" target="_blank">5e.tools</a> — spells, classes, races, and items.</p>
+  <div id="dnd-data-status" style="margin-bottom: 1rem;">
+    <p style="font-size: 0.9rem; color: var(--text-secondary);">Loading...</p>
+  </div>
+  <button type="button" class="btn btn-primary btn-small" onclick="updateDndData()" id="update-dnd-btn">
+    🔄 Update Library
+  </button>
+  <div id="dnd-data-progress" style="margin-top: 1rem; display: none;">
+    <div style="background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
+      <div style="height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; margin-bottom: 0.5rem;">
+        <div id="dnd-progress-bar" style="height: 100%; background: var(--primary); width: 0%; transition: width 0.3s;"></div>
+      </div>
+      <div id="dnd-progress-text" style="font-size: 0.85rem; color: var(--text-secondary); max-height: 200px; overflow-y: auto; font-family: monospace; white-space: pre-wrap;"></div>
+    </div>
+  </div>
 </div>
 
 <div class="card comms-section" style="margin-top: 1.5rem;">
@@ -90,6 +125,7 @@
   </div>
 
   <form action="/admin/google-oauth" method="POST" id="google-oauth-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="form-group">
       <label><input type="checkbox" name="google_enabled" value="1" id="google_enabled"> Enable Google Login</label>
     </div>
@@ -110,6 +146,7 @@
   <p class="text-muted" style="margin-bottom: 1rem;">Configure a messaging provider to broadcast session events to your guild.</p>
 
   <form action="/admin/notifications" method="POST" id="comms-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="form-group">
       <label for="comms-provider">Provider</label>
       <select name="active_provider" id="comms-provider" class="role-select" style="width: 100%; padding: 0.5rem;" onchange="toggleProviderFields()">
@@ -261,9 +298,180 @@ function loadGoogleOAuthConfig() {
     .catch(function() {});
 }
 
+function checkForUpdate() {
+  var resultDiv = document.getElementById('update-result');
+  var updateBtn = document.getElementById('app-update-btn');
+
+  resultDiv.textContent = 'Checking for updates...';
+  resultDiv.style.color = 'var(--text-secondary)';
+  updateBtn.style.display = 'none';
+
+  fetch('/admin/check-update')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) {
+        resultDiv.textContent = 'Could not check for updates.';
+        resultDiv.style.color = 'var(--error)';
+        return;
+      }
+
+      if (data.updateAvailable) {
+        resultDiv.innerHTML = `
+          <p style="color: var(--success); margin-bottom: 0.5rem;">
+            ✨ <strong>Update available: v${data.latestVersion}</strong>
+          </p>
+          <p style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+            ${data.releaseName || 'New version available'}
+          </p>
+        `;
+        updateBtn.style.display = 'inline-block';
+      } else {
+        resultDiv.textContent = '✅ You are running the latest version!';
+        resultDiv.style.color = 'var(--success)';
+      }
+    })
+    .catch(function() {
+      resultDiv.textContent = 'Failed to check for updates.';
+      resultDiv.style.color = 'var(--error)';
+    });
+}
+
+function performAppUpdate() {
+  var btn = document.getElementById('app-update-btn');
+  var progressDiv = document.getElementById('app-update-progress');
+  var progressBar = document.getElementById('app-progress-bar');
+  var progressText = document.getElementById('app-progress-text');
+  var resultDiv = document.getElementById('update-result');
+
+  if (!confirm('Update and restart the server now?')) return;
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Updating...';
+  resultDiv.textContent = '';
+  progressDiv.style.display = 'block';
+  progressText.textContent = '';
+  progressBar.style.width = '10%';
+
+  var eventSource = new EventSource('/admin/app-update/stream');
+  var progress = 10;
+
+  eventSource.onmessage = function(e) {
+    var data = JSON.parse(e.data);
+
+    progressText.textContent += data.message + '\n';
+    progressText.scrollTop = progressText.scrollHeight;
+
+    if (data.type === 'progress') {
+      progress = Math.min(progress + 10, 90);
+      progressBar.style.width = progress + '%';
+    } else if (data.type === 'complete') {
+      progressBar.style.width = '100%';
+      setTimeout(function() {
+        window.location.reload();
+      }, 3000);
+    } else if (data.type === 'error') {
+      progressBar.style.background = 'var(--error)';
+      btn.disabled = false;
+      btn.textContent = '🚀 Update Now';
+    }
+  };
+
+  eventSource.onerror = function() {
+    eventSource.close();
+    if (progress < 100) {
+      progressText.textContent += '\n❌ Connection lost. Please refresh the page.\n';
+      progressBar.style.background = 'var(--error)';
+      btn.disabled = false;
+      btn.textContent = '🚀 Update Now';
+    }
+  };
+}
+
+function loadDndDataStatus() {
+  fetch('/admin/dnd-data/status')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var statusDiv = document.getElementById('dnd-data-status');
+      if (data.last_import_date) {
+        var date = new Date(data.last_import_date);
+        statusDiv.innerHTML = `
+          <p style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+            <strong>Last Updated:</strong> ${date.toLocaleString()}
+          </p>
+          <p style="font-size: 0.85rem; color: var(--text-secondary);">
+            ${data.spell_count || 0} spells • ${data.class_count || 0} classes • ${data.race_count || 0} races • ${data.item_count || 0} items
+          </p>
+        `;
+      } else {
+        statusDiv.innerHTML = '<p style="color: var(--warning);">⚠️ Library not initialized. Click Update to import data.</p>';
+      }
+    })
+    .catch(function() {
+      var statusDiv = document.getElementById('dnd-data-status');
+      statusDiv.innerHTML = '<p style="color: var(--error);">Failed to load status.</p>';
+    });
+}
+
+function updateDndData() {
+  var btn = document.getElementById('update-dnd-btn');
+  var progressDiv = document.getElementById('dnd-data-progress');
+  var progressBar = document.getElementById('dnd-progress-bar');
+  var progressText = document.getElementById('dnd-progress-text');
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Updating...';
+  progressDiv.style.display = 'block';
+  progressText.textContent = '';
+  progressBar.style.width = '0%';
+
+  var eventSource = new EventSource('/admin/dnd-data/import-stream');
+  var progress = 0;
+  var totalSteps = 4; // spells, classes, races, items
+  var completedSteps = 0;
+
+  eventSource.onmessage = function(e) {
+    var data = JSON.parse(e.data);
+
+    progressText.textContent += data.message + '\n';
+    progressText.scrollTop = progressText.scrollHeight;
+
+    if (data.type === 'progress') {
+      // Estimate progress based on output
+      if (data.message.includes('✅ Imported') && data.message.includes('total')) {
+        completedSteps++;
+        progress = (completedSteps / totalSteps) * 100;
+        progressBar.style.width = progress + '%';
+      }
+    } else if (data.type === 'complete') {
+      progressBar.style.width = '100%';
+      eventSource.close();
+      btn.disabled = false;
+      btn.textContent = '🔄 Update Library';
+      // Reload status
+      setTimeout(loadDndDataStatus, 500);
+    } else if (data.type === 'error') {
+      progressBar.style.background = 'var(--error)';
+      eventSource.close();
+      btn.disabled = false;
+      btn.textContent = '🔄 Update Library';
+    }
+  };
+
+  eventSource.onerror = function() {
+    eventSource.close();
+    if (progress < 100) {
+      progressText.textContent += '\n❌ Connection lost or import failed.\n';
+      progressBar.style.background = 'var(--error)';
+    }
+    btn.disabled = false;
+    btn.textContent = '🔄 Update Library';
+  };
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   loadCommsConfig();
   loadGoogleOAuthConfig();
+  loadDndDataStatus();
 });
 </script>
 

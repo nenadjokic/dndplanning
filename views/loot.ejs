@@ -9,6 +9,7 @@
 <div class="card loot-add-form" style="margin-bottom: 1.5rem;">
   <h2>Add Loot</h2>
   <form action="/loot" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
       <div class="form-group">
         <label for="loot-name">Item Name</label>
@@ -90,6 +91,7 @@
         <% if (isDM) { %>
           <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
             <form action="/loot/<%= item.id %>/assign" method="POST" style="display:flex; gap:0.25rem; align-items:center;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <select name="held_by" class="role-select" style="font-size:0.8rem;">
                 <option value="">Party Bag</option>
                 <% for (const p of players) { %>
@@ -99,6 +101,7 @@
               <button type="submit" class="btn btn-small btn-outline">Assign</button>
             </form>
             <form action="/loot/<%= item.id %>/delete" method="POST" class="inline-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Remove this item?')">&times;</button>
             </form>
           </div>
@@ -137,6 +140,7 @@
               <td>
                 <div style="display: flex; gap: 0.25rem; align-items: center; flex-wrap: wrap;">
                   <form action="/loot/<%= item.id %>/assign" method="POST" style="display:flex; gap:0.25rem; align-items:center;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <select name="held_by" class="role-select" style="font-size:0.8rem;">
                       <option value="">Party Bag</option>
                       <% for (const p of players) { %>
@@ -146,6 +150,7 @@
                     <button type="submit" class="btn btn-small btn-outline">Assign</button>
                   </form>
                   <form action="/loot/<%= item.id %>/delete" method="POST" class="inline-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Remove this item?')">&times;</button>
                   </form>
                 </div>

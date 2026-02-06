@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db/connection');
 const { requireLogin, requireDM } = require('../middleware/auth');
+const sse = require('../helpers/sse');
 const router = express.Router();
 
 router.get('/', requireLogin, (req, res) => {
@@ -36,6 +37,13 @@ router.post('/', requireLogin, requireDM, (req, res) => {
 
   db.prepare('INSERT INTO loot_items (name, description, quantity, category, held_by, session_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)')
     .run(name.trim(), (description && description.trim()) || null, qty, cat, holder, sessId, req.user.id);
+
+  // Broadcast new loot
+  sse.broadcast('new-loot', {
+    username: req.user.username,
+    itemName: name.trim(),
+    quantity: qty
+  });
 
   req.flash('success', 'Loot added to the party inventory!');
   res.redirect('/loot');

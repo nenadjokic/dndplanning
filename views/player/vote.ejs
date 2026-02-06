@@ -41,6 +41,7 @@
   <% if (session.status === 'open') { %>
     <h2>Cast Your Availability</h2>
     <form action="/votes/<%= session.id %>" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="vote-slots">
         <% for (const slot of slots) { %>
           <div class="vote-slot-card">

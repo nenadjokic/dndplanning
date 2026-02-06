@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../db/connection');
 const { requireLogin } = require('../middleware/auth');
 const { notifyMentions } = require('../helpers/notifications');
+const sse = require('../helpers/sse');
 const router = express.Router();
 
 router.get('/', requireLogin, (req, res) => {
@@ -141,6 +142,12 @@ router.post('/', requireLogin, (req, res) => {
   const result = db.prepare('INSERT INTO posts (user_id, content, image_url) VALUES (?, ?, ?)').run(req.user.id, content.trim(), validImageUrl);
   const postId = result.lastInsertRowid;
 
+  // Broadcast new comment
+  sse.broadcast('new-comment', {
+    username: req.user.username,
+    postId: postId
+  });
+
   // Create poll if question and at least 2 options provided
   if (poll_question && poll_question.trim() && pollOptions) {
     const validOptions = pollOptions.filter(o => o && o.trim());
@@ -150,6 +157,11 @@ router.post('/', requireLogin, (req, res) => {
       for (let i = 0; i < validOptions.length; i++) {
         db.prepare('INSERT INTO poll_options (poll_id, option_text, sort_order) VALUES (?, ?, ?)').run(pollId, validOptions[i].trim(), i);
       }
+      // Broadcast poll created
+      sse.broadcast('poll-created', {
+        username: req.user.username,
+        question: poll_question.trim()
+      });
     }
   }
 
@@ -179,6 +191,12 @@ router.post('/:id/reply', requireLogin, (req, res) => {
   }
 
   db.prepare('INSERT INTO replies (post_id, user_id, content, image_url) VALUES (?, ?, ?, ?)').run(post.id, req.user.id, content.trim(), validImageUrl);
+
+  // Broadcast new reply
+  sse.broadcast('new-comment', {
+    username: req.user.username
+  });
+
   notifyMentions(content.trim(), req.user.id, req.user.username, '/board');
   req.flash('success', 'Reply posted.');
   res.redirect('/board');
@@ -232,6 +250,17 @@ router.post('/:postId/react', requireLogin, (req, res) => {
   const dislikes = db.prepare('SELECT COUNT(*) as count FROM post_reactions WHERE post_id = ? AND reaction_type = ?').get(postId, 'dislike').count;
   const userReaction = db.prepare('SELECT reaction_type FROM post_reactions WHERE post_id = ? AND user_id = ?').get(postId, req.user.id);
 
+  // Broadcast to all clients
+  sse.broadcast('post-reaction', { postId, likes, dislikes });
+
+  // Broadcast like activity
+  if (reaction_type === 'like' && (!existing || existing.reaction_type !== 'like')) {
+    sse.broadcast('like-activity', {
+      username: req.user.username,
+      postId: postId
+    });
+  }
+
   res.json({ likes, dislikes, userReaction: userReaction ? userReaction.reaction_type : null });
 });
 
@@ -263,6 +292,9 @@ router.post('/reply/:replyId/react', requireLogin, (req, res) => {
   const likes = db.prepare('SELECT COUNT(*) as count FROM reply_reactions WHERE reply_id = ? AND reaction_type = ?').get(replyId, 'like').count;
   const dislikes = db.prepare('SELECT COUNT(*) as count FROM reply_reactions WHERE reply_id = ? AND reaction_type = ?').get(replyId, 'dislike').count;
   const userReaction = db.prepare('SELECT reaction_type FROM reply_reactions WHERE reply_id = ? AND user_id = ?').get(replyId, req.user.id);
+
+  // Broadcast to all clients
+  sse.broadcast('reply-reaction', { replyId, likes, dislikes });
 
   res.json({ likes, dislikes, userReaction: userReaction ? userReaction.reaction_type : null });
 });
@@ -299,9 +331,16 @@ router.post('/poll/:pollId/vote', requireLogin, (req, res) => {
   for (const vc of voteCounts) voteMap[vc.option_id] = vc.count;
   const totalVotes = db.prepare('SELECT COUNT(*) as count FROM poll_votes WHERE poll_id = ?').get(pollId).count;
 
-  res.json({
+  const pollData = {
     options: options.map(o => ({ id: o.id, text: o.option_text, votes: voteMap[o.id] || 0 })),
-    totalVotes,
+    totalVotes
+  };
+
+  // Broadcast to all clients
+  sse.broadcast('poll-vote', { pollId, ...pollData });
+
+  res.json({
+    ...pollData,
     userVote: optionId
   });
 });

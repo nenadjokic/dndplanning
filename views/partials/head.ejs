@@ -17,15 +17,22 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css?v=<%= appVersion %>">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#d4a843">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
-  <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js?v=<%= appVersion %>');}</script>
+  <script>
+    // Only register service worker in production (not on localhost)
+    if ('serviceWorker' in navigator && !window.location.hostname.match(/localhost|127\.0\.0\.1/)) {
+      navigator.serviceWorker.register('/sw.js?v=<%= appVersion %>');
+    }
+  </script>
   <% if (typeof user !== 'undefined' && user && typeof allUsernames !== 'undefined') { %>
     <script>window.__allUsers = <%- JSON.stringify(allUsernames) %>;</script>
   <% } %>
 </head>
 <body>
+  <%- include('embers') %>
   <%- include('nav') %>
   <main class="container">
     <%- include('flash') %>

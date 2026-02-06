@@ -25,6 +25,7 @@
 
 <div class="card">
   <form action="/sessions" method="POST" id="session-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="form-group">
       <label for="category">Category</label>
       <select id="category" name="category">

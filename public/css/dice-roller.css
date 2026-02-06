@@ -3,7 +3,7 @@
 /* Floating D20 Button */
 .dice-fab {
   position: fixed;
-  bottom: 1.5rem;
+  bottom: 4.5rem;
   right: 1.5rem;
   z-index: 997;
   display: flex;
@@ -42,7 +42,7 @@
 /* Bubble Menu */
 .dice-bubble-menu {
   position: fixed;
-  bottom: 6rem;
+  bottom: 9rem;
   right: 1.5rem;
   z-index: 997;
   display: flex;
@@ -286,8 +286,8 @@
 /* Mobile adjustments */
 @media (max-width: 640px) {
   .dice-fab {
-    bottom: 1rem;
-    right: 1rem;
+    bottom: 5rem;
+    right: 0.75rem;
   }
 
   .dice-fab-btn {
@@ -301,8 +301,8 @@
   }
 
   .dice-bubble-menu {
-    bottom: 5rem;
-    right: 1rem;
+    bottom: 9rem;
+    right: 0.75rem;
   }
 
   .dice-bubble {
@@ -328,7 +328,7 @@
   position: fixed;
   left: 0;
   top: 60px;
-  bottom: 0;
+  bottom: 4rem;
   width: 200px;
   overflow: hidden;
   display: flex;

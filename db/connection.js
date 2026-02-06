@@ -15,6 +15,10 @@ db.pragma('foreign_keys = ON');
 const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf-8');
 db.exec(schema);
 
+// 5e.tools data schema
+const toolsSchema = fs.readFileSync(path.join(__dirname, '5etools-schema.sql'), 'utf-8');
+db.exec(toolsSchema);
+
 // Add new columns to users table (idempotent)
 const alterStatements = [
   "ALTER TABLE users ADD COLUMN time_format TEXT NOT NULL DEFAULT '24h'",

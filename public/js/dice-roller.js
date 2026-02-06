@@ -1113,17 +1113,28 @@ function buildRollDesc() {
 }
 
 function postRollToServer(rollDesc, total, detailStr, isHidden) {
+  // Get CSRF token
+  var csrfInput = document.querySelector('input[name="_csrf"]');
+  var csrfToken = csrfInput ? csrfInput.value : '';
+
   fetch('/api/dice/roll', {
     method: 'POST',
+    credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ rollDesc: rollDesc, result: total, detail: detailStr, hidden: isHidden ? true : false })
+    body: JSON.stringify({
+      rollDesc: rollDesc,
+      result: total,
+      detail: detailStr,
+      hidden: isHidden ? true : false,
+      _csrf: csrfToken
+    })
   }).then(function() {
     if (!isHidden) fetchHistory();
   }).catch(function() {});
 }
 
 function fetchHistory() {
-  fetch('/api/dice/history').then(function(r) { return r.json(); }).then(function(data) {
+  fetch('/api/dice/history', { credentials: 'same-origin' }).then(function(r) { return r.json(); }).then(function(data) {
     var newRolls = data.rolls || [];
     // Check for new rolls to show as mobile toast
     if (isMobile && cachedRolls.length > 0 && newRolls.length > 0) {

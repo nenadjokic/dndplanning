@@ -4,6 +4,7 @@ const { requireLogin, requireDM, requireAdmin } = require('../middleware/auth');
 const { notifyMentions, notifySessionConfirmed } = require('../helpers/notifications');
 const messenger = require('../helpers/messenger');
 const pushService = require('../helpers/push');
+const sse = require('../helpers/sse');
 const router = express.Router();
 
 router.get('/new', requireLogin, requireDM, (req, res) => {
@@ -78,6 +79,14 @@ router.post('/', requireLogin, requireDM, (req, res) => {
   });
 
   const sessionId = createSession();
+
+  // Broadcast new session
+  sse.broadcast('new-session', {
+    username: req.user.username,
+    title: title,
+    sessionId: sessionId
+  });
+
   messenger.send('session_created', { title, category: sessionCategory, link: '/sessions/' + sessionId, actorName: req.user.username }).catch(() => {});
   pushService.sendToAll('New Quest Posted', `"${title}" — Vote now!`, '/sessions/' + sessionId).catch(() => {});
   req.flash('success', 'Quest session posted to the tavern board!');
@@ -327,6 +336,15 @@ router.post('/:id/comment', requireLogin, (req, res) => {
   const result = db.prepare('INSERT INTO posts (user_id, session_id, content, image_url) VALUES (?, ?, ?, ?)').run(req.user.id, session.id, content.trim(), validImageUrl);
   const postId = result.lastInsertRowid;
 
+  // Broadcast new comment
+  sse.broadcast('new-comment', {
+    username: req.user.username,
+    sessionTitle: session.title,
+    sessionId: session.id,
+    postId: postId,
+    content: content.trim()
+  });
+
   // Create poll if question and at least 2 options provided
   if (poll_question && poll_question.trim() && pollOptions) {
     const validOptions = pollOptions.filter(o => o && o.trim());
@@ -336,6 +354,12 @@ router.post('/:id/comment', requireLogin, (req, res) => {
       for (let i = 0; i < validOptions.length; i++) {
         db.prepare('INSERT INTO poll_options (poll_id, option_text, sort_order) VALUES (?, ?, ?)').run(pollId, validOptions[i].trim(), i);
       }
+      // Broadcast poll created
+      sse.broadcast('poll-created', {
+        username: req.user.username,
+        question: poll_question.trim(),
+        sessionId: session.id
+      });
     }
   }
 
@@ -364,6 +388,14 @@ router.post('/:id/comment/:postId/reply', requireLogin, (req, res) => {
   }
 
   db.prepare('INSERT INTO replies (post_id, user_id, content, image_url) VALUES (?, ?, ?, ?)').run(post.id, req.user.id, content.trim(), validImageUrl);
+
+  // Broadcast new reply
+  const session = db.prepare('SELECT title FROM sessions WHERE id = ?').get(req.params.id);
+  sse.broadcast('new-comment', {
+    username: req.user.username,
+    sessionTitle: session ? session.title : null
+  });
+
   notifyMentions(content.trim(), req.user.id, req.user.username, '/sessions/' + req.params.id);
   req.flash('success', 'Reply posted.');
   res.redirect('/sessions/' + req.params.id);
@@ -380,6 +412,13 @@ router.post('/:id/confirm', requireLogin, requireDM, (req, res) => {
 
   db.prepare('UPDATE sessions SET status = ?, confirmed_slot_id = ? WHERE id = ?')
     .run('confirmed', slot_id, session.id);
+
+  // Broadcast session confirmed
+  sse.broadcast('session-confirmed', {
+    username: req.user.username,
+    sessionTitle: session.title,
+    sessionId: session.id
+  });
 
   notifySessionConfirmed(session.id, session.title, req.user.username);
 
@@ -408,6 +447,13 @@ router.post('/:id/cancel', requireLogin, requireDM, (req, res) => {
 
   db.prepare('UPDATE sessions SET status = ?, confirmed_slot_id = NULL WHERE id = ?')
     .run('cancelled', session.id);
+
+  // Broadcast session cancelled
+  sse.broadcast('session-cancelled', {
+    username: req.user.username,
+    sessionTitle: session.title,
+    sessionId: session.id
+  });
 
   messenger.send('session_cancelled', { title: session.title, link: '/sessions/' + session.id, actorName: req.user.username }).catch(() => {});
   pushService.sendToAll('Quest Cancelled', `"${session.title}" has been cancelled.`, '/sessions/' + session.id).catch(() => {});
@@ -554,6 +600,20 @@ router.post('/:sessionId/comment/:postId/react', requireLogin, (req, res) => {
   const dislikes = db.prepare('SELECT COUNT(*) as count FROM post_reactions WHERE post_id = ? AND reaction_type = ?').get(postId, 'dislike').count;
   const userReaction = db.prepare('SELECT reaction_type FROM post_reactions WHERE post_id = ? AND user_id = ?').get(postId, req.user.id);
 
+  // Broadcast to all clients
+  sse.broadcast('post-reaction', { postId, likes, dislikes, sessionId });
+
+  // Broadcast like activity
+  if (reaction_type === 'like' && (!existing || existing.reaction_type !== 'like')) {
+    const session = db.prepare('SELECT title FROM sessions WHERE id = ?').get(sessionId);
+    sse.broadcast('like-activity', {
+      username: req.user.username,
+      postId: postId,
+      sessionId: sessionId,
+      sessionTitle: session ? session.title : null
+    });
+  }
+
   res.json({ likes, dislikes, userReaction: userReaction ? userReaction.reaction_type : null });
 });
 
@@ -585,6 +645,9 @@ router.post('/:sessionId/reply/:replyId/react', requireLogin, (req, res) => {
   const likes = db.prepare('SELECT COUNT(*) as count FROM reply_reactions WHERE reply_id = ? AND reaction_type = ?').get(replyId, 'like').count;
   const dislikes = db.prepare('SELECT COUNT(*) as count FROM reply_reactions WHERE reply_id = ? AND reaction_type = ?').get(replyId, 'dislike').count;
   const userReaction = db.prepare('SELECT reaction_type FROM reply_reactions WHERE reply_id = ? AND user_id = ?').get(replyId, req.user.id);
+
+  // Broadcast to all clients
+  sse.broadcast('reply-reaction', { replyId, likes, dislikes });
 
   res.json({ likes, dislikes, userReaction: userReaction ? userReaction.reaction_type : null });
 });
@@ -619,9 +682,16 @@ router.post('/:sessionId/poll/:pollId/vote', requireLogin, (req, res) => {
   for (const vc of voteCounts) voteMap[vc.option_id] = vc.count;
   const totalVotes = db.prepare('SELECT COUNT(*) as count FROM poll_votes WHERE poll_id = ?').get(pollId).count;
 
-  res.json({
+  const pollData = {
     options: options.map(o => ({ id: o.id, text: o.option_text, votes: voteMap[o.id] || 0 })),
-    totalVotes,
+    totalVotes
+  };
+
+  // Broadcast to all clients
+  sse.broadcast('poll-vote', { pollId, ...pollData });
+
+  res.json({
+    ...pollData,
     userVote: optionId
   });
 });

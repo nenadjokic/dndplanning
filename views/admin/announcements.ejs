@@ -8,6 +8,7 @@
 <div class="card" style="margin-bottom: 1.5rem;">
   <h2 style="margin-top: 0;">Post New Announcement</h2>
   <form action="/admin/announcements" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="form-group">
       <label for="content">Message</label>
       <textarea id="content" name="content" rows="3" placeholder="Enter your announcement message..." required></textarea>
@@ -52,9 +53,11 @@
               <td class="admin-date"><%= a.expires_at ? formatDate(a.expires_at, { month: 'short', day: 'numeric' }) : 'Never' %></td>
               <td>
                 <form action="/admin/announcements/<%= a.id %>/toggle" method="POST" class="inline-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                   <button type="submit" class="btn btn-small btn-outline"><%= a.active ? 'Deactivate' : 'Activate' %></button>
                 </form>
                 <form action="/admin/announcements/<%= a.id %>/delete" method="POST" class="inline-form" style="margin-left: 0.25rem;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                   <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this announcement?')">&times;</button>
                 </form>
               </td>

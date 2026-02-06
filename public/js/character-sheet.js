@@ -28,37 +28,18 @@
     return 6;
   }
 
-  function extractLevel(classLevel) {
-    // Extract level from strings like "Fighter 5", "Wizard 12 / Cleric 3"
-    if (!classLevel) return 1;
-    var matches = classLevel.match(/\d+/g);
-    if (!matches) return 1;
-    // Sum all levels for multiclass
-    var total = 0;
-    for (var i = 0; i < matches.length; i++) {
-      total += parseInt(matches[i], 10);
-    }
-    return total || 1;
-  }
-
-  function extractClass(classLevel) {
-    // Extract class name from "Fighter 5" or "Wizard 12"
-    if (!classLevel) return '';
-    var match = classLevel.match(/^[a-zA-Z]+/);
-    return match ? match[0].toLowerCase() : '';
-  }
-
   // Spellcasting ability by class
   var spellcastingAbility = {
-    wizard: 'int',
-    artificer: 'int',
-    cleric: 'wis',
-    druid: 'wis',
-    ranger: 'wis',
-    bard: 'cha',
-    paladin: 'cha',
-    sorcerer: 'cha',
-    warlock: 'cha'
+    wizard: 'INT',
+    artificer: 'INT',
+    cleric: 'WIS',
+    druid: 'WIS',
+    ranger: 'WIS',
+    monk: 'WIS',
+    bard: 'CHA',
+    paladin: 'CHA',
+    sorcerer: 'CHA',
+    warlock: 'CHA'
   };
 
   // Skill to ability mapping
@@ -108,10 +89,19 @@
   // === Main Calculation Functions ===
 
   function calculateAll() {
-    var classLevel = getInputValue('class_level');
-    var level = extractLevel(classLevel);
-    var mainClass = extractClass(classLevel);
+    // Get class from profile (readonly field)
+    var classEl = document.getElementById('sheet-class');
+    var levelEl = document.getElementById('sheet-level');
+
+    var characterClass = classEl ? classEl.value.toLowerCase() : '';
+    var level = levelEl ? (parseInt(levelEl.value, 10) || 1) : 1;
     var profBonus = getProficiencyBonus(level);
+
+    // Update hidden class_level field for backward compatibility
+    var hiddenClassLevel = document.getElementById('hidden-class-level');
+    if (hiddenClassLevel && classEl && levelEl) {
+      hiddenClassLevel.value = (classEl.value || '') + ' ' + (levelEl.value || '1');
+    }
 
     // Set proficiency bonus
     setInputValue('proficiency_bonus', formatModifier(profBonus));
@@ -149,13 +139,17 @@
     // Calculate initiative (DEX mod)
     setInputValue('initiative', formatModifier(mods['dex']));
 
-    // Calculate spell stats if spellcasting class
-    var spellAbility = getInputValue('spell_ability');
-    if (!spellAbility && spellcastingAbility[mainClass]) {
-      spellAbility = spellcastingAbility[mainClass].toUpperCase();
-      setInputValue('spell_ability', spellAbility);
+    // Auto-set spell ability based on class from profile
+    var spellAbilityInput = document.getElementById('spell-ability');
+    if (spellAbilityInput && characterClass && spellcastingAbility[characterClass]) {
+      // Only auto-set if empty or matches expected ability for class
+      if (!spellAbilityInput.value || spellAbilityInput.value === spellcastingAbility[characterClass]) {
+        spellAbilityInput.value = spellcastingAbility[characterClass];
+      }
     }
 
+    // Calculate spell stats
+    var spellAbility = spellAbilityInput ? spellAbilityInput.value : '';
     if (spellAbility) {
       var abKey = spellAbility.toLowerCase().substring(0, 3);
       var spellMod = mods[abKey] || 0;
@@ -190,15 +184,15 @@
       cb.addEventListener('change', calculateAll);
     });
 
-    // Listen for class/level changes
-    var classLevelInput = document.querySelector('[name="class_level"]');
-    if (classLevelInput) {
-      classLevelInput.addEventListener('input', calculateAll);
-      classLevelInput.addEventListener('change', calculateAll);
+    // Listen for level changes (new separate field)
+    var levelInput = document.getElementById('sheet-level');
+    if (levelInput) {
+      levelInput.addEventListener('input', calculateAll);
+      levelInput.addEventListener('change', calculateAll);
     }
 
     // Listen for spell ability changes
-    var spellAbilityInput = document.querySelector('[name="spell_ability"]');
+    var spellAbilityInput = document.getElementById('spell-ability');
     if (spellAbilityInput) {
       spellAbilityInput.addEventListener('input', calculateAll);
       spellAbilityInput.addEventListener('change', calculateAll);
@@ -208,10 +202,256 @@
     calculateAll();
   }
 
+  // === Spell Autocomplete ===
+
+  var autocompleteTimeout = null;
+
+  function getSpellLevelFromInput(input) {
+    var name = input.getAttribute('name') || '';
+    // cantrip_0, cantrip_1, etc. -> level 0
+    if (name.startsWith('cantrip_')) {
+      return 0;
+    }
+    // spell_1_0_name, spell_2_0_name, etc. -> extract level
+    var match = name.match(/^spell_(\d+)_\d+_name$/);
+    if (match) {
+      return parseInt(match[1], 10);
+    }
+    return null; // No level filter
+  }
+
+  function searchSpells(query, level, callback) {
+    if (query.length < 2) {
+      callback([]);
+      return;
+    }
+
+    var url = '/api/spells/search?q=' + encodeURIComponent(query);
+    if (level !== null) {
+      url += '&level=' + level;
+    }
+
+    fetch(url)
+      .then(function(res) { return res.json(); })
+      .then(function(data) { callback(data.results || []); })
+      .catch(function() { callback([]); });
+  }
+
+  function showSpellModal(spellName) {
+    // Remove existing modal
+    var existing = document.querySelector('.spell-modal-overlay');
+    if (existing) existing.remove();
+
+    // Create modal overlay
+    var overlay = document.createElement('div');
+    overlay.className = 'spell-modal-overlay';
+    overlay.innerHTML = '<div class="spell-modal"><div class="spell-modal-header"><h3 class="spell-modal-title">Loading...</h3><button class="spell-modal-close">&times;</button></div><div class="spell-modal-body"><p>Fetching spell details...</p></div></div>';
+
+    document.body.appendChild(overlay);
+
+    // Close on overlay click or close button
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay || e.target.classList.contains('spell-modal-close')) {
+        overlay.remove();
+      }
+    });
+
+    // Close on Escape
+    var escHandler = function(e) {
+      if (e.key === 'Escape') {
+        overlay.remove();
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+
+    // Fetch spell details
+    fetch('/api/spells/details?name=' + encodeURIComponent(spellName))
+      .then(function(res) { return res.json(); })
+      .then(function(spell) {
+        if (spell.error) {
+          overlay.querySelector('.spell-modal-title').textContent = spellName;
+          overlay.querySelector('.spell-modal-body').innerHTML = '<p>Could not load spell details.</p>';
+          return;
+        }
+
+        var levelText = spell.level === 0 ? 'Cantrip' : 'Level ' + spell.level;
+        var tags = [];
+        if (spell.concentration) tags.push('Concentration');
+        if (spell.ritual) tags.push('Ritual');
+
+        overlay.querySelector('.spell-modal-title').textContent = spell.name;
+        overlay.querySelector('.spell-modal-body').innerHTML =
+          (spell.source ? '<div class="spell-source-header">📖 Source: ' + spell.source + (spell.apiUsed ? '<br><span class="api-indicator">🔌 API: ' + spell.apiUsed + '</span>' : '') + '</div>' : '') +
+          '<div class="spell-modal-meta">' +
+            '<span class="spell-modal-meta-item"><strong>' + levelText + '</strong> ' + spell.school + '</span>' +
+            '<span class="spell-modal-meta-item"><strong>Casting Time:</strong> ' + spell.castingTime + '</span>' +
+            '<span class="spell-modal-meta-item"><strong>Range:</strong> ' + spell.range + '</span>' +
+            '<span class="spell-modal-meta-item"><strong>Duration:</strong> ' + spell.duration + '</span>' +
+            '<span class="spell-modal-meta-item"><strong>Components:</strong> ' + spell.components + (spell.material ? ' (' + spell.material + ')' : '') + '</span>' +
+            (tags.length ? '<span class="spell-modal-meta-item"><strong>' + tags.join(', ') + '</strong></span>' : '') +
+          '</div>' +
+          '<div class="spell-modal-desc">' + spell.description + '</div>' +
+          (spell.higherLevels ? '<div class="spell-modal-higher"><strong>At Higher Levels:</strong> ' + spell.higherLevels + '</div>' : '') +
+          (spell.classes ? '<div class="spell-modal-classes"><strong>Classes:</strong> ' + spell.classes + '</div>' : '');
+      })
+      .catch(function() {
+        overlay.querySelector('.spell-modal-title').textContent = spellName;
+        overlay.querySelector('.spell-modal-body').innerHTML = '<p>Could not load spell details.</p>';
+      });
+  }
+
+  function convertToSpellLabel(input, wrapper, dropdown, spellName) {
+    // Hide input and dropdown
+    input.style.display = 'none';
+    dropdown.style.display = 'none';
+
+    // Set input value for form submission
+    input.value = spellName;
+
+    // Create label
+    var label = document.createElement('div');
+    label.className = 'spell-label';
+    label.innerHTML = '<span class="spell-label-link">' + spellName + '</span><span class="spell-label-clear">&times;</span>';
+
+    wrapper.appendChild(label);
+
+    // Click on spell name opens modal
+    label.querySelector('.spell-label-link').addEventListener('click', function() {
+      showSpellModal(spellName);
+    });
+
+    // Click on X clears and shows input again
+    label.querySelector('.spell-label-clear').addEventListener('click', function() {
+      label.remove();
+      input.value = '';
+      input.style.display = '';
+      input.focus();
+    });
+  }
+
+  function checkExistingSpellValue(input, wrapper, dropdown) {
+    var value = input.value.trim();
+    if (value) {
+      // Convert existing value to label
+      convertToSpellLabel(input, wrapper, dropdown, value);
+    }
+  }
+
+  function showAutocomplete(input, wrapper, dropdown, results) {
+    dropdown.innerHTML = '';
+
+    if (results.length === 0) {
+      dropdown.style.display = 'none';
+      return;
+    }
+
+    results.forEach(function(spell, index) {
+      var item = document.createElement('div');
+      item.className = 'spell-autocomplete-item';
+      if (index === 0) item.classList.add('selected');
+
+      var levelText = spell.level === 0 ? 'Cantrip' : 'Level ' + spell.level;
+      item.innerHTML = '<div class="spell-autocomplete-name">' + spell.name + '</div>' +
+        '<div class="spell-autocomplete-meta">' + levelText + ' ' + spell.school + '</div>';
+
+      item.addEventListener('mousedown', function(e) {
+        e.preventDefault(); // Prevent blur
+        dropdown.style.display = 'none';
+        convertToSpellLabel(input, wrapper, dropdown, spell.name);
+      });
+
+      dropdown.appendChild(item);
+    });
+
+    dropdown.style.display = 'block';
+  }
+
+  function initSpellAutocomplete() {
+    // Find all cantrip and spell name inputs
+    var spellInputs = document.querySelectorAll('input[name^="cantrip_"], input[name$="_name"][name^="spell_"]');
+
+    spellInputs.forEach(function(input) {
+      var spellLevel = getSpellLevelFromInput(input);
+
+      // Create wrapper and dropdown once at init
+      var wrapper = document.createElement('div');
+      wrapper.className = 'spell-autocomplete-wrapper';
+      input.parentNode.insertBefore(wrapper, input);
+      wrapper.appendChild(input);
+
+      var dropdown = document.createElement('div');
+      dropdown.className = 'spell-autocomplete-dropdown';
+      dropdown.style.display = 'none';
+      wrapper.appendChild(dropdown);
+
+      // Check if input already has a value (e.g., loaded from saved data)
+      checkExistingSpellValue(input, wrapper, dropdown);
+
+      input.addEventListener('input', function() {
+        var query = input.value.trim();
+
+        if (autocompleteTimeout) clearTimeout(autocompleteTimeout);
+
+        if (query.length < 2) {
+          dropdown.style.display = 'none';
+          return;
+        }
+
+        autocompleteTimeout = setTimeout(function() {
+          searchSpells(query, spellLevel, function(results) {
+            showAutocomplete(input, wrapper, dropdown, results);
+          });
+        }, 300);
+      });
+
+      input.addEventListener('keydown', function(e) {
+        if (dropdown.style.display === 'none') return;
+
+        var items = dropdown.querySelectorAll('.spell-autocomplete-item');
+        var selected = dropdown.querySelector('.spell-autocomplete-item.selected');
+        var selectedIndex = Array.prototype.indexOf.call(items, selected);
+
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (selectedIndex < items.length - 1) {
+            if (selected) selected.classList.remove('selected');
+            items[selectedIndex + 1].classList.add('selected');
+          }
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (selectedIndex > 0) {
+            if (selected) selected.classList.remove('selected');
+            items[selectedIndex - 1].classList.add('selected');
+          }
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (selected) {
+            dropdown.style.display = 'none';
+            var spellName = selected.querySelector('.spell-autocomplete-name').textContent;
+            convertToSpellLabel(input, wrapper, dropdown, spellName);
+          }
+        } else if (e.key === 'Escape') {
+          dropdown.style.display = 'none';
+        }
+      });
+
+      input.addEventListener('blur', function() {
+        setTimeout(function() {
+          dropdown.style.display = 'none';
+        }, 150);
+      });
+    });
+  }
+
   // Run on DOM ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', function() {
+      init();
+      initSpellAutocomplete();
+    });
   } else {
     init();
+    initSpellAutocomplete();
   }
 })();

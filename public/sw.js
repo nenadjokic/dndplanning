@@ -1,4 +1,4 @@
-var CACHE_NAME = 'quest-planner-v40';
+var CACHE_NAME = 'quest-planner-v43';
 var OFFLINE_URL = '/offline.html';
 
 self.addEventListener('install', function(event) {
@@ -39,11 +39,13 @@ self.addEventListener('fetch', function(event) {
   // Assets: network first, cache fallback (ensures fresh versioned assets)
   event.respondWith(
     fetch(event.request).then(function(response) {
-      // Cache a copy for offline use
-      var clone = response.clone();
-      caches.open(CACHE_NAME).then(function(cache) {
-        cache.put(event.request, clone);
-      });
+      // Cache a copy for offline use (only GET requests)
+      if (event.request.method === 'GET') {
+        var clone = response.clone();
+        caches.open(CACHE_NAME).then(function(cache) {
+          cache.put(event.request, clone);
+        });
+      }
       return response;
     }).catch(function() {
       return caches.match(event.request);

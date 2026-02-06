@@ -1,6 +1,6 @@
-# Quest Planner v0.9.28 — D&D Session Scheduler
+# Quest Planner v1.0.0 — D&D Session Scheduler
 
-> **Latest release:** v0.9.28 (2026-02-05)
+> **Latest release:** v1.0.0 (2026-02-06)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -726,6 +726,29 @@ The admin can also check for updates from the **Guild Settings** page using the 
 - **Top-right corner to center** — Dice spawn in the visible top-right corner and travel diagonally toward the center of the screen
 - **Responsive walls** — Invisible physics walls now match the visible screen edges, adapting to portrait/landscape
 - **Adaptive grid** — Grid columns and spacing auto-adjust to the available screen width; narrow portrait phones use fewer columns
+
+### v1.0.0 (2026-02-06) 🎉
+
+**Major Release: Complete 5e.tools Integration**
+
+- **Complete 5e.tools Integration** — Replaced Open5e API with local 5e.tools database covering all official D&D 5e source books
+- **Massive Content Library** — 936 spells, 26 classes, 158 races, and 2,451 items from the complete 5e.tools dataset
+- **Ancient Lore Library Admin Panel** — New admin UI section with "Update Ancient Lore" button featuring real-time progress bars for importing D&D data via Server-Sent Events
+- **D&D Beyond Style Cards** — Complete visual overhaul of all Vault content (Spells, Classes, Races, Items) with beautiful D&D Beyond-style cards featuring:
+  - School/class/category emoji icons (⚡ Evocation, 🧙 Wizard, ⚔️ Weapons, etc.)
+  - Structured stats grids with clean typography
+  - Markdown-formatted descriptions and traits
+  - Spell scaling tables for cantrips showing damage progression by character level
+  - Class features organized by level in sortable tables
+- **Enhanced Class Details** — Classes now display comprehensive information including armor/weapon/tool proficiencies, skill choices, starting equipment lists, and class features grouped by level
+- **Improved Race Display** — Races include size and speed info, clean descriptions without technical tags, and properly formatted racial traits with recursive nested object parsing
+- **5e.tools Tag Parsing** — Automatic cleaning of internal 5e.tools format tags ({@item}, {@spell}, {@variantrule}, {@sense}, etc.) into readable text
+- **Terminology Update** — Changed "Species" to "Races" throughout the Vault UI to match traditional D&D terminology
+
+**Bug Fixes:**
+- Fixed skill selection display showing empty list after "Choose 2 from"
+- Fixed [object Object] errors appearing in race trait descriptions due to nested objects
+- Fixed equipment and proficiency parsing to handle complex 5e.tools data structures
 
 ### v0.9.5 (2026-02-01)
 

@@ -1,16 +1,27 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
+const rateLimit = require('express-rate-limit');
 const db = require('../db/connection');
 const { getGoogleConfig, isGoogleEnabled } = require('../helpers/google');
 const router = express.Router();
+
+// Rate limiter for login and register
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5,
+  message: 'Too many login attempts. Please try again in 15 minutes.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true // Don't count successful logins
+});
 
 router.get('/login', (req, res) => {
   if (req.user) return res.redirect('/');
   res.render('auth/login', { googleEnabled: isGoogleEnabled() });
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   const { username, password } = req.body;
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
 
@@ -44,7 +55,7 @@ function sanitizeUsername(username) {
   return sanitized;
 }
 
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
   const { username, password, confirm_password } = req.body;
 
   if (!username || !password) {
@@ -62,8 +73,8 @@ router.post('/register', async (req, res) => {
     return res.redirect('/register');
   }
 
-  if (password.length < 4) {
-    req.flash('error', 'Password must be at least 4 characters.');
+  if (password.length < 8) {
+    req.flash('error', 'Password must be at least 8 characters.');
     return res.redirect('/register');
   }
 

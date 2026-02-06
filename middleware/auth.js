@@ -9,6 +9,7 @@ function attachUser(req, res, next) {
   res.locals.formatTime = (iso) => formatTime(iso, '24h');
   res.locals.renderMarkdown = (text) => text ? marked(text) : '';
   res.locals.announcement = null;
+  res.locals.isProduction = process.env.NODE_ENV === 'production';
 
   // Load active announcement (checking expiry)
   const activeAnnouncement = db.prepare(`

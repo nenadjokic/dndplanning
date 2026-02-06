@@ -1,0 +1,931 @@
+require('dotenv').config();
+
+const express = require('express');
+const session = require('express-session');
+const SQLiteStore = require('connect-sqlite3')(session);
+const path = require('path');
+const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
+const { marked } = require('marked');
+
+const db = require('./db/connection');
+const { attachUser } = require('./middleware/auth');
+const { flashMiddleware } = require('./middleware/flash');
+
+const authRoutes = require('./routes/auth');
+const dashboardRoutes = require('./routes/dashboard');
+const sessionRoutes = require('./routes/sessions');
+const voteRoutes = require('./routes/votes');
+const adminRoutes = require('./routes/admin');
+const settingsRoutes = require('./routes/settings');
+const calendarRoutes = require('./routes/calendar');
+const boardRoutes = require('./routes/board');
+const notificationRoutes = require('./routes/notifications');
+const historyRoutes = require('./routes/history');
+const profileRoutes = require('./routes/profile');
+const playersRoutes = require('./routes/players');
+const mapRoutes = require('./routes/map');
+const lootRoutes = require('./routes/loot');
+const analyticsRoutes = require('./routes/analytics');
+const dmToolsRoutes = require('./routes/dm-tools');
+const diceRoutes = require('./routes/dice');
+const dndDataRoutes = require('./routes/dnd-data');
+const vaultRoutes = require('./routes/vault');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Enforce SESSION_SECRET in production
+if (!process.env.SESSION_SECRET) {
+  console.error('ERROR: SESSION_SECRET environment variable is required.');
+  console.error('Set it in your .env file or environment.');
+  process.exit(1);
+}
+
+app.locals.appVersion = require('./package.json').version;
+
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use('/sw.js', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public', 'sw.js'));
+});
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/avatars', express.static(path.join(__dirname, 'data', 'avatars')));
+app.use('/maps', express.static(path.join(__dirname, 'data', 'maps')));
+app.use('/thumbnails', express.static(path.join(__dirname, 'data', 'thumbnails')));
+
+app.use(session({
+  store: new SQLiteStore({
+    dir: path.join(__dirname, 'data'),
+    db: 'sessions.db'
+  }),
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
+  }
+}));
+
+// Simple CSRF Protection (session-based)
+app.use((req, res, next) => {
+  // Generate CSRF token for session if it doesn't exist
+  if (!req.session.csrfToken) {
+    req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+  }
+
+  // Make token available to views
+  res.locals.csrfToken = req.session.csrfToken;
+  next();
+});
+
+// Viber webhook — must be before CSRF (external webhook)
+app.post('/webhooks/viber', express.json(), (req, res) => {
+  res.sendStatus(200);
+});
+
+// CSRF validation middleware
+function csrfProtection(req, res, next) {
+  // Skip for GET, HEAD, OPTIONS, and webhooks
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+    return next();
+  }
+  if (req.path.startsWith('/webhooks/')) {
+    return next();
+  }
+
+  // Check CSRF token
+  const token = req.body._csrf || req.query._csrf || req.headers['x-csrf-token'];
+  if (!token || token !== req.session.csrfToken) {
+    return res.status(403).send('Invalid CSRF token');
+  }
+
+  next();
+}
+
+// Apply CSRF protection to all routes after session
+app.use(csrfProtection);
+
+app.use(flashMiddleware);
+app.use(attachUser);
+
+// Rate limiting for API endpoints
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 60,
+  message: 'Too many requests, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+app.use('/', authRoutes);
+app.use('/', dashboardRoutes);
+app.use('/sessions', sessionRoutes);
+app.use('/votes', voteRoutes);
+app.use('/admin', adminRoutes);
+app.use('/settings', settingsRoutes);
+app.use('/calendar', calendarRoutes);
+app.use('/board', boardRoutes);
+app.use('/notifications', notificationRoutes);
+app.use('/history', historyRoutes);
+app.use('/profile', profileRoutes);
+app.use('/players', playersRoutes);
+app.use('/map', mapRoutes);
+app.use('/loot', lootRoutes);
+app.use('/analytics', analyticsRoutes);
+app.use('/dm-tools', dmToolsRoutes);
+app.use('/api/dice', diceRoutes);
+app.use('/api/dnd', dndDataRoutes);
+app.use('/vault', vaultRoutes);
+
+// PWA install page
+const pushService = require('./helpers/push');
+const sse = require('./helpers/sse');
+
+// Apply rate limiting to all /api/* routes except SSE
+app.use('/api/', (req, res, next) => {
+  // Skip rate limiting for SSE endpoint
+  if (req.path === '/events') return next();
+  apiLimiter(req, res, next);
+});
+
+// SSE endpoint for real-time updates (no rate limit - it's long-lived connection)
+app.get('/api/events', (req, res) => {
+  if (!req.user) return res.status(401).end();
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+  sse.addClient(res);
+});
+
+app.get('/pwa', (req, res) => {
+  if (!req.user) return res.redirect('/login');
+  res.render('pwa', { vapidPublicKey: pushService.getPublicKey() });
+});
+
+// Spell search (uses local 5e.tools database)
+app.get('/api/spells/search', (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  const query = req.query.q || '';
+  const level = req.query.level;
+
+  if (query.length < 2) return res.json({ results: [] });
+
+  try {
+    let sql = 'SELECT name, level, school, casting_time, range, duration FROM dnd_spells WHERE search_text LIKE ?';
+    const params = [`%${query.toLowerCase()}%`];
+
+    if (level !== undefined && level !== '') {
+      sql += ' AND level = ?';
+      params.push(parseInt(level));
+    }
+
+    sql += ' ORDER BY level, name COLLATE NOCASE LIMIT 10';
+
+    const spells = db.prepare(sql).all(...params);
+
+    const results = spells.map(s => ({
+      name: s.name,
+      level: s.level,
+      school: s.school || '',
+      castingTime: s.casting_time || '',
+      range: s.range || '',
+      duration: s.duration || ''
+    }));
+
+    res.json({ results });
+  } catch (err) {
+    console.error('[Spell Search] Error:', err.message);
+    res.json({ results: [] });
+  }
+});
+
+// The Vault of Ancient Lore page
+app.get('/vault', (req, res) => {
+  if (!req.user) return res.redirect('/login');
+  res.render('vault');
+});
+
+// === Vault: 5e.tools Local Database ===
+const vaultLocal = require('./helpers/vault-local');
+
+// 5e.tools caches (to avoid repeated GitHub fetches)
+let spellsCache = null;
+let spellsCacheTime = 0;
+let racesCache = null;
+let racesCacheTime = 0;
+let classesCache = null;
+let classesCacheTime = 0;
+let itemsCache = null;
+let itemsCacheTime = 0;
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
+// Fetch all spells from 5e.tools (with caching)
+async function fetch5eToolsSpells() {
+  const now = Date.now();
+  if (spellsCache && (now - spellsCacheTime) < CACHE_DURATION) {
+    return spellsCache;
+  }
+
+  try {
+    const sources = [
+      'https://raw.githubusercontent.com/5etools-mirror-3/5etools-src/main/data/spells/spells-phb.json',
+      'https://raw.githubusercontent.com/5etools-mirror-3/5etools-src/main/data/spells/spells-xge.json',
+      'https://raw.githubusercontent.com/5etools-mirror-3/5etools-src/main/data/spells/spells-tcoe.json',
+      'https://raw.githubusercontent.com/5etools-mirror-3/5etools-src/main/data/spells/spells-xphb.json',
+      'https://raw.githubusercontent.com/5etools-mirror-3/5etools-src/main/data/spells/spells-ai.json',
+      'https://raw.githubusercontent.com/5etools-mirror-3/5etools-src/main/data/spells/spells-egw.json',
+      'https://raw.githubusercontent.com/5etools-mirror-3/5etools-src/main/data/spells/spells-ftd.json',
+      'https://raw.githubusercontent.com/5etools-mirror-3/5etools-src/main/data/spells/spells-ggr.json',
+      'https://raw.githubusercontent.com/5etools-mirror-3/5etools-src/main/data/spells/spells-scc.json',
+      'https://raw.githubusercontent.com/5etools-mirror-3/5etools-src/main/data/spells/spells-llk.json'
+    ];
+
+    const allSpells = [];
+    for (const url of sources) {
+      try {
+        const response = await fetch(url, { timeout: 10000 });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.spell && Array.isArray(data.spell)) {
+            allSpells.push(...data.spell);
+          }
+        }
+      } catch (err) {
+        console.warn('[5e.tools] Failed to fetch from:', url.split('/').pop());
+      }
+    }
+
+    if (allSpells.length > 0) {
+      spellsCache = allSpells;
+      spellsCacheTime = now;
+      console.log(`[5e.tools] Cached ${allSpells.length} spells`);
+    }
+
+    return allSpells;
+  } catch (err) {
+    console.error('[5e.tools] Error fetching spells:', err.message);
+    return [];
+  }
+}
+
+// Find spell by name from 5e.tools
+async function find5eToolsSpell(name) {
+  const spells = await fetch5eToolsSpells();
+  const normalized = name.toLowerCase().trim();
+  return spells.find(s => s.name.toLowerCase() === normalized);
+}
+
+// Convert 5e.tools spell format to our format
+function convert5eToolsSpell(spell) {
+  if (!spell) return null;
+
+  // School mapping
+  const schoolMap = {
+    'A': 'Abjuration', 'C': 'Conjuration', 'D': 'Divination', 'E': 'Enchantment',
+    'V': 'Evocation', 'I': 'Illusion', 'N': 'Necromancy', 'T': 'Transmutation'
+  };
+
+  // Source mapping
+  const sourceMap = {
+    'PHB': "Player's Handbook",
+    'XGE': "Xanathar's Guide to Everything",
+    'TCE': "Tasha's Cauldron of Everything",
+    'SCAG': "Sword Coast Adventurer's Guide",
+    'EE': "Elemental Evil Player's Companion"
+  };
+
+  // Components
+  const components = [];
+  if (spell.components?.v) components.push('V');
+  if (spell.components?.s) components.push('S');
+  if (spell.components?.m) components.push('M');
+
+  // Casting time
+  let castingTime = 'Unknown';
+  if (spell.time && spell.time[0]) {
+    const t = spell.time[0];
+    castingTime = `${t.number} ${t.unit}${t.number > 1 ? 's' : ''}`;
+  }
+
+  // Range
+  let range = 'Self';
+  if (spell.range?.distance) {
+    const d = spell.range.distance;
+    if (d.type === 'self') range = 'Self';
+    else if (d.type === 'touch') range = 'Touch';
+    else if (d.type === 'sight') range = 'Sight';
+    else if (d.type === 'unlimited') range = 'Unlimited';
+    else range = `${d.amount} ${d.type}`;
+  }
+
+  // Duration
+  let duration = 'Instantaneous';
+  if (spell.duration && spell.duration[0]) {
+    const dur = spell.duration[0];
+    if (dur.type === 'instant') duration = 'Instantaneous';
+    else if (dur.type === 'timed') {
+      duration = `${dur.duration?.amount || ''} ${dur.duration?.type || ''}`;
+      if (dur.concentration) duration = 'Concentration, up to ' + duration;
+    } else if (dur.type === 'permanent') duration = 'Until dispelled';
+  }
+
+  // Description
+  let description = '';
+  if (spell.entries && Array.isArray(spell.entries)) {
+    description = spell.entries.map(e => {
+      if (typeof e === 'string') return e;
+      if (e.type === 'entries' && e.items) return e.items.join(' ');
+      return '';
+    }).filter(Boolean).join('\n\n');
+  }
+
+  // Higher levels
+  let higherLevels = '';
+  if (spell.entriesHigherLevel && Array.isArray(spell.entriesHigherLevel)) {
+    higherLevels = spell.entriesHigherLevel.map(e => {
+      if (e.entries && Array.isArray(e.entries)) {
+        return e.entries.join(' ');
+      }
+      return '';
+    }).filter(Boolean).join('\n\n');
+  }
+
+  // Classes
+  let classes = '';
+  if (spell.classes?.fromClassList && Array.isArray(spell.classes.fromClassList)) {
+    classes = spell.classes.fromClassList.map(c => c.name).join(', ');
+  }
+
+  return {
+    name: spell.name,
+    level: spell.level,
+    school: schoolMap[spell.school] || spell.school,
+    castingTime: castingTime,
+    range: range,
+    duration: duration,
+    components: components.join(', '),
+    material: spell.components?.m || '',
+    concentration: spell.duration?.[0]?.concentration || false,
+    ritual: spell.meta?.ritual || false,
+    description: formatVaultMarkdown(description),
+    higherLevels: higherLevels ? formatVaultMarkdown(higherLevels) : '',
+    classes: classes,
+    source: sourceMap[spell.source] || spell.source || 'Unknown'
+  };
+}
+
+// Fetch races/species from 5e.tools (with caching)
+async function fetch5eToolsRaces() {
+  const now = Date.now();
+  if (racesCache && (now - racesCacheTime) < CACHE_DURATION) {
+    return racesCache;
+  }
+
+  try {
+    const url = 'https://raw.githubusercontent.com/5etools-mirror-3/5etools-src/main/data/races.json';
+    const response = await fetch(url, { timeout: 10000 });
+    if (response.ok) {
+      const data = await response.json();
+      if (data.race && Array.isArray(data.race)) {
+        racesCache = data.race;
+        racesCacheTime = now;
+        console.log(`[5e.tools] Cached ${racesCache.length} races`);
+        return racesCache;
+      }
+    }
+  } catch (err) {
+    console.error('[5e.tools] Error fetching races:', err.message);
+  }
+  return [];
+}
+
+// Fetch classes from 5e.tools (with caching)
+async function fetch5eToolsClasses() {
+  const now = Date.now();
+  if (classesCache && (now - classesCacheTime) < CACHE_DURATION) {
+    return classesCache;
+  }
+
+  try {
+    const url = 'https://raw.githubusercontent.com/5etools-mirror-3/5etools-src/main/data/class/index.json';
+    const response = await fetch(url, { timeout: 10000 });
+    if (response.ok) {
+      const data = await response.json();
+      if (data.class && Array.isArray(data.class)) {
+        classesCache = data.class;
+        classesCacheTime = now;
+        console.log(`[5e.tools] Cached ${classesCache.length} classes`);
+        return classesCache;
+      }
+    }
+  } catch (err) {
+    console.error('[5e.tools] Error fetching classes:', err.message);
+  }
+  return [];
+}
+
+// Fetch items from 5e.tools (with caching)
+async function fetch5eToolsItems() {
+  const now = Date.now();
+  if (itemsCache && (now - itemsCacheTime) < CACHE_DURATION) {
+    return itemsCache;
+  }
+
+  try {
+    const sources = [
+      'https://raw.githubusercontent.com/5etools-mirror-3/5etools-src/main/data/items.json',
+      'https://raw.githubusercontent.com/5etools-mirror-3/5etools-src/main/data/items-base.json'
+    ];
+
+    const allItems = [];
+    for (const url of sources) {
+      try {
+        const response = await fetch(url, { timeout: 10000 });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.item && Array.isArray(data.item)) {
+            allItems.push(...data.item);
+          } else if (data.baseitem && Array.isArray(data.baseitem)) {
+            allItems.push(...data.baseitem);
+          }
+        }
+      } catch (err) {
+        console.warn('[5e.tools] Failed to fetch from:', url.split('/').pop());
+      }
+    }
+
+    if (allItems.length > 0) {
+      itemsCache = allItems;
+      itemsCacheTime = now;
+      console.log(`[5e.tools] Cached ${allItems.length} items`);
+    }
+
+    return allItems;
+  } catch (err) {
+    console.error('[5e.tools] Error fetching items:', err.message);
+    return [];
+  }
+}
+
+// Vault species list (Open5e for now, 5e.tools ready for future)
+app.get('/api/vault/species', async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  const search = req.query.search || '';
+  const api = req.query.api || 'auto';
+
+  try {
+    // Currently using Open5e (5e.tools races ready for future implementation)
+    let url = 'https://api.open5e.com/v2/species/?limit=50&is_subspecies=false';
+    if (search) url += '&name__icontains=' + encodeURIComponent(search);
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    const results = (data.results || []).map(s => ({
+      key: s.key,
+      name: s.name,
+      desc: s.desc ? s.desc.substring(0, 150) + '...' : '',
+      source: s.document ? s.document.name : ''
+    }));
+    res.json({ results });
+  } catch (err) {
+    console.error('[Vault Species] Error:', err.message);
+    res.json({ results: [] });
+  }
+});
+
+app.get('/api/vault/species/:key', async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  const api = req.query.api || 'auto';
+
+  try {
+    // Try 5e.tools first (if not forced to Open5e)
+    if (api !== 'open5e') {
+      const races = await fetch5eToolsRaces();
+      const searchKey = req.params.key.toLowerCase().replace(/-/g, ' ');
+      console.log(`[Species Detail] Searching for: "${searchKey}" in ${races.length} races`);
+      const race = races.find(r => r.name.toLowerCase() === searchKey);
+
+      if (race) {
+        const sourceMap = {
+          'PHB': "Player's Handbook",
+          'XPHB': "Player's Handbook (2024)",
+          'XGE': "Xanathar's Guide to Everything",
+          'TCE': "Tasha's Cauldron of Everything",
+          'VRGR': "Van Richten's Guide to Ravenloft",
+          'MPMM': "Mordenkainen Presents: Monsters of the Multiverse"
+        };
+
+        // Extract entries (description)
+        let desc = '';
+        if (race.entries && Array.isArray(race.entries)) {
+          desc = race.entries.map(e => {
+            if (typeof e === 'string') return e;
+            if (e.type === 'entries' && e.entries) return e.entries.join('\n\n');
+            return '';
+          }).filter(Boolean).join('\n\n');
+        }
+
+        // Extract traits
+        const traits = [];
+        if (race.entries && Array.isArray(race.entries)) {
+          race.entries.forEach(e => {
+            if (e.type === 'entries' && e.name && e.name !== race.name) {
+              const traitDesc = Array.isArray(e.entries) ? e.entries.join('\n\n') : '';
+              traits.push({ name: e.name, desc: formatVaultMarkdown(traitDesc) });
+            }
+          });
+        }
+
+        return res.json({
+          name: race.name,
+          desc: formatVaultMarkdown(desc),
+          traits: traits,
+          source: sourceMap[race.source] || race.source || 'Unknown',
+          apiUsed: '5e.tools'
+        });
+      }
+    }
+
+    // Fallback to Open5e (or if forced)
+    if (api !== '5etools') {
+      const response = await fetch('https://api.open5e.com/v2/species/' + encodeURIComponent(req.params.key) + '/');
+      const s = await response.json();
+
+      if (s.detail) return res.json({ error: 'Not found' });
+
+      return res.json({
+        name: s.name,
+        desc: formatVaultMarkdown(s.desc),
+        traits: (s.traits || []).map(t => ({ name: t.name, desc: formatVaultMarkdown(t.desc) })),
+        source: s.document ? s.document.name : 'System Reference Document',
+        apiUsed: 'Open5e API'
+      });
+    }
+
+    res.json({ error: 'Species not found' });
+  } catch (err) {
+    console.error('[Vault Species Detail] Error:', err.message);
+    res.json({ error: 'Failed to fetch' });
+  }
+});
+
+// Vault classes list (Open5e for now, 5e.tools ready for future)
+app.get('/api/vault/classes', async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  const search = req.query.search || '';
+  const api = req.query.api || 'auto';
+
+  try {
+    // Currently using Open5e (5e.tools classes ready for future implementation)
+    let url = 'https://api.open5e.com/v2/classes/?limit=50';
+    if (search) url += '&name__icontains=' + encodeURIComponent(search);
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    // Filter out subclasses
+    const results = (data.results || [])
+      .filter(c => !c.subclass_of)
+      .map(c => ({
+        key: c.key,
+        name: c.name,
+        hitDice: c.hit_dice,
+        desc: c.desc ? c.desc.substring(0, 150) + '...' : '',
+        source: c.document ? c.document.name : ''
+      }));
+    res.json({ results });
+  } catch (err) {
+    console.error('[Vault Classes] Error:', err.message);
+    res.json({ results: [] });
+  }
+});
+
+app.get('/api/vault/classes/:key', async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  const api = req.query.api || 'auto';
+
+  try {
+    // Try 5e.tools first (if not forced to Open5e)
+    if (api !== 'open5e') {
+      const classes = await fetch5eToolsClasses();
+      const searchKey = req.params.key.toLowerCase().replace(/-/g, ' ');
+      console.log(`[Class Detail] Searching for: "${searchKey}" in ${classes.length} classes`);
+      const cls = classes.find(c => c.name.toLowerCase() === searchKey);
+
+      if (cls) {
+        const sourceMap = {
+          'PHB': "Player's Handbook",
+          'XPHB': "Player's Handbook (2024)",
+          'XGE': "Xanathar's Guide to Everything",
+          'TCE': "Tasha's Cauldron of Everything"
+        };
+
+        // Extract description
+        let desc = '';
+        if (cls.fluff && cls.fluff[0] && cls.fluff[0].entries) {
+          desc = cls.fluff[0].entries.map(e => typeof e === 'string' ? e : '').filter(Boolean).join('\n\n');
+        }
+
+        // Extract features from class features
+        const features = [];
+        if (cls.classFeatures && Array.isArray(cls.classFeatures)) {
+          cls.classFeatures.slice(0, 20).forEach(f => {
+            if (typeof f === 'string') {
+              features.push({ name: f, desc: '', level: null });
+            }
+          });
+        }
+
+        return res.json({
+          name: cls.name,
+          desc: formatVaultMarkdown(desc || `${cls.name} class from D&D 5e`),
+          hitDice: cls.hd?.number || 8,
+          primaryAbilities: cls.spellcastingAbility ? [cls.spellcastingAbility] : [],
+          savingThrows: cls.proficiency || [],
+          features: features,
+          source: sourceMap[cls.source] || cls.source || 'Unknown',
+          apiUsed: '5e.tools'
+        });
+      }
+    }
+
+    // Fallback to Open5e (or if forced)
+    if (api !== '5etools') {
+      const response = await fetch('https://api.open5e.com/v2/classes/' + encodeURIComponent(req.params.key) + '/');
+      const c = await response.json();
+
+      if (c.detail) return res.json({ error: 'Not found' });
+
+      return res.json({
+        name: c.name,
+        desc: formatVaultMarkdown(c.desc),
+        hitDice: c.hit_dice,
+        primaryAbilities: c.primary_abilities || [],
+        savingThrows: c.saving_throws || [],
+        features: (c.features || []).slice(0, 20).map(f => ({
+          name: f.name,
+          desc: formatVaultMarkdown(f.desc),
+          level: f.gained_at ? f.gained_at[0] : null
+        })),
+        source: c.document ? c.document.name : 'System Reference Document',
+        apiUsed: 'Open5e API'
+      });
+    }
+
+    res.json({ error: 'Class not found' });
+  } catch (err) {
+    console.error('[Vault Class Detail] Error:', err.message);
+    res.json({ error: 'Failed to fetch' });
+  }
+});
+
+// Hybrid vault spells list (5e.tools primary, Open5e fallback)
+app.get('/api/vault/spells', async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  const search = req.query.search || '';
+  const level = req.query.level;
+  const school = req.query.school;
+  const api = req.query.api || 'auto';
+
+  try {
+    let results = [];
+
+    // Try 5e.tools first (unless forced to Open5e)
+    if (api !== 'open5e') {
+      const spells5e = await fetch5eToolsSpells();
+
+      if (spells5e.length > 0) {
+        const schoolMap = {
+          'A': 'Abjuration', 'C': 'Conjuration', 'D': 'Divination', 'E': 'Enchantment',
+          'V': 'Evocation', 'I': 'Illusion', 'N': 'Necromancy', 'T': 'Transmutation'
+        };
+
+        results = spells5e
+          .filter(sp => {
+            // Filter by search
+            if (search && !sp.name.toLowerCase().includes(search.toLowerCase())) return false;
+            // Filter by level
+            if (level !== undefined && level !== '' && sp.level !== parseInt(level)) return false;
+            // Filter by school
+            if (school && schoolMap[sp.school] !== school) return false;
+            return true;
+          })
+          .slice(0, 50)
+          .map(sp => ({
+            key: sp.key || sp.name.toLowerCase().replace(/\s+/g, '-'),
+            name: sp.name,
+            level: sp.level,
+            school: schoolMap[sp.school] || sp.school,
+            castingTime: sp.time?.[0] ? `${sp.time[0].number} ${sp.time[0].unit}${sp.time[0].number > 1 ? 's' : ''}` : 'Unknown',
+            concentration: sp.duration?.[0]?.concentration || false,
+            ritual: sp.meta?.ritual || false
+          }));
+
+        if (results.length > 0 || api === '5etools') {
+          return res.json({ results });
+        }
+      }
+    }
+
+    // Fallback to Open5e (or if forced)
+    if (api !== '5etools') {
+      let url = 'https://api.open5e.com/v2/spells/?limit=50';
+      if (search) url += '&name__icontains=' + encodeURIComponent(search);
+      if (level !== undefined && level !== '') url += '&level=' + level;
+      if (school) url += '&school__name__iexact=' + encodeURIComponent(school);
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      // Deduplicate
+      const seen = new Set();
+      results = [];
+      for (const sp of (data.results || [])) {
+        if (!seen.has(sp.name)) {
+          seen.add(sp.name);
+          results.push({
+            key: sp.key,
+            name: sp.name,
+            level: sp.level,
+            school: sp.school ? sp.school.name : '',
+            castingTime: sp.casting_time,
+            concentration: sp.concentration,
+            ritual: sp.ritual
+          });
+        }
+      }
+    }
+
+    res.json({ results });
+  } catch (err) {
+    console.error('[Vault Spells] Error:', err.message);
+    res.json({ results: [] });
+  }
+});
+
+// Vault items list (Open5e for now, 5e.tools ready for future)
+app.get('/api/vault/items', async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  const search = req.query.search || '';
+  const category = req.query.category;
+  const magic = req.query.magic;
+  const api = req.query.api || 'auto';
+
+  try {
+    // Currently using Open5e (5e.tools items ready for future implementation)
+    let url = 'https://api.open5e.com/v2/items/?limit=50';
+    if (search) url += '&name__icontains=' + encodeURIComponent(search);
+    if (category) url += '&category__iexact=' + encodeURIComponent(category);
+    if (magic === 'true') url += '&is_magic_item=true';
+    if (magic === 'false') url += '&is_magic_item=false';
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    const results = (data.results || []).map(i => ({
+      key: i.key,
+      name: i.name,
+      category: i.category,
+      rarity: i.rarity ? i.rarity.name : '',
+      isMagic: i.is_magic_item,
+      cost: i.cost,
+      weight: formatWeight(i.weight)
+    }));
+    res.json({ results });
+  } catch (err) {
+    console.error('[Vault Items] Error:', err.message);
+    res.json({ results: [] });
+  }
+});
+
+app.get('/api/vault/items/:key', async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+
+  try {
+    const response = await fetch('https://api.open5e.com/v2/items/' + encodeURIComponent(req.params.key) + '/');
+    const i = await response.json();
+
+    if (i.detail) return res.json({ error: 'Not found' });
+
+    res.json({
+      name: i.name,
+      desc: formatVaultMarkdown(i.desc),
+      category: i.category,
+      rarity: i.rarity ? i.rarity.name : '',
+      isMagic: i.is_magic_item,
+      cost: i.cost,
+      weight: formatWeight(i.weight),
+      weightUnit: i.weight_unit,
+      requiresAttunement: i.requires_attunement,
+      attunementDetail: i.attunement_detail,
+      weapon: i.weapon,
+      armor: i.armor,
+      source: i.document ? i.document.name : '',
+      apiUsed: 'Open5e API'
+    });
+  } catch (err) {
+    console.error('[Vault Item Detail] Error:', err.message);
+    res.json({ error: 'Failed to fetch' });
+  }
+});
+
+// Hybrid spell details (5e.tools primary, Open5e fallback)
+app.get('/api/spells/details', async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  const name = req.query.name || '';
+  const forceApi = req.query.api || 'auto'; // 'auto', '5etools', 'open5e'
+
+  if (!name) return res.json({ error: 'No spell name provided' });
+
+  try {
+    // Try 5e.tools first (unless forced to Open5e)
+    if (forceApi !== 'open5e') {
+      const spell5e = await find5eToolsSpell(name);
+      if (spell5e) {
+        const converted = convert5eToolsSpell(spell5e);
+        if (converted) {
+          console.log(`[Spell Details] Found in 5e.tools: ${name}`);
+          converted.apiUsed = '5e.tools';
+          return res.json(converted);
+        }
+      }
+    }
+
+    // Use Open5e (either as fallback or forced)
+    if (forceApi !== '5etools') {
+      console.log(`[Spell Details] Using Open5e for: ${name}`);
+      const response = await fetch(`https://api.open5e.com/v2/spells/?name__iexact=${encodeURIComponent(name)}&limit=1`);
+      const data = await response.json();
+
+      if (!data.results || data.results.length === 0) {
+        return res.json({ error: 'Spell not found' });
+      }
+
+      const spell = data.results[0];
+      res.json({
+        name: spell.name,
+        level: spell.level,
+        school: spell.school ? spell.school.name : '',
+        castingTime: spell.casting_time,
+        range: spell.range,
+        duration: spell.duration,
+        components: [
+          spell.verbal ? 'V' : '',
+          spell.somatic ? 'S' : '',
+          spell.material ? 'M' : ''
+        ].filter(Boolean).join(', '),
+        material: spell.material_specified || '',
+        concentration: spell.concentration,
+        ritual: spell.ritual,
+        description: formatVaultMarkdown(spell.desc),
+        higherLevels: formatVaultMarkdown(spell.higher_level),
+        classes: spell.classes ? spell.classes.map(c => c.name).join(', ') : '',
+        source: spell.document ? spell.document.name : 'System Reference Document',
+        apiUsed: 'Open5e API'
+      });
+    } else {
+      return res.json({ error: 'Spell not found in 5e.tools' });
+    }
+  } catch (err) {
+    console.error('[Spell Details] Error:', err.message);
+    res.json({ error: 'Failed to fetch spell details' });
+  }
+});
+
+// Push notification API
+app.get('/api/push/key', (req, res) => {
+  res.json({ publicKey: pushService.getPublicKey() });
+});
+
+app.post('/api/push/subscribe', (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  const { subscription } = req.body;
+  if (!subscription || !subscription.endpoint || !subscription.keys) {
+    return res.status(400).json({ error: 'Invalid subscription' });
+  }
+  pushService.subscribe(req.user.id, subscription);
+  res.json({ success: true });
+});
+
+app.post('/api/push/unsubscribe', (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  const { endpoint } = req.body;
+  if (endpoint) pushService.unsubscribe(endpoint);
+  res.json({ success: true });
+});
+
+app.listen(PORT, () => {
+  console.log(`Quest Planner running at http://localhost:${PORT}`);
+});

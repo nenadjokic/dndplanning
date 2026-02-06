@@ -8,6 +8,7 @@
 <div class="settings-section card">
   <h2>Theme</h2>
   <form action="/settings/theme" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="form-group">
       <div class="radio-group">
         <label><input type="radio" name="theme" value="dark" <%= (settingsUser.theme || 'dark') === 'dark' ? 'checked' : '' %>> Dark (Dungeon)</label>
@@ -22,6 +23,7 @@
 <div class="settings-section card">
   <h2>Time Format</h2>
   <form action="/settings/time-format" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="form-group">
       <div class="radio-group">
         <label><input type="radio" name="time_format" value="24h" <%= (user.time_format || '24h') === '24h' ? 'checked' : '' %>> 24-hour (14:30)</label>
@@ -35,6 +37,7 @@
 <div class="settings-section card">
   <h2>Change Password</h2>
   <form action="/settings/password" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="form-group">
       <label for="current_password">Current Password</label>
       <input type="password" id="current_password" name="current_password" required>
@@ -55,6 +58,7 @@
   <h2>Unavailability Days</h2>
   <p class="form-hint">Mark dates when you cannot play. The DM will see these when creating sessions.</p>
   <form action="/settings/unavailability" method="POST" class="unavail-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="form-group">
       <label for="unavail_date">Date</label>
       <input type="date" id="unavail_date" name="date" required>
@@ -75,6 +79,7 @@
             <span class="unavail-reason">&mdash; <%= u.reason %></span>
           <% } %>
           <form action="/settings/unavailability/<%= u.id %>/delete" method="POST" class="inline-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button type="submit" class="btn btn-small btn-danger">&times;</button>
           </form>
         </div>
@@ -93,6 +98,7 @@
     </div>
   <% } %>
   <form action="/settings/generate-calendar-token" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <button type="submit" class="btn btn-outline btn-small"><%= calendarUrl ? 'Regenerate Token' : 'Generate Calendar URL' %></button>
   </form>
 
@@ -107,6 +113,7 @@
   <h2>Notification Preferences</h2>
   <p class="form-hint">Choose which notifications you receive.</p>
   <form action="/settings/notifications" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="form-group">
       <label><input type="checkbox" name="notif_session_confirmed" value="1" <%= notifPrefs.session_confirmed ? 'checked' : '' %>> Session Confirmed</label>
     </div>
@@ -126,6 +133,7 @@
   <% if (settingsUser.google_id) { %>
     <p>Linked to: <strong><%= settingsUser.google_email %></strong></p>
     <form action="/settings/google/unlink" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <button type="submit" class="btn btn-outline btn-small btn-danger">Unlink Google Account</button>
     </form>
   <% } else { %>

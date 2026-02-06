@@ -7,6 +7,7 @@
 
 <div class="card" style="margin-bottom: 1.5rem;">
   <form action="/board" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="form-group">
       <label for="board-content">Post a Message</label>
       <textarea id="board-content" name="content" rows="3" class="mention-input" placeholder="Share news, plans, or tavern gossip... Use @username to mention someone" required></textarea>
@@ -51,6 +52,7 @@
         <span class="text-muted" style="font-size: 0.8rem;"><%= formatDate(post.created_at, { month: 'short', day: 'numeric', year: 'numeric' }) %></span>
         <% if (post.user_id === user.id || user.role === 'admin') { %>
           <form action="/board/<%= post.id %>/delete" method="POST" class="inline-form" style="margin-left: auto;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this post?')">&times;</button>
           </form>
         <% } %>
@@ -126,6 +128,7 @@
       <% } %>
 
       <form action="/board/<%= post.id %>/reply" method="POST" class="board-reply-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <input type="text" name="content" class="mention-input" placeholder="Reply... Use @username to mention" required>
         <button type="submit" class="btn btn-small btn-outline">Reply</button>
       </form>

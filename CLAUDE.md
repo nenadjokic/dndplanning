@@ -1,17 +1,63 @@
 # Quest Planner — Project Instructions
 
-## Release Workflow (ALWAYS follow after completing work)
+## Development & Testing Workflow
 
-After finishing all code changes, ALWAYS perform these steps in order:
+When making code changes, ALWAYS follow this workflow:
 
-1. **Update README.md** — bump version in header and "Latest release" line; add a new changelog entry (### vX.X.X) above the previous version with all changes
-2. **Update What's New popup** — edit `views/partials/foot.ejs` whatsnew-content section with the new changes, using two sub-sections: "What's New" (h3) and "Bug Fixes" (h3)
-3. **Bump version in package.json** — always increment the THIRD decimal (patch) unless explicitly told otherwise (e.g. 0.8.1 -> 0.8.2 -> 0.8.3). When the patch number reaches 9, continue to 10, 11, etc. — do NOT roll over to the next minor version (e.g. 0.9.9 -> 0.9.10, NOT 0.10.0)
-4. **Bump service worker cache** — increment the cache version number in `public/sw.js` (CACHE_NAME)
-5. **Git commit** — commit all changes with message format: `vX.X.X: short description`
-6. **Git tag** — create tag `vX.X.X`
-7. **Git push** — push to origin main with tags: `git push origin main --tags`
-8. **GitHub Release** — create a release using `gh release create vX.X.X` with these three sections:
+### 1. Start Test Server
+- Run `npm start` in background
+- Provide test URL and credentials to user
+
+### 2. Test Credentials
+All test users have password: `test123`
+
+| Role | Username | Password |
+|------|----------|----------|
+| Admin | `admin` | `test123` |
+| Player | `player1` | `test123` |
+
+If passwords need reset, run:
+```js
+node -e "
+const bcrypt = require('bcryptjs');
+const db = require('better-sqlite3')('./data/dndplanning.db');
+const hash = bcrypt.hashSync('test123', 10);
+db.prepare('UPDATE users SET password = ?').run(hash);
+db.close();
+"
+```
+
+### 3. Make Changes (NO versioning yet)
+- Implement requested features/fixes
+- Do NOT update version numbers
+- Do NOT commit to git
+
+### 4. User Testing & Iteration
+- User tests on localhost:3000
+- If issues found → fix and restart server
+- Repeat until user confirms "OK" or "puštaj"
+
+### 5. Final Release (ONLY after user confirms)
+Once user says "OK", "puštaj", "sve je dobro", etc:
+1. Update README.md (version + changelog)
+2. Update What's New modal in `views/partials/foot.ejs`
+3. Bump version in `package.json`
+4. Bump cache version in `public/sw.js`
+5. Git commit: `vX.X.X: short description`
+6. Git tag: `vX.X.X`
+7. Git push: `git push origin main --tags`
+8. GitHub Release: `gh release create vX.X.X`
+9. **STOP the test server** to free resources
+
+## Playwright Agents
+
+When user requests Playwright-based agents (code review, design review, or any agent using browser automation):
+
+1. **STOP localhost:3000 first** — ensure clean environment before spawning agents
+2. **Do NOT pre-start the server** — let agents start the server themselves as needed
+3. Agents manage their own server lifecycle for isolation
+
+## Release Notes Format
 
 ```
 ## What's New
@@ -29,9 +75,15 @@ If you enjoy Quest Planner, consider supporting development:
 
 ## Git Rules
 
-- **NEVER use `git push --force`** — the production server pulls with `git pull`; force push breaks that and causes divergent branches
-- **NEVER use `git commit --amend`** — always create a NEW commit; amending rewrites history and causes the same force-push problem
-- If a small fix is needed after a push, increment the patch version and make a new commit (e.g. 0.8.1 -> 0.8.2)
+- **NEVER use `git push --force`** — production server uses `git pull`; force push breaks that
+- **NEVER use `git commit --amend`** — always create NEW commits
+- If a fix is needed after push, increment patch version and make new commit
+
+## Version Numbering
+
+- Always increment the THIRD decimal (patch): `0.9.28 -> 0.9.29`
+- When patch reaches 9, continue to 10, 11, etc: `0.9.9 -> 0.9.10` (NOT `0.10.0`)
+- Only bump minor/major when explicitly requested
 
 ## Tech Stack Reference
 
@@ -42,3 +94,13 @@ If you enjoy Quest Planner, consider supporting development:
 - Version source of truth: `package.json`
 - What's New modal: `views/partials/foot.ejs`
 - Changelog: bottom of `README.md`
+
+## External APIs
+
+- **Open5e API** (`https://api.open5e.com/v2/`) — D&D 5e reference data
+  - Species: `/v2/species/`
+  - Classes: `/v2/classes/`
+  - Spells: `/v2/spells/`
+  - Items: `/v2/items/`
+  - Search by name: `?name__icontains=query`
+  - Filter by level: `?level=0` (cantrips), `?level=1`, etc.

@@ -21,7 +21,8 @@
   <button type="button" class="sheet-tab" data-tab="spells">Spellcasting</button>
 </div>
 
-<% if (editable) { %><form method="POST" action="/profile/characters/<%= character.id %>/sheet"><% } %>
+<% if (editable) { %><form method="POST" action="/profile/characters/<%= character.id %>/sheet">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>"><% } %>
 
 <!-- TAB 1: Stats & Combat -->
 <div class="sheet-panel active" id="tab-stats">
@@ -32,8 +33,13 @@
       <input type="text" name="character_name" value="<%= val('character_name') || character.name %>" <%= disabled %>>
     </div>
     <div class="form-group">
-      <label>Class &amp; Level</label>
-      <input type="text" name="class_level" value="<%= val('class_level') %>" placeholder="e.g. Fighter 5" <%= disabled %>>
+      <label>Class</label>
+      <input type="text" name="class" id="sheet-class" value="<%= character.class || '' %>" readonly style="background: var(--bg-darker); cursor: not-allowed;">
+      <input type="hidden" name="class_level" id="hidden-class-level" value="<%= val('class_level') %>">
+    </div>
+    <div class="form-group">
+      <label>Level</label>
+      <input type="number" name="level" id="sheet-level" value="<%= val('level') || '' %>" placeholder="1" min="1" max="20" <%= disabled %>>
     </div>
     <div class="form-group">
       <label>Background</label>
@@ -290,11 +296,11 @@
   <div class="sheet-header-grid">
     <div class="form-group">
       <label>Spellcasting Class</label>
-      <input type="text" name="spell_class" value="<%= val('spell_class') %>" placeholder="e.g. Wizard" <%= disabled %>>
+      <input type="text" name="spell_class" id="spell-class" value="<%= character.class || '' %>" readonly style="background: var(--bg-darker); cursor: not-allowed;">
     </div>
     <div class="form-group">
       <label>Spellcasting Ability</label>
-      <input type="text" name="spell_ability" value="<%= val('spell_ability') %>" placeholder="e.g. INT" <%= disabled %>>
+      <input type="text" name="spell_ability" id="spell-ability" value="<%= val('spell_ability') %>" placeholder="Auto-set by class" <%= disabled %>>
     </div>
     <div class="form-group">
       <label>Spell Save DC</label>

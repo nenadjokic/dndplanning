@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const db = require('../db/connection');
 const { requireLogin, requireDM, requireAdmin } = require('../middleware/auth');
+const sse = require('../helpers/sse');
 const router = express.Router();
 
 const mapsDir = path.join(__dirname, '..', 'data', 'maps');
@@ -46,8 +47,17 @@ router.post('/', requireLogin, requireDM, (req, res) => {
     return res.redirect('/map');
   }
   const result = db.prepare('INSERT INTO maps (name, created_by) VALUES (?, ?)').run(name.trim(), req.user.id);
+  const mapId = result.lastInsertRowid;
+
+  // Broadcast new map
+  sse.broadcast('new-map', {
+    username: req.user.username,
+    name: name.trim(),
+    mapId: mapId
+  });
+
   req.flash('success', 'Map created.');
-  res.redirect('/map/' + result.lastInsertRowid);
+  res.redirect('/map/' + mapId);
 });
 
 // Single map view

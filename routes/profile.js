@@ -238,6 +238,7 @@ router.post('/characters/:id/sheet', requireLogin, (req, res) => {
   const sheetData = {
     character_name: b.character_name || '',
     class_level: b.class_level || '',
+    level: b.level || '',
     background: b.background || '',
     race: b.race || '',
     alignment: b.alignment || '',

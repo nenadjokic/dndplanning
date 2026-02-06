@@ -2,6 +2,7 @@
   <h2>Quest Discussion</h2>
 
   <form action="/sessions/<%= session.id %>/comment" method="POST" style="margin-bottom: 1.5rem;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="form-group">
       <textarea name="content" rows="2" class="mention-input" placeholder="Add a comment... Use @username to mention someone" required></textarea>
     </div>
@@ -112,6 +113,7 @@
         <% } %>
 
         <form action="/sessions/<%= session.id %>/comment/<%= post.id %>/reply" method="POST" class="board-reply-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <input type="text" name="content" class="mention-input" placeholder="Reply... Use @username to mention" required>
           <button type="submit" class="btn btn-small btn-outline">Reply</button>
         </form>

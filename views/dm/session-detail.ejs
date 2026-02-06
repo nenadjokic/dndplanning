@@ -55,6 +55,7 @@
     <div class="dm-actions">
       <h3>Your Availability</h3>
       <form action="/votes/<%= session.id %>" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="vote-slots">
           <% for (const slot of slots) { %>
             <div class="vote-slot-card">
@@ -96,6 +97,7 @@
     <div class="dm-actions">
       <h3>Your Preferred Date</h3>
       <form action="/sessions/<%= session.id %>/prefer" method="POST" class="confirm-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="form-group">
           <label for="prefer_slot_id">Choose your preferred slot:</label>
           <select name="slot_id" id="prefer_slot_id">
@@ -115,6 +117,7 @@
     <div class="dm-actions">
       <h3>Proclaim a Quest Date</h3>
       <form action="/sessions/<%= session.id %>/confirm" method="POST" class="confirm-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="form-group">
           <label for="slot_id">Choose the time slot:</label>
           <select name="slot_id" id="slot_id" required>
@@ -131,12 +134,14 @@
         <button type="submit" class="btn btn-primary">Proclaim This Date</button>
       </form>
       <form action="/sessions/<%= session.id %>/cancel" method="POST" class="inline-form" style="margin-top: 1rem;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <button type="submit" class="btn btn-danger" onclick="return confirm('Cancel this quest?')">Cancel Quest</button>
       </form>
     </div>
   <% } else { %>
     <div class="dm-actions">
       <form action="/sessions/<%= session.id %>/reopen" method="POST" class="inline-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <button type="submit" class="btn btn-outline">Reopen Quest Board</button>
       </form>
       <% if (session.status === 'completed') { %>
@@ -155,6 +160,7 @@
     <div class="dm-actions">
       <h3>Session Recap</h3>
       <form action="/sessions/<%= session.id %>/summary" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="form-group">
           <label for="summary">Write a recap of this session:</label>
           <textarea name="summary" id="summary" rows="5" placeholder="Describe what happened during this session..."><%= session.summary || '' %></textarea>
@@ -171,6 +177,7 @@
       </div>
       <div id="recap-edit" style="display:none;">
         <form action="/sessions/<%= session.id %>/summary" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <div class="form-group">
             <label for="summary">Edit session recap:</label>
             <textarea name="summary" id="summary" rows="5"><%= session.summary %></textarea>
@@ -185,6 +192,7 @@
   <% if (user && user.role === 'admin') { %>
     <div class="dm-actions">
       <form action="/sessions/<%= session.id %>/delete" method="POST" class="inline-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <button type="submit" class="btn btn-danger" onclick="return confirm('Permanently delete this quest and all associated data? This cannot be undone.')">Delete Quest</button>
       </form>
     </div>

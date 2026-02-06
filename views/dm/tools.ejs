@@ -12,6 +12,7 @@
   <div class="card">
     <h3>Add New Tool</h3>
     <form action="/dm-tools" method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
         <div class="form-group">
           <label for="tool-name">Button Name</label>
@@ -120,6 +121,7 @@
         <div class="dm-tool-actions">
           <button type="button" class="btn btn-small btn-outline" data-edit-tool="<%= tool.id %>">Edit</button>
           <form action="/dm-tools/<%= tool.id %>/delete" method="POST" class="inline-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Remove this tool?')">&times;</button>
           </form>
         </div>
@@ -136,6 +138,7 @@
   <div class="card" style="max-width: 400px; margin: 0 auto;">
     <h3>Edit Tool</h3>
     <form id="edit-tool-form" method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="form-group">
         <label for="edit-tool-name">Button Name</label>
         <input type="text" name="name" id="edit-tool-name" required>

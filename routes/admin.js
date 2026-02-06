@@ -2,7 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const db = require('../db/connection');
-const { requireLogin, requireAdmin } = require('../middleware/auth');
+const { requireLogin, requireAdmin, requireDM } = require('../middleware/auth');
 const messenger = require('../helpers/messenger');
 const router = express.Router();
 
@@ -152,6 +152,56 @@ router.get('/check-update', requireLogin, requireAdmin, async (req, res) => {
   }
 });
 
+// --- D&D Data Management ---
+
+// Get D&D data metadata
+router.get('/dnd-data/status', requireLogin, requireAdmin, (req, res) => {
+  try {
+    const meta = db.prepare('SELECT * FROM dnd_data_meta WHERE id = 1').get();
+    res.json(meta || {});
+  } catch (e) {
+    res.json({ error: 'Could not fetch D&D data status.' });
+  }
+});
+
+// Trigger D&D data import
+router.post('/dnd-data/import', requireLogin, requireAdmin, async (req, res) => {
+  try {
+    // Import the module functions
+    const { importSpells, importClasses, importRaces, importItems } = require('../scripts/import-5etools-data');
+
+    // Run imports
+    const spellCount = await importSpells();
+    const classCount = await importClasses();
+    const raceCount = await importRaces();
+    const itemCount = await importItems();
+
+    // Update metadata
+    db.prepare(`
+      UPDATE dnd_data_meta SET
+        last_import_date = datetime('now'),
+        import_version = ?,
+        spell_count = ?,
+        class_count = ?,
+        race_count = ?,
+        item_count = ?
+      WHERE id = 1
+    `).run('5etools-mirror-3/master', spellCount, classCount, raceCount, itemCount);
+
+    res.json({
+      success: true,
+      spellCount,
+      classCount,
+      raceCount,
+      itemCount,
+      message: `Successfully imported ${spellCount} spells, ${classCount} classes, ${raceCount} races, and ${itemCount} items.`
+    });
+  } catch (e) {
+    console.error('[D&D Data Import] Error:', e);
+    res.json({ success: false, error: e.message || 'Import failed.' });
+  }
+});
+
 // --- Notification Config ---
 
 router.get('/notifications/config', requireLogin, requireAdmin, (req, res) => {
@@ -276,7 +326,7 @@ router.post('/notifications/test', requireLogin, requireAdmin, async (req, res) 
 
 // --- Announcements ---
 
-router.get('/announcements', requireLogin, requireAdmin, (req, res) => {
+router.get('/announcements', requireLogin, requireDM, (req, res) => {
   const announcements = db.prepare(`
     SELECT a.*, u.username as created_by_name
     FROM announcements a
@@ -286,7 +336,7 @@ router.get('/announcements', requireLogin, requireAdmin, (req, res) => {
   res.render('admin/announcements', { announcements });
 });
 
-router.post('/announcements', requireLogin, requireAdmin, (req, res) => {
+router.post('/announcements', requireLogin, requireDM, (req, res) => {
   const { content, expires_at } = req.body;
 
   if (!content || !content.trim()) {
@@ -307,7 +357,7 @@ router.post('/announcements', requireLogin, requireAdmin, (req, res) => {
   res.redirect('/admin/announcements');
 });
 
-router.post('/announcements/:id/toggle', requireLogin, requireAdmin, (req, res) => {
+router.post('/announcements/:id/toggle', requireLogin, requireDM, (req, res) => {
   const announcement = db.prepare('SELECT * FROM announcements WHERE id = ?').get(req.params.id);
   if (!announcement) {
     req.flash('error', 'Announcement not found.');
@@ -327,7 +377,7 @@ router.post('/announcements/:id/toggle', requireLogin, requireAdmin, (req, res) 
   res.redirect('/admin/announcements');
 });
 
-router.post('/announcements/:id/delete', requireLogin, requireAdmin, (req, res) => {
+router.post('/announcements/:id/delete', requireLogin, requireDM, (req, res) => {
   db.prepare('DELETE FROM announcements WHERE id = ?').run(req.params.id);
   req.flash('success', 'Announcement deleted.');
   res.redirect('/admin/announcements');

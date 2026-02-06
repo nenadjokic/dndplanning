@@ -1,0 +1,114 @@
+<%- include('partials/head', { pageTitle: 'The Vault of Ancient Lore' }) %>
+
+<div class="page-header">
+  <h1>The Vault of Ancient Lore</h1>
+  <a href="/" class="btn btn-outline">Back to Quest Board</a>
+</div>
+
+<div class="vault-container">
+  <div class="vault-tabs">
+    <button type="button" class="vault-tab active" data-tab="species">Races</button>
+    <button type="button" class="vault-tab" data-tab="classes">Classes</button>
+    <button type="button" class="vault-tab" data-tab="spells">Spells</button>
+    <button type="button" class="vault-tab" data-tab="items">Items</button>
+  </div>
+
+  <!-- Races Tab -->
+  <div class="vault-panel active" id="vault-species">
+    <div class="vault-filters">
+      <input type="text" class="vault-search" id="species-search" placeholder="Search races...">
+    </div>
+    <div class="vault-results" id="species-results">
+      <div class="vault-loading">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Classes Tab -->
+  <div class="vault-panel" id="vault-classes">
+    <div class="vault-filters">
+      <input type="text" class="vault-search" id="classes-search" placeholder="Search classes...">
+    </div>
+    <div class="vault-results" id="classes-results">
+      <div class="vault-loading">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Spells Tab -->
+  <div class="vault-panel" id="vault-spells">
+    <div class="vault-filters">
+      <input type="text" class="vault-search" id="spells-search" placeholder="Search spells...">
+      <select id="spells-level" class="vault-filter-select">
+        <option value="">All Levels</option>
+        <option value="0">Cantrip</option>
+        <option value="1">1st Level</option>
+        <option value="2">2nd Level</option>
+        <option value="3">3rd Level</option>
+        <option value="4">4th Level</option>
+        <option value="5">5th Level</option>
+        <option value="6">6th Level</option>
+        <option value="7">7th Level</option>
+        <option value="8">8th Level</option>
+        <option value="9">9th Level</option>
+      </select>
+      <select id="spells-school" class="vault-filter-select">
+        <option value="">All Schools</option>
+        <option value="Abjuration">Abjuration</option>
+        <option value="Conjuration">Conjuration</option>
+        <option value="Divination">Divination</option>
+        <option value="Enchantment">Enchantment</option>
+        <option value="Evocation">Evocation</option>
+        <option value="Illusion">Illusion</option>
+        <option value="Necromancy">Necromancy</option>
+        <option value="Transmutation">Transmutation</option>
+      </select>
+    </div>
+    <div class="vault-results" id="spells-results">
+      <div class="vault-loading">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Items Tab -->
+  <div class="vault-panel" id="vault-items">
+    <div class="vault-filters">
+      <input type="text" class="vault-search" id="items-search" placeholder="Search items...">
+      <select id="items-category" class="vault-filter-select">
+        <option value="">All Categories</option>
+        <option value="Weapon">Weapons</option>
+        <option value="Armor">Armor</option>
+        <option value="Adventuring Gear">Adventuring Gear</option>
+        <option value="Tools">Tools</option>
+        <option value="Wondrous Item">Wondrous Items</option>
+        <option value="Potion">Potions</option>
+        <option value="Ring">Rings</option>
+        <option value="Rod">Rods</option>
+        <option value="Staff">Staffs</option>
+        <option value="Wand">Wands</option>
+      </select>
+      <select id="items-magic" class="vault-filter-select">
+        <option value="">All Items</option>
+        <option value="true">Magic Items Only</option>
+        <option value="false">Mundane Only</option>
+      </select>
+    </div>
+    <div class="vault-results" id="items-results">
+      <div class="vault-loading">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="vault-modal-overlay" id="vault-modal" style="display: none;">
+  <div class="vault-modal">
+    <div class="vault-modal-header">
+      <h2 class="vault-modal-title">Loading...</h2>
+      <button class="vault-modal-close">&times;</button>
+    </div>
+    <div class="vault-modal-body">
+      <div class="vault-loading">Loading details...</div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/vault.js?v=<%= typeof appVersion !== 'undefined' ? appVersion : '1' %>"></script>
+
+<%- include('partials/foot') %>
