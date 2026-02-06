@@ -727,6 +727,26 @@ The admin can also check for updates from the **Guild Settings** page using the 
 - **Responsive walls** — Invisible physics walls now match the visible screen edges, adapting to portrait/landscape
 - **Adaptive grid** — Grid columns and spacing auto-adjust to the available screen width; narrow portrait phones use fewer columns
 
+### v1.0.14 (2026-02-06)
+
+**What's New:**
+- **Dice roller physics overhaul:**
+  - Realistic weight and momentum — dice now have proper damping (72% friction) for natural settling
+  - Gentle collision detection — dice bounce off each other softly when grounded, preventing clipping
+  - Spawn animation — all dice drop from above (center position) with 0.015s stagger for visual cascade effect
+  - Boundary containment — dice stay within viewport bounds and won't fly off screen
+  - Ground-only collisions — collision forces only apply when dice are on the table for realistic behavior
+
+**Bug Fixes:**
+- None
+
+**Support the Project:**
+
+If you enjoy Quest Planner, consider supporting development:
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/nenadjokic)
+[![PayPal](https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/nenadjokicRS)
+
 ### v1.0.13 (2026-02-06)
 
 **What's New:**
