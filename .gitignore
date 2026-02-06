@@ -9,3 +9,22 @@ data/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+e2e/
+playwright.config.js
+playwright.config.ts
+.playwright-mcp/
+
+# Claude AI
+.claude/
+CLAUDE.md
+
+# Development files
+docs/
+*.bak
+*.bak2
+.DS_Store
+
+# Screenshots and test images
+*.png
+!public/icons/*.png
+!public/favicon.png
