@@ -55,24 +55,34 @@ router.post('/users/:id/delete', requireLogin, requireAdmin, (req, res) => {
     return res.redirect('/admin/users');
   }
 
+  // Helper function to safely delete from table (handles missing tables)
+  const safeDelete = (query, params) => {
+    try {
+      db.prepare(query).run(...(Array.isArray(params) ? params : [params]));
+    } catch (err) {
+      // Table doesn't exist or other error - skip silently
+      console.log('[Delete User] Skipped:', query, err.message);
+    }
+  };
+
   const deleteUser = db.transaction(() => {
     // Delete dice rolls by this user
-    db.prepare('DELETE FROM dice_rolls WHERE user_id = ?').run(targetId);
+    safeDelete('DELETE FROM dice_rolls WHERE user_id = ?', targetId);
     // Delete characters by this user
-    db.prepare('DELETE FROM characters WHERE user_id = ?').run(targetId);
+    safeDelete('DELETE FROM characters WHERE user_id = ?', targetId);
     // Delete push subscriptions by this user
-    db.prepare('DELETE FROM push_subscriptions WHERE user_id = ?').run(targetId);
+    safeDelete('DELETE FROM push_subscriptions WHERE user_id = ?', targetId);
     // Delete notification preferences by this user
-    db.prepare('DELETE FROM user_notification_prefs WHERE user_id = ?').run(targetId);
+    safeDelete('DELETE FROM user_notification_prefs WHERE user_id = ?', targetId);
     // Delete loot items created by or held by this user
-    db.prepare('UPDATE loot_items SET held_by = NULL WHERE held_by = ?').run(targetId);
-    db.prepare('DELETE FROM loot_items WHERE created_by = ?').run(targetId);
+    safeDelete('UPDATE loot_items SET held_by = NULL WHERE held_by = ?', targetId);
+    safeDelete('DELETE FROM loot_items WHERE created_by = ?', targetId);
     // Delete DM tools by this user
-    db.prepare('DELETE FROM dm_tools WHERE created_by = ?').run(targetId);
+    safeDelete('DELETE FROM dm_tools WHERE created_by = ?', targetId);
     // Delete map locations created by this user
-    db.prepare('DELETE FROM map_locations WHERE created_by = ?').run(targetId);
+    safeDelete('DELETE FROM map_locations WHERE created_by = ?', targetId);
     // Delete maps created by this user
-    db.prepare('DELETE FROM maps WHERE created_by = ?').run(targetId);
+    safeDelete('DELETE FROM maps WHERE created_by = ?', targetId);
     // Delete votes by this user
     db.prepare('DELETE FROM votes WHERE user_id = ?').run(targetId);
     // Delete preferences by this user
@@ -80,20 +90,20 @@ router.post('/users/:id/delete', requireLogin, requireAdmin, (req, res) => {
     // Delete unavailability by this user
     db.prepare('DELETE FROM unavailability WHERE user_id = ?').run(targetId);
     // Delete notifications for this user
-    db.prepare('DELETE FROM notifications WHERE user_id = ?').run(targetId);
+    safeDelete('DELETE FROM notifications WHERE user_id = ?', targetId);
     // Delete replies by this user
-    db.prepare('DELETE FROM replies WHERE user_id = ?').run(targetId);
+    safeDelete('DELETE FROM replies WHERE user_id = ?', targetId);
     // Delete replies to posts by this user
-    db.prepare('DELETE FROM replies WHERE post_id IN (SELECT id FROM posts WHERE user_id = ?)').run(targetId);
+    safeDelete('DELETE FROM replies WHERE post_id IN (SELECT id FROM posts WHERE user_id = ?)', targetId);
     // Delete posts by this user
-    db.prepare('DELETE FROM posts WHERE user_id = ?').run(targetId);
+    safeDelete('DELETE FROM posts WHERE user_id = ?', targetId);
     // Delete data related to sessions created by this user
     const sessionIds = db.prepare('SELECT id FROM sessions WHERE created_by = ?').all(targetId).map(s => s.id);
     for (const sid of sessionIds) {
       db.prepare('DELETE FROM votes WHERE slot_id IN (SELECT id FROM slots WHERE session_id = ?)').run(sid);
       db.prepare('DELETE FROM preferences WHERE session_id = ?').run(sid);
-      db.prepare('DELETE FROM replies WHERE post_id IN (SELECT id FROM posts WHERE session_id = ?)').run(sid);
-      db.prepare('DELETE FROM posts WHERE session_id = ?').run(sid);
+      safeDelete('DELETE FROM replies WHERE post_id IN (SELECT id FROM posts WHERE session_id = ?)', sid);
+      safeDelete('DELETE FROM posts WHERE session_id = ?', sid);
       db.prepare('UPDATE sessions SET confirmed_slot_id = NULL WHERE id = ?').run(sid);
       db.prepare('DELETE FROM slots WHERE session_id = ?').run(sid);
     }
@@ -102,8 +112,13 @@ router.post('/users/:id/delete', requireLogin, requireAdmin, (req, res) => {
     db.prepare('DELETE FROM users WHERE id = ?').run(targetId);
   });
 
-  deleteUser();
-  req.flash('success', 'User and all related data deleted.');
+  try {
+    deleteUser();
+    req.flash('success', 'User and all related data deleted.');
+  } catch (err) {
+    console.error('[Delete User] Error:', err);
+    req.flash('error', 'Failed to delete user: ' + err.message);
+  }
   res.redirect('/admin/users');
 });
 
