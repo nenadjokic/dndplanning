@@ -727,6 +727,16 @@ The admin can also check for updates from the **Guild Settings** page using the 
 - **Responsive walls** — Invisible physics walls now match the visible screen edges, adapting to portrait/landscape
 - **Adaptive grid** — Grid columns and spacing auto-adjust to the available screen width; narrow portrait phones use fewer columns
 
+### v1.0.11 (2026-02-06)
+
+**Bug Fixes:**
+- Fixed web-based update feature for Docker environments — git path detection now uses `which git` to find the absolute path and falls back to checking common paths (`/usr/bin/git`, `/usr/local/bin/git`, `/bin/git`) when git is installed on the host but not accessible to the Node.js process
+
+### v1.0.10 (2026-02-06)
+
+**Bug Fixes:**
+- None
+
 ### v1.0.0 (2026-02-06) 🎉
 
 **Major Release: Complete 5e.tools Integration**

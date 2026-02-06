@@ -102,22 +102,53 @@ router.get('/app-update/stream', requireLogin, requireAdmin, (req, res) => {
 
   sendMessage('start', '🚀 Starting application update...');
 
-  // Check if git is available
+  // Find git executable path
   const { execSync } = require('child_process');
+  let gitPath = 'git';
+
   try {
-    execSync('git --version', { stdio: 'ignore' });
+    // Try to find git with which/where
+    const whichGit = execSync('which git 2>/dev/null || where git 2>/dev/null', { encoding: 'utf8' }).trim();
+    if (whichGit) {
+      gitPath = whichGit.split('\n')[0]; // Use first result
+      sendMessage('progress', `Found git at: ${gitPath}`);
+    }
   } catch (err) {
-    sendMessage('error', '❌ Git is not installed or not in PATH');
-    sendMessage('error', 'Please install git: apt-get install git (Debian/Ubuntu) or yum install git (CentOS/RHEL)');
-    sendMessage('error', 'Or update manually: git pull && docker compose up -d --build');
-    cleanup();
-    res.end();
-    return;
+    // which/where failed, try common paths
+    const commonPaths = ['/usr/bin/git', '/usr/local/bin/git', '/bin/git'];
+    let found = false;
+    for (const path of commonPaths) {
+      try {
+        execSync(`${path} --version`, { stdio: 'ignore' });
+        gitPath = path;
+        sendMessage('progress', `Found git at: ${gitPath}`);
+        found = true;
+        break;
+      } catch (e) {
+        // Try next path
+      }
+    }
+
+    if (!found) {
+      sendMessage('error', '❌ Git is not installed or not accessible');
+      sendMessage('error', '');
+      sendMessage('error', 'If running in Docker, add to Dockerfile:');
+      sendMessage('error', '  RUN apt-get update && apt-get install -y git');
+      sendMessage('error', '');
+      sendMessage('error', 'Or install on host:');
+      sendMessage('error', '  apt-get install git (Debian/Ubuntu)');
+      sendMessage('error', '  yum install git (CentOS/RHEL)');
+      sendMessage('error', '');
+      sendMessage('error', 'Or update manually: git pull && docker compose up -d --build');
+      cleanup();
+      res.end();
+      return;
+    }
   }
 
   // Step 1: Git pull
   sendMessage('progress', '📥 Pulling latest changes from GitHub...');
-  const gitPull = spawn('git', ['pull', 'origin', 'main'], {
+  const gitPull = spawn(gitPath, ['pull', 'origin', 'main'], {
     cwd: process.cwd(),
     timeout: 30000 // 30 second timeout
   });
@@ -175,7 +206,7 @@ router.get('/app-update/stream', requireLogin, requireAdmin, (req, res) => {
     sendMessage('progress', '✅ Git pull complete');
 
     // Step 2: Check if package.json changed
-    const gitDiff = spawn('git', ['diff', 'HEAD@{1}', 'HEAD', '--name-only']);
+    const gitDiff = spawn(gitPath, ['diff', 'HEAD@{1}', 'HEAD', '--name-only']);
     let packageChanged = false;
 
     gitDiff.stdout.on('data', (data) => {
