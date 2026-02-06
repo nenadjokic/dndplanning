@@ -59,21 +59,8 @@
 <div class="card" style="margin-top: 1.5rem;">
   <h2>Realm Updates</h2>
   <p>Current version: <strong>v<%= appVersion %></strong></p>
-  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-    <button type="button" class="btn btn-outline btn-small" onclick="checkForUpdate()">Check for Updates</button>
-    <button type="button" class="btn btn-primary btn-small" onclick="performAppUpdate()" id="app-update-btn" style="display: none;">
-      🚀 Update Now
-    </button>
-  </div>
+  <button type="button" class="btn btn-outline btn-small" onclick="checkForUpdate()">Check for Updates</button>
   <div id="update-result" style="margin-top: 1rem;"></div>
-  <div id="app-update-progress" style="margin-top: 1rem; display: none;">
-    <div style="background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
-      <div style="height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; margin-bottom: 0.5rem;">
-        <div id="app-progress-bar" style="height: 100%; background: var(--primary); width: 0%; transition: width 0.3s;"></div>
-      </div>
-      <div id="app-progress-text" style="font-size: 0.85rem; color: var(--text-secondary); max-height: 200px; overflow-y: auto; font-family: monospace; white-space: pre-wrap;"></div>
-    </div>
-  </div>
 </div>
 
 <div class="card" style="margin-top: 1.5rem;">
@@ -300,11 +287,9 @@ function loadGoogleOAuthConfig() {
 
 function checkForUpdate() {
   var resultDiv = document.getElementById('update-result');
-  var updateBtn = document.getElementById('app-update-btn');
 
   resultDiv.textContent = 'Checking for updates...';
   resultDiv.style.color = 'var(--text-secondary)';
-  updateBtn.style.display = 'none';
 
   fetch('/admin/check-update')
     .then(function(r) { return r.json(); })
@@ -320,11 +305,14 @@ function checkForUpdate() {
           <p style="color: var(--success); margin-bottom: 0.5rem;">
             ✨ <strong>Update available: v${data.latestVersion}</strong>
           </p>
-          <p style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+          <p style="font-size: 0.9rem; margin-bottom: 0.75rem;">
             ${data.releaseName || 'New version available'}
           </p>
+          <div style="background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; font-family: monospace; font-size: 0.85rem;">
+            <p style="margin-bottom: 0.5rem; color: var(--text-secondary);">To update, run:</p>
+            <code style="display: block; padding: 0.75rem; background: var(--bg); border-radius: var(--radius); color: var(--primary);">git pull && docker compose up -d --build</code>
+          </div>
         `;
-        updateBtn.style.display = 'inline-block';
       } else {
         resultDiv.textContent = '✅ You are running the latest version!';
         resultDiv.style.color = 'var(--success)';
@@ -334,77 +322,6 @@ function checkForUpdate() {
       resultDiv.textContent = 'Failed to check for updates.';
       resultDiv.style.color = 'var(--error)';
     });
-}
-
-function performAppUpdate() {
-  var btn = document.getElementById('app-update-btn');
-  var progressDiv = document.getElementById('app-update-progress');
-  var progressBar = document.getElementById('app-progress-bar');
-  var progressText = document.getElementById('app-progress-text');
-  var resultDiv = document.getElementById('update-result');
-
-  if (!confirm('Update and restart the server now?')) return;
-
-  btn.disabled = true;
-  btn.textContent = '⏳ Updating...';
-  resultDiv.textContent = '';
-  progressDiv.style.display = 'block';
-  progressText.textContent = '';
-  progressBar.style.width = '10%';
-
-  var eventSource = new EventSource('/admin/app-update/stream');
-  var progress = 10;
-
-  eventSource.onmessage = function(e) {
-    var data = JSON.parse(e.data);
-
-    // Ignore keepalive pings
-    if (data.type === 'ping') return;
-
-    // Only show non-empty messages
-    if (data.message) {
-      progressText.textContent += data.message + '\n';
-      progressText.scrollTop = progressText.scrollHeight;
-    }
-
-    if (data.type === 'progress') {
-      progress = Math.min(progress + 10, 90);
-      progressBar.style.width = progress + '%';
-    } else if (data.type === 'complete') {
-      progressBar.style.width = '100%';
-      progressText.textContent += '\n✅ Update complete! Reloading page...\n';
-      setTimeout(function() {
-        window.location.reload();
-      }, 3000);
-    } else if (data.type === 'restart') {
-      progressBar.style.width = '95%';
-      progressText.textContent += '\n🔄 Server restarting... Page will reload in 5 seconds.\n';
-      setTimeout(function() {
-        window.location.reload();
-      }, 5000);
-    } else if (data.type === 'error') {
-      progressBar.style.background = 'var(--error)';
-      btn.disabled = false;
-      btn.textContent = '🚀 Update Now';
-    }
-  };
-
-  eventSource.onerror = function() {
-    eventSource.close();
-    // If we haven't reached 100%, it's a real error
-    if (progress < 90) {
-      progressText.textContent += '\n❌ Connection lost. Check server logs or try refreshing.\n';
-      progressBar.style.background = 'var(--error)';
-      btn.disabled = false;
-      btn.textContent = '🚀 Update Now';
-    } else {
-      // If we're at 90%+, assume server is restarting
-      progressText.textContent += '\n🔄 Server restarting... Refreshing in 5 seconds.\n';
-      setTimeout(function() {
-        window.location.reload();
-      }, 5000);
-    }
-  };
 }
 
 function loadDndDataStatus() {

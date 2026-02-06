@@ -27,13 +27,9 @@
       <div class="welcome-modal whatsnew-modal">
         <h2>What's New in v<%= appVersion %></h2>
         <div class="whatsnew-content">
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">What's New</h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Changes</h3>
           <ul class="whatsnew-list">
-            <li>None</li>
-          </ul>
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin: 0.75rem 0 0.5rem;">Bug Fixes</h3>
-          <ul class="whatsnew-list">
-            <li><strong>Web Update for Docker</strong> &mdash; Fixed "git not found" error when using the web-based update feature in Docker environments; app now detects git path using <code>which git</code> and tries common paths like <code>/usr/bin/git</code></li>
+            <li><strong>Manual Update Instructions</strong> &mdash; Removed automatic web-based update feature; admin panel now shows manual instructions (<code>git pull && docker compose up -d --build</code>) when a new version is available</li>
           </ul>
         </div>
         <div class="whatsnew-links">

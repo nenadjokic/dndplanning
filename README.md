@@ -727,6 +727,11 @@ The admin can also check for updates from the **Guild Settings** page using the 
 - **Responsive walls** — Invisible physics walls now match the visible screen edges, adapting to portrait/landscape
 - **Adaptive grid** — Grid columns and spacing auto-adjust to the available screen width; narrow portrait phones use fewer columns
 
+### v1.0.12 (2026-02-06)
+
+**Changes:**
+- Removed automatic web-based update feature — admin panel now shows manual update instructions (`git pull && docker compose up -d --build`) when a new version is available
+
 ### v1.0.11 (2026-02-06)
 
 **Bug Fixes:**
