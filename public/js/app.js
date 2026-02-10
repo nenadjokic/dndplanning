@@ -814,16 +814,9 @@ function shareSession(platform, sessionId, sessionTitle) {
       break;
 
     case 'viber':
-      // Viber uses text parameter (try both methods for compatibility)
-      if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-        // Mobile: use viber:// protocol
-        shareUrl = 'viber://forward?text=' + encodedFullMessage;
-        window.location.href = shareUrl;
-      } else {
-        // Desktop: copy to clipboard since Viber desktop doesn't have direct share URL
-        copyToClipboard(message + '\n' + url);
-        alert('Link copied to clipboard! Open Viber and paste it.');
-      }
+      // Viber uses viber:// protocol
+      shareUrl = 'viber://forward?text=' + encodedFullMessage;
+      window.location.href = shareUrl;
       break;
 
     case 'telegram':

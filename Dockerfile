@@ -1,28 +1,18 @@
 FROM node:20-alpine
 
-# Install dependencies for canvas and other native modules
+# Install build dependencies for native modules (better-sqlite3, sharp)
 RUN apk add --no-cache \
     python3 \
-    py3-setuptools \
     make \
-    g++ \
-    cairo-dev \
-    jpeg-dev \
-    pango-dev \
-    giflib-dev \
-    pixman-dev \
-    pangomm-dev \
-    libjpeg-turbo-dev \
-    freetype-dev
+    g++
 
 WORKDIR /app
 
 COPY package.json package-lock.json ./
 RUN npm ci --production
 
-# Clean up build dependencies but keep runtime libraries
-RUN apk del python3 py3-setuptools make g++ \
-    && apk add --no-cache cairo jpeg pango giflib pixman pangomm libjpeg-turbo freetype
+# Clean up build dependencies
+RUN apk del python3 make g++
 
 COPY . .
 
