@@ -775,3 +775,86 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 5000);
   };
 })();
+
+// === Share Session ===
+function shareSession(platform, sessionId, sessionTitle) {
+  var url = window.location.origin + '/sessions/' + sessionId;
+  var message = 'Vote for date and time for the next session: ' + sessionTitle;
+  var encodedMessage = encodeURIComponent(message);
+  var encodedUrl = encodeURIComponent(url);
+  var encodedFullMessage = encodeURIComponent(message + '\n' + url);
+
+  var shareUrl;
+
+  switch(platform) {
+    case 'whatsapp':
+      // WhatsApp uses text parameter
+      shareUrl = 'https://wa.me/?text=' + encodedFullMessage;
+      window.open(shareUrl, '_blank');
+      break;
+
+    case 'viber':
+      // Viber uses text parameter (try both methods for compatibility)
+      if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        // Mobile: use viber:// protocol
+        shareUrl = 'viber://forward?text=' + encodedFullMessage;
+        window.location.href = shareUrl;
+      } else {
+        // Desktop: copy to clipboard since Viber desktop doesn't have direct share URL
+        copyToClipboard(message + '\n' + url);
+        alert('Link copied to clipboard! Open Viber and paste it.');
+      }
+      break;
+
+    case 'telegram':
+      // Telegram uses url and text parameters
+      shareUrl = 'https://t.me/share/url?url=' + encodedUrl + '&text=' + encodedMessage;
+      window.open(shareUrl, '_blank');
+      break;
+
+    case 'discord':
+      // Discord doesn't have direct share URL, copy to clipboard instead
+      copyToClipboard(message + '\n' + url);
+      alert('Link copied to clipboard! Paste it in Discord.');
+      break;
+
+    case 'email':
+      // Email using mailto
+      var subject = encodeURIComponent('Quest Planner - ' + sessionTitle);
+      var body = encodeURIComponent(message + '\n\n' + url);
+      shareUrl = 'mailto:?subject=' + subject + '&body=' + body;
+      window.location.href = shareUrl;
+      break;
+
+    case 'copy':
+      // Copy link to clipboard
+      copyToClipboard(message + '\n' + url);
+      alert('Link copied to clipboard!');
+      break;
+  }
+}
+
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(function() {
+      fallbackCopy(text);
+    });
+  } else {
+    fallbackCopy(text);
+  }
+}
+
+function fallbackCopy(text) {
+  var textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    document.execCommand('copy');
+  } catch (e) {
+    console.error('Failed to copy', e);
+  }
+  document.body.removeChild(textarea);
+}

@@ -937,6 +937,51 @@ select:hover {
   margin-bottom: 1rem;
 }
 
+/* === Share Icons === */
+.share-icons {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  z-index: 10;
+}
+
+.share-icon-btn {
+  background: rgba(212, 168, 67, 0.1);
+  border: 1px solid rgba(212, 168, 67, 0.3);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--gold);
+  padding: 0;
+}
+
+.share-icon-btn:hover {
+  background: rgba(212, 168, 67, 0.2);
+  border-color: var(--gold);
+  transform: scale(1.1);
+}
+
+.share-icon-btn:active {
+  transform: scale(0.95);
+}
+
+.share-icon-btn svg {
+  flex-shrink: 0;
+}
+
+/* Ensure card has relative positioning for absolute share icons */
+.card {
+  position: relative;
+}
+
 .session-open .session-status-badge,
 .session-status-badge-lg {
   background: rgba(212, 168, 67, 0.2);

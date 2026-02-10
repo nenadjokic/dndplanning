@@ -21,6 +21,27 @@
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#d4a843">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+  <!-- Open Graph / Social Media Meta Tags -->
+  <% if (typeof sessionForOG !== 'undefined' && sessionForOG) { %>
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Quest Planner">
+    <meta property="og:title" content="<%= sessionForOG.title %> - Quest Planner">
+    <meta property="og:description" content="Vote for date and time for the next session: <%= sessionForOG.description || sessionForOG.title %>">
+    <meta property="og:image" content="<%= typeof protocol !== 'undefined' ? protocol : 'http' %>://<%= typeof host !== 'undefined' ? host : 'localhost:3000' %>/icons/icon-512.png">
+    <meta property="og:url" content="<%= typeof protocol !== 'undefined' ? protocol : 'http' %>://<%= typeof host !== 'undefined' ? host : 'localhost:3000' %>/sessions/<%= sessionForOG.id %>">
+
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="<%= sessionForOG.title %> - Quest Planner">
+    <meta name="twitter:description" content="Vote for date and time for the next session">
+    <meta name="twitter:image" content="<%= typeof protocol !== 'undefined' ? protocol : 'http' %>://<%= typeof host !== 'undefined' ? host : 'localhost:3000' %>/icons/icon-512.png">
+  <% } else { %>
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Quest Planner">
+    <meta property="og:title" content="Quest Planner - D&D Session Scheduling">
+    <meta property="og:description" content="Schedule your next D&D adventure with Quest Planner">
+    <meta property="og:image" content="<%= typeof protocol !== 'undefined' ? protocol : 'http' %>://<%= typeof host !== 'undefined' ? host : 'localhost:3000' %>/icons/icon-512.png">
+  <% } %>
   <script>
     // Only register service worker in production (not on localhost)
     if ('serviceWorker' in navigator && !window.location.hostname.match(/localhost|127\.0\.0\.1/)) {

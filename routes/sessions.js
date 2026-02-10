@@ -272,6 +272,10 @@ router.get('/:id', requireLogin, (req, res) => {
     }
   }
 
+  const protocol = req.protocol;
+  const host = req.get('host');
+  const sessionForOG = session;
+
   if (isDM) {
     const myPreference = preferenceMap[req.user.id] || null;
     const myVotes = {};
@@ -280,7 +284,7 @@ router.get('/:id', requireLogin, (req, res) => {
         myVotes[v.slot_id] = v.status;
       }
     }
-    res.render('dm/session-detail', { session, slots, players, voteMap, slotSummary, preferences, preferenceMap, myPreference, myVotes, allUsersMap, unavailabilityMap, sessionPosts, sessionReplyMap, locationName, postReactions, userPostReactions, replyReactions, userReplyReactions, postPolls });
+    res.render('dm/session-detail', { session, slots, players, voteMap, slotSummary, preferences, preferenceMap, myPreference, myVotes, allUsersMap, unavailabilityMap, sessionPosts, sessionReplyMap, locationName, postReactions, userPostReactions, replyReactions, userReplyReactions, postPolls, sessionForOG, protocol, host });
   } else {
     // Get this player's votes
     const myVotes = {};
@@ -289,7 +293,7 @@ router.get('/:id', requireLogin, (req, res) => {
         myVotes[v.slot_id] = v.status;
       }
     }
-    res.render('player/vote', { session, slots, myVotes, sessionPosts, sessionReplyMap, locationName, postReactions, userPostReactions, replyReactions, userReplyReactions, postPolls });
+    res.render('player/vote', { session, slots, myVotes, sessionPosts, sessionReplyMap, locationName, postReactions, userPostReactions, replyReactions, userReplyReactions, postPolls, sessionForOG, protocol, host });
   }
 });
 

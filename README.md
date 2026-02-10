@@ -1,6 +1,6 @@
-# Quest Planner v1.0.15 — D&D Session Scheduler
+# Quest Planner v1.0.16 — D&D Session Scheduler
 
-> **Latest release:** v1.0.15 (2026-02-06)
+> **Latest release:** v1.0.16 (2026-02-10)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -638,6 +638,22 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v1.0.16 (2026-02-10)
+
+**What's New:**
+- **Session sharing** — Share sessions via WhatsApp, Viber, Telegram, Discord, email, or copy link; share icons in top-right corner of every session with pre-filled message "Vote for date and time for the next session"
+- **Open Graph meta tags** — Session links now display rich previews with Quest Planner logo and session title when shared on social media
+
+**Bug Fixes:**
+- None
+
+**Support the Project:**
+
+If you enjoy Quest Planner, consider supporting development:
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/nenadjokic)
+[![PayPal](https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/nenadjokicRS)
 
 ### v1.0.15 (2026-02-06)
 
