@@ -1,11 +1,27 @@
 FROM node:20-alpine
 
-RUN apk add --no-cache python3 make g++
+# Install dependencies for canvas and other native modules
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    cairo-dev \
+    jpeg-dev \
+    pango-dev \
+    giflib-dev \
+    pixman-dev \
+    pangomm-dev \
+    libjpeg-turbo-dev \
+    freetype-dev
 
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --production && apk del python3 make g++
+RUN npm ci --production
+
+# Clean up build dependencies but keep runtime libraries
+RUN apk del python3 make g++ \
+    && apk add --no-cache cairo jpeg pango giflib pixman pangomm libjpeg-turbo freetype
 
 COPY . .
 
