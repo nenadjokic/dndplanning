@@ -32,6 +32,7 @@ const diceRoutes = require('./routes/dice');
 const dndDataRoutes = require('./routes/dnd-data');
 const vaultRoutes = require('./routes/vault');
 const adminUpdatesRoutes = require('./routes/admin-updates');
+const ogImageRoutes = require('./routes/og-image');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -65,6 +66,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/avatars', express.static(path.join(__dirname, 'data', 'avatars')));
 app.use('/maps', express.static(path.join(__dirname, 'data', 'maps')));
 app.use('/thumbnails', express.static(path.join(__dirname, 'data', 'thumbnails')));
+
+// OG image generation (no auth/CSRF required)
+app.use('/og-image', ogImageRoutes);
 
 app.use(session({
   store: new SQLiteStore({

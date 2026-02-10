@@ -937,23 +937,67 @@ select:hover {
   margin-bottom: 1rem;
 }
 
-/* === Share Icons === */
-.share-icons {
+/* === Share Button & Menu === */
+.share-main-btn {
   position: absolute;
   top: 1rem;
   right: 1rem;
+  background: rgba(212, 168, 67, 0.15);
+  border: 1px solid rgba(212, 168, 67, 0.4);
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
   display: flex;
-  gap: 0.5rem;
   align-items: center;
-  z-index: 10;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--gold);
+  padding: 0;
+  z-index: 11;
 }
 
-.share-icon-btn {
+.share-main-btn:hover {
+  background: rgba(212, 168, 67, 0.25);
+  border-color: var(--gold);
+  transform: scale(1.05);
+}
+
+.share-main-btn:active {
+  transform: scale(0.95);
+}
+
+.share-main-btn svg {
+  flex-shrink: 0;
+}
+
+.share-menu {
+  position: absolute;
+  top: 1rem;
+  right: 5rem;
+  display: flex;
+  gap: 0.5rem;
+  z-index: 10;
+  animation: shareMenuSlide 0.3s ease-out;
+}
+
+@keyframes shareMenuSlide {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.share-menu-btn {
   background: rgba(212, 168, 67, 0.1);
   border: 1px solid rgba(212, 168, 67, 0.3);
   border-radius: 50%;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -963,21 +1007,41 @@ select:hover {
   padding: 0;
 }
 
-.share-icon-btn:hover {
+.share-menu-btn:hover {
   background: rgba(212, 168, 67, 0.2);
   border-color: var(--gold);
   transform: scale(1.1);
 }
 
-.share-icon-btn:active {
+.share-menu-btn:active {
   transform: scale(0.95);
 }
 
-.share-icon-btn svg {
+.share-menu-btn svg {
   flex-shrink: 0;
 }
 
-/* Ensure card has relative positioning for absolute share icons */
+/* Responsive: Stack vertically on mobile */
+@media (max-width: 640px) {
+  .share-menu {
+    top: 5rem;
+    right: 1rem;
+    flex-direction: column;
+  }
+
+  @keyframes shareMenuSlide {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* Ensure card has relative positioning for absolute share button */
 .card {
   position: relative;
 }

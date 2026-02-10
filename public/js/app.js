@@ -776,6 +776,26 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 })();
 
+// === Toggle Share Menu ===
+function toggleShareMenu(sessionId) {
+  var menu = document.getElementById('share-menu-' + sessionId);
+  if (menu.style.display === 'none' || menu.style.display === '') {
+    menu.style.display = 'flex';
+  } else {
+    menu.style.display = 'none';
+  }
+}
+
+// Close share menu when clicking outside
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.share-main-btn') && !e.target.closest('.share-menu')) {
+    var menus = document.querySelectorAll('.share-menu');
+    menus.forEach(function(menu) {
+      menu.style.display = 'none';
+    });
+  }
+});
+
 // === Share Session ===
 function shareSession(platform, sessionId, sessionTitle) {
   var url = window.location.origin + '/sessions/' + sessionId;

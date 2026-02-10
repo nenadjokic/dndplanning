@@ -24,23 +24,38 @@
 
   <!-- Open Graph / Social Media Meta Tags -->
   <% if (typeof sessionForOG !== 'undefined' && sessionForOG) { %>
+    <%
+      var baseUrl = (typeof protocol !== 'undefined' ? protocol : 'http') + '://' + (typeof host !== 'undefined' ? host : 'localhost:3000');
+    %>
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Quest Planner">
     <meta property="og:title" content="<%= sessionForOG.title %> - Quest Planner">
     <meta property="og:description" content="Vote for date and time for the next session: <%= sessionForOG.description || sessionForOG.title %>">
-    <meta property="og:image" content="<%= typeof protocol !== 'undefined' ? protocol : 'http' %>://<%= typeof host !== 'undefined' ? host : 'localhost:3000' %>/icons/icon-512.png">
-    <meta property="og:url" content="<%= typeof protocol !== 'undefined' ? protocol : 'http' %>://<%= typeof host !== 'undefined' ? host : 'localhost:3000' %>/sessions/<%= sessionForOG.id %>">
+    <meta property="og:image" content="<%= baseUrl %>/og-image/<%= sessionForOG.id %>">
+    <meta property="og:image:width" content="800">
+    <meta property="og:image:height" content="800">
+    <meta property="og:url" content="<%= baseUrl %>/sessions/<%= sessionForOG.id %>">
 
-    <meta name="twitter:card" content="summary">
+    <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="<%= sessionForOG.title %> - Quest Planner">
     <meta name="twitter:description" content="Vote for date and time for the next session">
-    <meta name="twitter:image" content="<%= typeof protocol !== 'undefined' ? protocol : 'http' %>://<%= typeof host !== 'undefined' ? host : 'localhost:3000' %>/icons/icon-512.png">
+    <meta name="twitter:image" content="<%= baseUrl %>/og-image/<%= sessionForOG.id %>">
   <% } else { %>
+    <%
+      var baseUrl = (typeof protocol !== 'undefined' ? protocol : 'http') + '://' + (typeof host !== 'undefined' ? host : 'localhost:3000');
+    %>
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Quest Planner">
     <meta property="og:title" content="Quest Planner - D&D Session Scheduling">
     <meta property="og:description" content="Schedule your next D&D adventure with Quest Planner">
-    <meta property="og:image" content="<%= typeof protocol !== 'undefined' ? protocol : 'http' %>://<%= typeof host !== 'undefined' ? host : 'localhost:3000' %>/icons/icon-512.png">
+    <meta property="og:image" content="<%= baseUrl %>/icons/icon-512.png">
+    <meta property="og:image:width" content="512">
+    <meta property="og:image:height" content="512">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Quest Planner - D&D Session Scheduling">
+    <meta name="twitter:description" content="Schedule your next D&D adventure with Quest Planner">
+    <meta name="twitter:image" content="<%= baseUrl %>/icons/icon-512.png">
   <% } %>
   <script>
     // Only register service worker in production (not on localhost)
