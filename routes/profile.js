@@ -56,18 +56,30 @@ function deleteCharAvatar(filename) {
 
 // Own profile — edit page
 router.get('/', requireLogin, (req, res) => {
-  const profileUser = db.prepare('SELECT id, username, role, avatar, birthday, about, character_info, character_avatar FROM users WHERE id = ?').get(req.user.id);
+  const profileUser = db.prepare('SELECT id, username, role, avatar, birthday, about, character_info, character_avatar, socials FROM users WHERE id = ?').get(req.user.id);
   const characters = db.prepare('SELECT * FROM characters WHERE user_id = ? ORDER BY sort_order, created_at').all(req.user.id);
   res.render('profile', { profileUser, characters });
 });
 
 // Save profile info
 router.post('/', requireLogin, (req, res) => {
-  const { birthday, about, character_info } = req.body;
-  db.prepare('UPDATE users SET birthday = ?, about = ?, character_info = ? WHERE id = ?').run(
+  const { birthday, about, character_info, social_discord, social_steam, social_twitter, social_twitch, social_youtube } = req.body;
+
+  // Build socials JSON
+  const socials = {};
+  if (social_discord) socials.discord = social_discord;
+  if (social_steam) socials.steam = social_steam;
+  if (social_twitter) socials.twitter = social_twitter;
+  if (social_twitch) socials.twitch = social_twitch;
+  if (social_youtube) socials.youtube = social_youtube;
+
+  const socialsJson = Object.keys(socials).length > 0 ? JSON.stringify(socials) : null;
+
+  db.prepare('UPDATE users SET birthday = ?, about = ?, character_info = ?, socials = ? WHERE id = ?').run(
     birthday || null,
     about || null,
     character_info || null,
+    socialsJson,
     req.user.id
   );
   req.flash('success', 'Profile updated.');
@@ -356,7 +368,7 @@ router.post('/characters/:id/delete', requireLogin, (req, res) => {
 
 // Public profile — read-only
 router.get('/:username', requireLogin, (req, res) => {
-  const profileUser = db.prepare('SELECT id, username, role, avatar, birthday, about, character_info, character_avatar FROM users WHERE username = ?').get(req.params.username);
+  const profileUser = db.prepare('SELECT id, username, role, avatar, birthday, about, character_info, character_avatar, socials FROM users WHERE username = ?').get(req.params.username);
   if (!profileUser) {
     req.flash('error', 'User not found.');
     return res.redirect('/');

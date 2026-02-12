@@ -1,13 +1,17 @@
 {
   "name": "dndplanning",
-  "version": "1.0.17",
+  "version": "1.0.18",
   "description": "D&D Quest Planner - Session scheduling for your adventuring party",
   "license": "GPL-3.0",
   "author": "Nenad Jokic",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "build:release": "node scripts/build-release.js",
+    "docker:build": "docker build -t nenadjokic/quest-planner:latest .",
+    "docker:push": "bash scripts/docker-build-push.sh",
+    "docker:run": "docker run -d -p 3000:3000 -v quest-planner-data:/app/data nenadjokic/quest-planner:latest"
   },
   "dependencies": {
     "axios": "^1.13.4",

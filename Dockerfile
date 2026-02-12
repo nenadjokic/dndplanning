@@ -1,27 +1,43 @@
-FROM node:20-alpine
+FROM node:20-alpine AS builder
 
 # Install build dependencies for native modules (better-sqlite3, sharp)
 RUN apk add --no-cache \
     python3 \
+    py3-setuptools \
     make \
     g++
 
 WORKDIR /app
 
+# Copy package files for better layer caching
 COPY package.json package-lock.json ./
-RUN npm ci --production
+RUN npm ci --production --ignore-scripts && npm rebuild
 
-# Clean up build dependencies
-RUN apk del python3 make g++
+FROM node:20-alpine
 
+WORKDIR /app
+
+# Copy node_modules from builder
+COPY --from=builder /app/node_modules ./node_modules
+
+# Copy application files
 COPY . .
 
-RUN mkdir -p /app/data
+# Create data directory with proper permissions
+RUN mkdir -p /app/data && \
+    chown -R node:node /app/data
+
+# Switch to non-root user
+USER node
 
 VOLUME /app/data
 
 EXPOSE 3000
 
 ENV NODE_ENV=production
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 302 || r.statusCode === 200 ? 0 : 1)})"
 
 CMD ["node", "server.js"]

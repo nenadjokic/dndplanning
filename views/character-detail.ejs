@@ -15,7 +15,11 @@
     <div class="character-detail-info">
       <h2 style="margin-top: 0; margin-bottom: 0.25rem;"><%= character.name %></h2>
       <% if (character.class || character.race) { %>
-        <div class="character-detail-meta"><%= [character.race, character.class].filter(Boolean).join(' ') %></div>
+        <div class="character-detail-meta">
+          <% if (character.race) { %><%= character.race %><% } %>
+          <% if (character.race && character.class) { %> <% } %>
+          <% if (character.class) { %><span data-class="<%= character.class %>"><%= character.class %></span><% } %>
+        </div>
       <% } %>
       <span class="text-muted">Played by <a href="/profile/<%= encodeURIComponent(profileUser.username) %>" class="profile-link"><%= profileUser.username %></a></span>
     </div>

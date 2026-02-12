@@ -29,12 +29,18 @@
         <div class="whatsnew-content">
           <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">What's New</h3>
           <ul class="whatsnew-list">
-            <li><strong>Share Menu Fan-Out Design</strong> &mdash; Single share button in top-right corner opens a fan-out menu with all share options (WhatsApp, Viber, Telegram, Discord, email, copy link); menu automatically closes when clicking outside; mobile-friendly vertical layout prevents overlap with other elements</li>
-            <li><strong>Custom Open Graph Thumbnails</strong> &mdash; Sessions now generate beautiful custom preview images (800x800px square format optimized for mobile) with Quest Planner logo, session title, category badge, and status/date; perfect preview cards when sharing links on social media</li>
+            <li><strong>🚀 One-Click Deploy</strong> &mdash; Deploy to Railway or Render with a single click - no command line needed! 60-second setup for your own Quest Planner instance.</li>
+            <li><strong>🐳 Docker Hub Image</strong> &mdash; Official Docker image now available: <code>docker pull nenadjokic/quest-planner:latest</code></li>
+            <li><strong>📦 VPS Auto-Installer</strong> &mdash; One-command installation script for Ubuntu/Debian VPS with automatic Node.js, PM2, and Nginx setup</li>
+            <li><strong>🌐 Web-Based Installer</strong> &mdash; Browser-based setup wizard (like phpBB) makes first-time installation incredibly easy</li>
+            <li><strong>🔗 Enhanced Character Sheets</strong> &mdash; Spells and classes are now clickable everywhere, showing detailed D&D 5e information from Open5e API</li>
+            <li><strong>🎭 Social Links</strong> &mdash; Add Discord, Steam, Twitter, Twitch, and YouTube to your profile</li>
+            <li><strong>📊 New Analytics</strong> &mdash; Most accepting player, most active player, most declines, average response time, and popular category stats</li>
           </ul>
           <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Bug Fixes</h3>
           <ul class="whatsnew-list">
-            <li>None</li>
+            <li>Fixed installer database conflict when users already exist</li>
+            <li>Improved error handling throughout the installer</li>
           </ul>
         </div>
         <div class="whatsnew-links">
@@ -97,6 +103,7 @@
   <% } %>
 
   <script src="/js/app.js?v=<%= appVersion %>"></script>
+  <script src="/js/dnd-modals.js?v=<%= appVersion %>"></script>
   <% if (typeof user !== 'undefined' && user) { %>
     <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
     <link rel="stylesheet" href="/css/dice-roller.css?v=<%= appVersion %>">

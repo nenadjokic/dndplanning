@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Install Quest Planner</title>
+  <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Crimson+Text:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Crimson Text', serif;
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+      color: #e8e6e3;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .install-container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .header h1 {
+      font-family: 'MedievalSharp', cursive;
+      font-size: 2.5rem;
+      color: #d4a843;
+      margin-bottom: 0.5rem;
+    }
+
+    .header p {
+      color: #a8a5a0;
+      font-size: 1.1rem;
+    }
+
+    .card {
+      background: rgba(30, 30, 30, 0.9);
+      border: 2px solid #3d3d3d;
+      border-radius: 8px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h2 {
+      font-family: 'MedievalSharp', cursive;
+      color: #d4a843;
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #d4a843;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 0.75rem;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid #3d3d3d;
+      border-radius: 6px;
+      color: #e8e6e3;
+      font-size: 1rem;
+      font-family: 'Crimson Text', serif;
+      transition: border-color 0.2s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #d4a843;
+    }
+
+    .form-hint {
+      display: block;
+      margin-top: 0.25rem;
+      font-size: 0.85rem;
+      color: #888;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 1rem;
+      background: #d4a843;
+      color: #1a1a1a;
+      border: none;
+      border-radius: 6px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      font-family: 'MedievalSharp', cursive;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: #e8c468;
+    }
+
+    .error {
+      background: rgba(192, 57, 43, 0.2);
+      border: 1px solid #c0392b;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      color: #e74c3c;
+    }
+
+    .info-box {
+      background: rgba(212, 168, 67, 0.1);
+      border: 1px solid #d4a843;
+      border-radius: 6px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .info-box h3 {
+      color: #d4a843;
+      font-size: 1.1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .info-box ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .info-box li {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid rgba(212, 168, 67, 0.2);
+    }
+
+    .info-box li:last-child {
+      border-bottom: none;
+    }
+
+    .info-box li strong {
+      color: #d4a843;
+    }
+
+    .step-indicator {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .step {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(212, 168, 67, 0.2);
+      border: 2px solid #d4a843;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'MedievalSharp', cursive;
+      color: #d4a843;
+    }
+
+    .step.active {
+      background: #d4a843;
+      color: #1a1a1a;
+    }
+
+    @media (max-width: 600px) {
+      .header h1 {
+        font-size: 2rem;
+      }
+
+      .card {
+        padding: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="install-container">
+    <div class="header">
+      <h1>⚔️ Quest Planner Setup</h1>
+      <p>Let's get your D&D session planner ready!</p>
+    </div>
+
+    <div class="step-indicator">
+      <div class="step active">1</div>
+      <div class="step">2</div>
+      <div class="step">3</div>
+    </div>
+
+    <% if (error) { %>
+      <div class="error">
+        <strong>⚠️ Installation Error</strong><br>
+        <%- error %>
+      </div>
+    <% } %>
+
+    <div class="info-box">
+      <h3>📋 Before You Begin</h3>
+      <ul>
+        <li><strong>Node.js:</strong> Make sure Node.js 14+ is installed</li>
+        <li><strong>Dependencies:</strong> Run <code>npm install</code> before installation</li>
+        <li><strong>Permissions:</strong> Ensure write access to the <code>data/</code> directory</li>
+      </ul>
+    </div>
+
+    <form method="POST" action="/install">
+      <div class="card">
+        <h2>🔐 Administrator Account</h2>
+
+        <div class="form-group">
+          <label for="admin_username">Admin Username</label>
+          <input type="text" id="admin_username" name="admin_username" required minlength="3" placeholder="admin" autocomplete="off">
+          <small class="form-hint">This will be your main admin account (minimum 3 characters)</small>
+        </div>
+
+        <div class="form-group">
+          <label for="admin_password">Admin Password</label>
+          <input type="password" id="admin_password" name="admin_password" required minlength="6" placeholder="••••••••" autocomplete="new-password">
+          <small class="form-hint">Choose a strong password (minimum 6 characters)</small>
+        </div>
+
+        <div class="form-group">
+          <label for="admin_password_confirm">Confirm Password</label>
+          <input type="password" id="admin_password_confirm" name="admin_password_confirm" required minlength="6" placeholder="••••••••" autocomplete="new-password">
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>⚙️ Application Settings</h2>
+
+        <div class="form-group">
+          <label for="app_name">Application Name</label>
+          <input type="text" id="app_name" name="app_name" value="Quest Planner" required>
+          <small class="form-hint">The name displayed throughout the application</small>
+        </div>
+
+        <div class="form-group">
+          <label for="session_secret">Session Secret (Optional)</label>
+          <input type="text" id="session_secret" name="session_secret" placeholder="Auto-generated if left empty">
+          <small class="form-hint">Leave empty to auto-generate a secure random secret</small>
+        </div>
+      </div>
+
+      <div class="info-box">
+        <h3>ℹ️ What Happens Next?</h3>
+        <ul>
+          <li>✓ Database will be created with all necessary tables</li>
+          <li>✓ Admin user will be created with the credentials above</li>
+          <li>✓ Configuration file (.env) will be generated</li>
+          <li>✓ Installation lock file will be created</li>
+        </ul>
+      </div>
+
+      <button type="submit" class="btn">⚔️ Install Quest Planner</button>
+    </form>
+
+    <p style="text-align: center; margin-top: 2rem; color: #666; font-size: 0.9rem;">
+      Quest Planner v1.0 &middot; Open Source &middot; GPL-3.0 License
+    </p>
+  </div>
+
+  <script>
+    // Simple client-side validation
+    document.querySelector('form').addEventListener('submit', function(e) {
+      var password = document.getElementById('admin_password').value;
+      var confirm = document.getElementById('admin_password_confirm').value;
+
+      if (password !== confirm) {
+        e.preventDefault();
+        alert('Passwords do not match!');
+        return false;
+      }
+
+      if (password.length < 6) {
+        e.preventDefault();
+        alert('Password must be at least 6 characters long!');
+        return false;
+      }
+    });
+  </script>
+</body>
+</html>

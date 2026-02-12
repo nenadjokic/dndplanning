@@ -8,6 +8,37 @@ const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const { marked } = require('marked');
 
+const { isInstalled, requireInstalled } = require('./middleware/install-check');
+
+// If not installed, skip database and run minimal installer-only server
+if (!isInstalled()) {
+  console.log('⚠️  Quest Planner is not installed. Starting installer...');
+  const app = express();
+  const PORT = process.env.PORT || 3000;
+
+  app.set('view engine', 'ejs');
+  app.set('views', path.join(__dirname, 'views'));
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+  app.use(express.static(path.join(__dirname, 'public')));
+
+  const installRoutes = require('./routes/install');
+  app.use('/install', installRoutes);
+
+  // Redirect all other routes to installer
+  app.use((req, res) => {
+    res.redirect('/install');
+  });
+
+  app.listen(PORT, () => {
+    console.log(`\n🔧 Quest Planner Installer running at http://localhost:${PORT}/install`);
+    console.log('   Complete the installation wizard to get started.\n');
+  });
+
+  return;
+}
+
+// Normal application startup (installed)
 const db = require('./db/connection');
 const { attachUser } = require('./middleware/auth');
 const { flashMiddleware } = require('./middleware/flash');

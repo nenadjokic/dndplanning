@@ -309,10 +309,15 @@
     // Set input value for form submission
     input.value = spellName;
 
+    // Check if input is disabled (read-only mode)
+    var isReadOnly = input.disabled;
+
     // Create label
     var label = document.createElement('div');
     label.className = 'spell-label';
-    label.innerHTML = '<span class="spell-label-link">' + spellName + '</span><span class="spell-label-clear">&times;</span>';
+    // Only show clear button if not read-only
+    label.innerHTML = '<span class="spell-label-link">' + spellName + '</span>' +
+      (isReadOnly ? '' : '<span class="spell-label-clear">&times;</span>');
 
     wrapper.appendChild(label);
 
@@ -321,13 +326,18 @@
       showSpellModal(spellName);
     });
 
-    // Click on X clears and shows input again
-    label.querySelector('.spell-label-clear').addEventListener('click', function() {
-      label.remove();
-      input.value = '';
-      input.style.display = '';
-      input.focus();
-    });
+    // Click on X clears and shows input again (only if not read-only)
+    if (!isReadOnly) {
+      var clearBtn = label.querySelector('.spell-label-clear');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+          label.remove();
+          input.value = '';
+          input.style.display = '';
+          input.focus();
+        });
+      }
+    }
   }
 
   function checkExistingSpellValue(input, wrapper, dropdown) {
@@ -388,59 +398,62 @@
       // Check if input already has a value (e.g., loaded from saved data)
       checkExistingSpellValue(input, wrapper, dropdown);
 
-      input.addEventListener('input', function() {
-        var query = input.value.trim();
+      // Only enable autocomplete if input is not disabled
+      if (!input.disabled) {
+        input.addEventListener('input', function() {
+          var query = input.value.trim();
 
-        if (autocompleteTimeout) clearTimeout(autocompleteTimeout);
+          if (autocompleteTimeout) clearTimeout(autocompleteTimeout);
 
-        if (query.length < 2) {
-          dropdown.style.display = 'none';
-          return;
-        }
-
-        autocompleteTimeout = setTimeout(function() {
-          searchSpells(query, spellLevel, function(results) {
-            showAutocomplete(input, wrapper, dropdown, results);
-          });
-        }, 300);
-      });
-
-      input.addEventListener('keydown', function(e) {
-        if (dropdown.style.display === 'none') return;
-
-        var items = dropdown.querySelectorAll('.spell-autocomplete-item');
-        var selected = dropdown.querySelector('.spell-autocomplete-item.selected');
-        var selectedIndex = Array.prototype.indexOf.call(items, selected);
-
-        if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          if (selectedIndex < items.length - 1) {
-            if (selected) selected.classList.remove('selected');
-            items[selectedIndex + 1].classList.add('selected');
-          }
-        } else if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          if (selectedIndex > 0) {
-            if (selected) selected.classList.remove('selected');
-            items[selectedIndex - 1].classList.add('selected');
-          }
-        } else if (e.key === 'Enter') {
-          e.preventDefault();
-          if (selected) {
+          if (query.length < 2) {
             dropdown.style.display = 'none';
-            var spellName = selected.querySelector('.spell-autocomplete-name').textContent;
-            convertToSpellLabel(input, wrapper, dropdown, spellName);
+            return;
           }
-        } else if (e.key === 'Escape') {
-          dropdown.style.display = 'none';
-        }
-      });
 
-      input.addEventListener('blur', function() {
-        setTimeout(function() {
-          dropdown.style.display = 'none';
-        }, 150);
-      });
+          autocompleteTimeout = setTimeout(function() {
+            searchSpells(query, spellLevel, function(results) {
+              showAutocomplete(input, wrapper, dropdown, results);
+            });
+          }, 300);
+        });
+
+        input.addEventListener('keydown', function(e) {
+          if (dropdown.style.display === 'none') return;
+
+          var items = dropdown.querySelectorAll('.spell-autocomplete-item');
+          var selected = dropdown.querySelector('.spell-autocomplete-item.selected');
+          var selectedIndex = Array.prototype.indexOf.call(items, selected);
+
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (selectedIndex < items.length - 1) {
+              if (selected) selected.classList.remove('selected');
+              items[selectedIndex + 1].classList.add('selected');
+            }
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (selectedIndex > 0) {
+              if (selected) selected.classList.remove('selected');
+              items[selectedIndex - 1].classList.add('selected');
+            }
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (selected) {
+              dropdown.style.display = 'none';
+              var spellName = selected.querySelector('.spell-autocomplete-name').textContent;
+              convertToSpellLabel(input, wrapper, dropdown, spellName);
+            }
+          } else if (e.key === 'Escape') {
+            dropdown.style.display = 'none';
+          }
+        });
+
+        input.addEventListener('blur', function() {
+          setTimeout(function() {
+            dropdown.style.display = 'none';
+          }, 150);
+        });
+      }
     });
   }
 

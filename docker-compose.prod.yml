@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  quest-planner:
+    image: nenadjokic/quest-planner:latest
+    container_name: quest-planner
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - SESSION_SECRET=${SESSION_SECRET:-change-this-secret}
+      - TRUST_PROXY=true
+      - SECURE_COOKIES=${SECURE_COOKIES:-false}
+    volumes:
+      - quest-planner-data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 302 || r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - quest-planner-network
+
+  # Optional: Nginx reverse proxy for SSL/TLS
+  nginx:
+    image: nginx:alpine
+    container_name: quest-planner-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - nginx-cache:/var/cache/nginx
+    depends_on:
+      - quest-planner
+    networks:
+      - quest-planner-network
+    profiles:
+      - with-nginx
+
+volumes:
+  quest-planner-data:
+    driver: local
+  nginx-cache:
+    driver: local
+
+networks:
+  quest-planner-network:
+    driver: bridge

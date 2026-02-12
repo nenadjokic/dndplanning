@@ -56,6 +56,52 @@
 </div>
 <% } %>
 
+<!-- New Player Stats -->
+<div class="analytics-stats" style="margin-top: 1rem;">
+  <% if (data.topAccepter) { %>
+  <div class="card analytics-stat-card">
+    <div class="analytics-stat-label" style="margin-bottom: 0.5rem;">Most Accepting Player</div>
+    <div class="analytics-stat-number" style="font-size: 1.2rem; color: var(--green-light);"><%= data.topAccepter.username %></div>
+    <div class="analytics-stat-sublabel"><%= data.topAccepter.accept_pct %>% accept rate (<%= data.topAccepter.accepts %>/<%= data.topAccepter.total_votes %>)</div>
+  </div>
+  <% } %>
+
+  <% if (data.mostActive) { %>
+  <div class="card analytics-stat-card">
+    <div class="analytics-stat-label" style="margin-bottom: 0.5rem;">Most Active Player</div>
+    <div class="analytics-stat-number" style="font-size: 1.2rem; color: var(--gold);"><%= data.mostActive.username %></div>
+    <div class="analytics-stat-sublabel"><%= data.mostActive.total_activity %> total actions</div>
+    <div class="analytics-stat-sublabel" style="font-size: 0.7rem; margin-top: 0.25rem;">
+      <%= data.mostActive.posts %> posts &middot; <%= data.mostActive.replies %> replies &middot; <%= data.mostActive.comments %> comments &middot; <%= data.mostActive.votes %> votes
+    </div>
+  </div>
+  <% } %>
+
+  <% if (data.topDecliner) { %>
+  <div class="card analytics-stat-card">
+    <div class="analytics-stat-label" style="margin-bottom: 0.5rem;">Most Declines</div>
+    <div class="analytics-stat-number" style="font-size: 1.2rem; color: var(--red-light);"><%= data.topDecliner.username %></div>
+    <div class="analytics-stat-sublabel"><%= data.topDecliner.declines %> unavailable votes (<%= data.topDecliner.decline_pct %>%)</div>
+  </div>
+  <% } %>
+
+  <% if (data.avgResponseTime) { %>
+  <div class="card analytics-stat-card">
+    <div class="analytics-stat-number"><%= data.avgResponseTime %> hrs</div>
+    <div class="analytics-stat-label">Avg Response Time</div>
+    <div class="analytics-stat-sublabel">Time to first vote</div>
+  </div>
+  <% } %>
+
+  <% if (data.popularCategory) { %>
+  <div class="card analytics-stat-card">
+    <div class="analytics-stat-label" style="margin-bottom: 0.5rem;">Most Popular Category</div>
+    <div class="analytics-stat-number" style="font-size: 1.2rem; color: var(--gold);"><%= data.popularCategory.category %></div>
+    <div class="analytics-stat-sublabel"><%= data.popularCategory.count %> sessions</div>
+  </div>
+  <% } %>
+</div>
+
 <script>
 (function() {
   var data = <%- JSON.stringify(analyticsData) %>;

@@ -81,6 +81,76 @@ router.get('/', requireLogin, (req, res) => {
     pct: confirmedCount > 0 ? Math.round((row.attended / confirmedCount) * 100) : 0
   }));
 
+  // Most accepting player (highest percentage of 'available' votes)
+  const topAccepter = db.prepare(`
+    SELECT u.username,
+           COUNT(CASE WHEN v.status = 'available' THEN 1 END) as accepts,
+           COUNT(*) as total_votes,
+           ROUND(CAST(COUNT(CASE WHEN v.status = 'available' THEN 1 END) AS FLOAT) / COUNT(*) * 100) as accept_pct
+    FROM users u
+    JOIN votes v ON v.user_id = u.id
+    WHERE u.role = 'player' AND total_votes >= 5
+    GROUP BY u.id
+    ORDER BY accept_pct DESC, accepts DESC
+    LIMIT 1
+  `).get();
+
+  // Most declining player (highest count of 'unavailable' votes)
+  const topDecliner = db.prepare(`
+    SELECT u.username,
+           COUNT(CASE WHEN v.status = 'unavailable' THEN 1 END) as declines,
+           COUNT(*) as total_votes,
+           ROUND(CAST(COUNT(CASE WHEN v.status = 'unavailable' THEN 1 END) AS FLOAT) / COUNT(*) * 100) as decline_pct
+    FROM users u
+    JOIN votes v ON v.user_id = u.id
+    WHERE u.role = 'player'
+    GROUP BY u.id
+    ORDER BY declines DESC
+    LIMIT 1
+  `).get();
+
+  // Most active user (by posts + replies + comments + votes)
+  const mostActive = db.prepare(`
+    SELECT u.username,
+           (SELECT COUNT(*) FROM posts WHERE user_id = u.id) as posts,
+           (SELECT COUNT(*) FROM replies WHERE user_id = u.id) as replies,
+           (SELECT COUNT(*) FROM comments WHERE user_id = u.id) as comments,
+           (SELECT COUNT(*) FROM votes WHERE user_id = u.id) as votes,
+           ((SELECT COUNT(*) FROM posts WHERE user_id = u.id) +
+            (SELECT COUNT(*) FROM replies WHERE user_id = u.id) +
+            (SELECT COUNT(*) FROM comments WHERE user_id = u.id) +
+            (SELECT COUNT(*) FROM votes WHERE user_id = u.id)) as total_activity
+    FROM users u
+    WHERE u.role = 'player'
+    ORDER BY total_activity DESC
+    LIMIT 1
+  `).get();
+
+  // Average response time (time from session creation to first vote)
+  const avgResponseTime = db.prepare(`
+    SELECT AVG(response_seconds) / 3600.0 as avg_hours
+    FROM (
+      SELECT s.id,
+             (julianday(MIN(v.created_at)) - julianday(s.created_at)) * 86400 as response_seconds
+      FROM sessions s
+      JOIN slots sl ON sl.session_id = s.id
+      JOIN votes v ON v.slot_id = sl.id
+      WHERE s.created_at IS NOT NULL AND v.created_at IS NOT NULL
+      GROUP BY s.id
+      HAVING response_seconds > 0
+    )
+  `).get();
+
+  // Most popular session category
+  const popularCategory = db.prepare(`
+    SELECT category, COUNT(*) as count
+    FROM sessions
+    WHERE category IS NOT NULL AND category != ''
+    GROUP BY category
+    ORDER BY count DESC
+    LIMIT 1
+  `).get();
+
   // Streak: consecutive weeks with at least one confirmed/completed session
   const weeklySessionDates = db.prepare(`
     SELECT DISTINCT strftime('%Y-%W', sl.date_time) as week
@@ -120,7 +190,12 @@ router.get('/', requireLogin, (req, res) => {
     months,
     days,
     attendance,
-    streak
+    streak,
+    topAccepter: topAccepter || null,
+    topDecliner: topDecliner || null,
+    mostActive: mostActive || null,
+    avgResponseTime: avgResponseTime && avgResponseTime.avg_hours ? avgResponseTime.avg_hours.toFixed(1) : null,
+    popularCategory: popularCategory || null
   };
 
   res.render('analytics', { analyticsData });

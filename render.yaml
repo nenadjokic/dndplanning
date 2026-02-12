@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: quest-planner
+    env: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: TRUST_PROXY
+        value: true
+      - key: SECURE_COOKIES
+        value: true
+    disk:
+      name: quest-planner-data
+      mountPath: /app/data
+      sizeGB: 1

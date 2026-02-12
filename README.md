@@ -1,9 +1,24 @@
-# Quest Planner v1.0.17 — D&D Session Scheduler
+# Quest Planner v1.0.18 — D&D Session Scheduler
 
-> **Latest release:** v1.0.17 (2026-02-10)
+> **Latest release:** v1.0.18 (2026-02-12)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
+
+## 🚀 Quick Deploy (60 seconds)
+
+Deploy Quest Planner with one click - no command line needed:
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/dndplanning)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/nenadjokic/dndplanning)
+
+**Or use Docker:**
+
+```bash
+docker run -d -p 3000:3000 -v quest-planner-data:/app/data nenadjokic/quest-planner:latest
+```
+
+📚 **[Full Deployment Guide →](DEPLOYMENT.md)** | Includes Railway, Render, Fly.io, Docker, VPS auto-install
 
 ---
 
@@ -20,7 +35,10 @@ If you enjoy Quest Planner, consider buying me a coffee:
 
 - [Features](#features)
 - [Prerequisites](#prerequisites)
-- [Server Installation](#server-installation)
+- [Web-Based Installer (Recommended)](#web-based-installer-recommended)
+  - [Download Release Package](#download-release-package)
+  - [Installation Steps](#installation-steps)
+- [Server Installation (Manual)](#server-installation-manual)
   - [1. Clone the Repository](#1-clone-the-repository)
   - [2. Install Dependencies](#2-install-dependencies)
   - [3. Configuration](#3-configuration)
@@ -128,7 +146,72 @@ sudo usermod -aG docker $USER
 
 ---
 
-## Server Installation
+## Web-Based Installer (Recommended)
+
+The easiest way to install Quest Planner is using the web-based installer, similar to phpBB or WordPress.
+
+### Download Release Package
+
+Download the latest **web-installer** package from the [Releases page](https://github.com/nenadjokic/dndplanning/releases):
+
+```
+quest-planner-vX.X.X-web-installer.zip
+```
+
+### Installation Steps
+
+1. **Extract the ZIP** to your web server directory:
+
+   ```bash
+   unzip quest-planner-v1.0.18-web-installer.zip
+   cd quest-planner-v1.0.18-web-installer
+   ```
+
+2. **Install Node.js dependencies:**
+
+   ```bash
+   npm install
+   ```
+
+3. **Start the server:**
+
+   ```bash
+   npm start
+   ```
+
+4. **Open your browser** and navigate to:
+
+   ```
+   http://localhost:3000/install
+   ```
+
+5. **Complete the installation wizard:**
+   - Create an admin account (username and password)
+   - Configure application settings
+   - The installer will automatically:
+     - Create the SQLite database with all tables
+     - Set up your admin user
+     - Generate a `.env` configuration file
+     - Create an installation lock file
+
+6. **Restart the server** after installation:
+
+   ```bash
+   # Stop the server (Ctrl+C in terminal)
+   npm start
+   ```
+
+7. **Login** at `http://localhost:3000/login` with your admin credentials!
+
+### Security Note
+
+After installation, the installer is automatically locked via `data/installed.lock`. To reinstall, delete this file and restart the server.
+
+For extra security on production servers, you can optionally delete `routes/install.js`.
+
+---
+
+## Server Installation (Manual)
 
 ### 1. Clone the Repository
 
@@ -638,6 +721,26 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v1.0.18 (2026-02-12)
+
+**What's New:**
+- **🚀 One-Click Deploy** — Deploy to Railway or Render with a single click; no command line needed; 60-second setup
+- **🐳 Docker Hub Official Image** — Pull and run from Docker Hub: `docker pull nenadjokic/quest-planner:latest`
+- **📦 VPS Auto-Install Script** — One-command installation on Ubuntu/Debian VPS with automatic Node.js, PM2, and Nginx setup
+- **🌐 Web-Based Installer** — Browser-based installation wizard (similar to phpBB) for easy first-time setup; auto-creates database, admin user, and config
+- **📚 Comprehensive Deployment Guide** — Complete DEPLOYMENT.md with step-by-step instructions for all platforms (Railway, Render, Fly.io, Docker, VPS)
+- **🔗 Spell Linking in Public Profiles** — Character sheet spells are now clickable and show API details even on other players' profiles
+- **⚔️ Class API Popups** — Character class names are clickable throughout the app, showing D&D 5e class details from Open5e API
+- **🔗 Social Links on Profiles** — Users can add Discord, Steam, Twitter/X, Twitch, and YouTube links to their profiles
+- **📊 Enhanced Analytics** — New stats: Most Accepting Player, Most Active Player, Most Declines, Average Response Time, Most Popular Category
+- **🔧 Production-Ready Docker** — Optimized multi-stage Dockerfile with health checks, non-root user, and multi-platform support (amd64/arm64)
+
+**Bug Fixes:**
+- Fixed installer database conflict error when users already exist
+- Improved installer error handling with graceful messages
+
+---
 
 ### v1.0.17 (2026-02-10)
 
