@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS votes (
   slot_id INTEGER NOT NULL REFERENCES slots(id) ON DELETE CASCADE,
   user_id INTEGER NOT NULL REFERENCES users(id),
   status TEXT NOT NULL CHECK(status IN ('available', 'maybe', 'unavailable')),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(slot_id, user_id)
 );
 

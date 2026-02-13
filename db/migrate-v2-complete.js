@@ -423,7 +423,8 @@ try {
   const missingColumns = [
     { table: 'users', column: 'socials', sql: 'ALTER TABLE users ADD COLUMN socials TEXT' },
     { table: 'posts', column: 'image_url', sql: 'ALTER TABLE posts ADD COLUMN image_url TEXT' },
-    { table: 'replies', column: 'image_url', sql: 'ALTER TABLE replies ADD COLUMN image_url TEXT' }
+    { table: 'replies', column: 'image_url', sql: 'ALTER TABLE replies ADD COLUMN image_url TEXT' },
+    { table: 'votes', column: 'created_at', sql: "ALTER TABLE votes ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime('now'))" }
   ];
 
   for (const col of missingColumns) {
