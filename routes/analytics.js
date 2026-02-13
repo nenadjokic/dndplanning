@@ -89,8 +89,9 @@ router.get('/', requireLogin, (req, res) => {
            ROUND(CAST(COUNT(CASE WHEN v.status = 'available' THEN 1 END) AS FLOAT) / COUNT(*) * 100) as accept_pct
     FROM users u
     JOIN votes v ON v.user_id = u.id
-    WHERE u.role = 'player' AND total_votes >= 5
+    WHERE u.role = 'player'
     GROUP BY u.id
+    HAVING total_votes >= 5
     ORDER BY accept_pct DESC, accepts DESC
     LIMIT 1
   `).get();

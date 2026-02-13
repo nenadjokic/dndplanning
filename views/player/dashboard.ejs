@@ -11,8 +11,13 @@
 <% } %>
 
 <% if (sessions.length === 0) { %>
-  <div class="card empty-state">
-    <p>No quests have been posted to the tavern board yet. Check back later!</p>
+  <div class="card">
+    <%- include('../partials/empty-state', {
+      icon: '🎲',
+      title: 'The Tavern is Quiet',
+      description: 'No quests have been posted yet. Check back later or ask your DM to create a session!',
+      cta: ''
+    }) %>
   </div>
 <% } else { %>
   <div class="session-grid">

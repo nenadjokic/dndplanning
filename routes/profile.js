@@ -89,6 +89,16 @@ router.post('/', requireLogin, (req, res) => {
 // Avatar upload
 router.post('/avatar', requireLogin, (req, res) => {
   avatarUpload.single('avatar')(req, res, (err) => {
+    // Validate CSRF for multipart form (after Multer parses it)
+    if (req._csrfDeferred) {
+      const token = req.body._csrf;
+      const sessionToken = req.session?.csrfToken;
+      if (!token || token !== sessionToken) {
+        req.flash('error', 'Invalid CSRF token');
+        return res.redirect('/profile');
+      }
+    }
+
     if (err) {
       req.flash('error', err.message || 'Avatar upload failed.');
       return res.redirect('/profile');
@@ -131,6 +141,16 @@ router.post('/character-avatar', requireLogin, (req, res) => {
     }
   });
   legacyUpload.single('character_avatar')(req, res, (err) => {
+    // Validate CSRF for multipart form (after Multer parses it)
+    if (req._csrfDeferred) {
+      const token = req.body._csrf;
+      const sessionToken = req.session?.csrfToken;
+      if (!token || token !== sessionToken) {
+        req.flash('error', 'Invalid CSRF token');
+        return res.redirect('/profile');
+      }
+    }
+
     if (err) {
       req.flash('error', err.message || 'Character avatar upload failed.');
       return res.redirect('/profile');
@@ -157,6 +177,16 @@ router.post('/character-avatar', requireLogin, (req, res) => {
 
 // Add new character
 router.post('/characters', requireLogin, charAvatarUpload.single('avatar'), async (req, res) => {
+  // Validate CSRF for multipart form (after Multer parses it)
+  if (req._csrfDeferred) {
+    const token = req.body._csrf;
+    const sessionToken = req.session?.csrfToken;
+    if (!token || token !== sessionToken) {
+      req.flash('error', 'Invalid CSRF token');
+      return res.redirect('/profile');
+    }
+  }
+
   try {
     const { name, description } = req.body;
     const charClass = req.body.class || null;
@@ -186,6 +216,16 @@ router.post('/characters', requireLogin, charAvatarUpload.single('avatar'), asyn
 
 // Edit character
 router.post('/characters/:id/edit', requireLogin, charAvatarUpload.single('avatar'), async (req, res) => {
+  // Validate CSRF for multipart form (after Multer parses it)
+  if (req._csrfDeferred) {
+    const token = req.body._csrf;
+    const sessionToken = req.session?.csrfToken;
+    if (!token || token !== sessionToken) {
+      req.flash('error', 'Invalid CSRF token');
+      return res.redirect('/profile');
+    }
+  }
+
   try {
     const char = db.prepare('SELECT * FROM characters WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
     if (!char) {

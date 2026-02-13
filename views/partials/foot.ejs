@@ -1,4 +1,8 @@
   </main>
+
+  <!-- Toast Notification Container (Phase 3) -->
+  <div class="toast-container" id="toast-container"></div>
+
   <footer class="app-footer">
     <div class="container">
       <% if (typeof user !== 'undefined' && user) { %>
@@ -25,22 +29,24 @@
   <% if (typeof showWhatsNew !== 'undefined' && showWhatsNew) { %>
     <div class="welcome-overlay" id="whatsnew-overlay">
       <div class="welcome-modal whatsnew-modal">
-        <h2>What's New in v<%= appVersion %></h2>
+        <h2>What's New in v<%= appVersion %> 🎉</h2>
         <div class="whatsnew-content">
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">What's New</h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Major Update - Premium Polish & Advanced Features</h3>
           <ul class="whatsnew-list">
-            <li><strong>🚀 One-Click Deploy</strong> &mdash; Deploy to Railway or Render with a single click - no command line needed! 60-second setup for your own Quest Planner instance.</li>
-            <li><strong>🐳 Docker Hub Image</strong> &mdash; Official Docker image now available: <code>docker pull nenadjokic/quest-planner:latest</code></li>
-            <li><strong>📦 VPS Auto-Installer</strong> &mdash; One-command installation script for Ubuntu/Debian VPS with automatic Node.js, PM2, and Nginx setup</li>
-            <li><strong>🌐 Web-Based Installer</strong> &mdash; Browser-based setup wizard (like phpBB) makes first-time installation incredibly easy</li>
-            <li><strong>🔗 Enhanced Character Sheets</strong> &mdash; Spells and classes are now clickable everywhere, showing detailed D&D 5e information from Open5e API</li>
-            <li><strong>🎭 Social Links</strong> &mdash; Add Discord, Steam, Twitter, Twitch, and YouTube to your profile</li>
-            <li><strong>📊 New Analytics</strong> &mdash; Most accepting player, most active player, most declines, average response time, and popular category stats</li>
+            <li><strong>✨ Toast Notifications</strong> &mdash; Beautiful fade-in notifications with medieval theme; smooth animations replace old flash messages</li>
+            <li><strong>📋 Reorganized Navigation</strong> &mdash; Collapsible menu groups (Tools, DM Zone, Admin); cleaner navigation with localStorage memory</li>
+            <li><strong>🎯 Inline Character Creation</strong> &mdash; Always-visible compact form; 60% fewer clicks; just enter Name + Class and you're done!</li>
+            <li><strong>📸 Image Upload</strong> &mdash; Drag & drop or paste images directly in Bulletin Board; live preview before posting</li>
+            <li><strong>📅 Premium DateTime Picker</strong> &mdash; Custom medieval-themed picker; respects your time format and week start preferences</li>
+            <li><strong>💾 Auto-Save Settings</strong> &mdash; No more "Save" buttons; changes save automatically with visual feedback</li>
+            <li><strong>🎭 Enhanced Empty States</strong> &mdash; Beautiful floating icons with glow effects when lists are empty</li>
+            <li><strong>🚂 Railway Deployment</strong> &mdash; Fixed one-click Railway deployment with optimized Dockerfile</li>
           </ul>
           <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Bug Fixes</h3>
           <ul class="whatsnew-list">
-            <li>Fixed installer database conflict when users already exist</li>
-            <li>Improved error handling throughout the installer</li>
+            <li>Fixed floating label CSS conflict on login form</li>
+            <li>Fixed EJS comment syntax in empty state component</li>
+            <li>Improved Railway deployment compatibility</li>
           </ul>
         </div>
         <div class="whatsnew-links">
@@ -98,10 +104,9 @@
     </script>
   <% } %>
 
-  <% if (typeof user !== 'undefined' && user) { %>
-    <%- include('activity-feed') %>
-  <% } %>
-
+  <script src="/js/toast.js?v=<%= appVersion %>"></script>
+  <script src="/js/datetime-picker.js?v=<%= appVersion %>"></script>
+  <script src="/js/menu.js?v=<%= appVersion %>"></script>
   <script src="/js/app.js?v=<%= appVersion %>"></script>
   <script src="/js/dnd-modals.js?v=<%= appVersion %>"></script>
   <% if (typeof user !== 'undefined' && user) { %>

@@ -1,0 +1,14 @@
+<%#
+  Empty State Component - Phase 3.2 Enhancement
+  Usage: include('partials/empty-state', { icon, title, description, cta })
+%>
+<div class="empty-state">
+  <div class="empty-state-icon">
+    <%= icon %>
+  </div>
+  <h2><%= title %></h2>
+  <p><%= description %></p>
+  <% if (typeof cta !== 'undefined' && cta) { %>
+    <%- cta %>
+  <% } %>
+</div>

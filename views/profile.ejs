@@ -33,7 +33,8 @@
     <input type="hidden" name="character_info" value="<%= profileUser.character_info || '' %>">
     <div class="form-group">
       <label for="birthday">Birthday</label>
-      <input type="date" id="birthday" name="birthday" value="<%= profileUser.birthday || '' %>">
+      <input type="text" class="date-only" id="birthday-display" placeholder="Select your birthday..." readonly>
+      <input type="hidden" id="birthday" name="birthday" value="<%= profileUser.birthday || '' %>">
     </div>
     <div class="form-group">
       <label for="about">About You</label>
@@ -75,60 +76,72 @@
 
 <div class="settings-section card">
   <h2>My Characters</h2>
-  <p class="text-muted" style="margin-bottom: 1rem;">Create and manage your characters. Each character has a name, description, and avatar.</p>
+  <p class="text-muted" style="margin-bottom: 1rem;">Create and manage your characters. Quick add below - name and class are all you need to start!</p>
 
-  <button type="button" class="btn btn-primary btn-small" style="margin-bottom: 1rem;" onclick="document.getElementById('add-char-form').style.display = document.getElementById('add-char-form').style.display === 'none' ? 'block' : 'none'">+ Add Character</button>
-
-  <div id="add-char-form" style="display: none; margin-bottom: 1.5rem;">
-    <div class="card" style="border: 1px solid var(--gold-dim);">
-      <h3>New Character</h3>
-      <form action="/profile/characters" method="POST" enctype="multipart/form-data">
+  <!-- Inline Character Creation (Phase 4.3) -->
+  <div class="inline-char-form-wrapper">
+    <form action="/profile/characters" method="POST" enctype="multipart/form-data" id="inline-char-form">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-        <div class="form-group">
-          <label for="char-name">Character Name</label>
-          <input type="text" name="name" id="char-name" required placeholder="e.g. Thorin Oakenshield">
+
+      <div class="inline-char-quick">
+        <div class="form-group" style="flex: 2; margin-bottom: 0;">
+          <label for="char-name">Character Name *</label>
+          <input type="text" name="name" id="char-name" required placeholder="e.g. Thorin Oakenshield" autofocus>
         </div>
-        <div style="display: flex; gap: 0.75rem;">
-          <div class="form-group" style="flex: 1;">
-            <label for="char-class">Class</label>
-            <select name="class" id="char-class">
-              <option value="">— Select Class —</option>
-              <option value="Artificer">Artificer</option>
-              <option value="Barbarian">Barbarian</option>
-              <option value="Bard">Bard</option>
-              <option value="Cleric">Cleric</option>
-              <option value="Druid">Druid</option>
-              <option value="Fighter">Fighter</option>
-              <option value="Monk">Monk</option>
-              <option value="Paladin">Paladin</option>
-              <option value="Ranger">Ranger</option>
-              <option value="Rogue">Rogue</option>
-              <option value="Sorcerer">Sorcerer</option>
-              <option value="Warlock">Warlock</option>
-              <option value="Wizard">Wizard</option>
-            </select>
+        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+          <label for="char-class">Class</label>
+          <select name="class" id="char-class">
+            <option value="">— Class —</option>
+            <option value="Artificer">Artificer</option>
+            <option value="Barbarian">Barbarian</option>
+            <option value="Bard">Bard</option>
+            <option value="Cleric">Cleric</option>
+            <option value="Druid">Druid</option>
+            <option value="Fighter">Fighter</option>
+            <option value="Monk">Monk</option>
+            <option value="Paladin">Paladin</option>
+            <option value="Ranger">Ranger</option>
+            <option value="Rogue">Rogue</option>
+            <option value="Sorcerer">Sorcerer</option>
+            <option value="Warlock">Warlock</option>
+            <option value="Wizard">Wizard</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+          <label for="char-race">Race</label>
+          <input type="text" name="race" id="char-race" placeholder="e.g. Dwarf" list="race-suggestions">
+          <datalist id="race-suggestions">
+            <option value="Dragonborn">
+            <option value="Dwarf">
+            <option value="Elf">
+            <option value="Gnome">
+            <option value="Half-Elf">
+            <option value="Half-Orc">
+            <option value="Halfling">
+            <option value="Human">
+            <option value="Tiefling">
+          </datalist>
+        </div>
+        <button type="submit" class="btn btn-primary btn-small" style="align-self: flex-end; white-space: nowrap;">Add Character</button>
+      </div>
+
+      <!-- Optional Details (Collapsible) -->
+      <details class="inline-char-details">
+        <summary>+ More Details (optional)</summary>
+        <div class="inline-char-details-content">
+          <div class="form-group">
+            <label for="char-desc">Description / Backstory</label>
+            <textarea name="description" id="char-desc" rows="3" placeholder="Backstory, traits, goals... (Markdown supported)"></textarea>
+            <small class="form-hint">Supports Markdown: **bold**, *italic*, [links](url), lists, etc.</small>
           </div>
-          <div class="form-group" style="flex: 1;">
-            <label for="char-race">Race</label>
-            <input type="text" name="race" id="char-race" placeholder="e.g. Dwarf">
+          <div class="form-group">
+            <label for="char-avatar">Character Avatar</label>
+            <input type="file" name="avatar" id="char-avatar" accept="image/*">
+            <small class="form-hint">Will be center-cropped to 256×256.</small>
           </div>
         </div>
-        <div class="form-group">
-          <label for="char-desc">Description / Backstory</label>
-          <textarea name="description" id="char-desc" rows="4" placeholder="Backstory, traits, goals... (Markdown supported)"></textarea>
-          <small class="form-hint">Supports Markdown: **bold**, *italic*, [links](url), lists, etc.</small>
-        </div>
-        <div class="form-group">
-          <label for="char-avatar">Character Avatar (optional)</label>
-          <input type="file" name="avatar" id="char-avatar" accept="image/*">
-          <small class="form-hint">Will be center-cropped to 256&times;256.</small>
-        </div>
-        <div style="display: flex; gap: 0.5rem;">
-          <button type="submit" class="btn btn-primary btn-small">Add Character</button>
-          <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('add-char-form').style.display='none'">Cancel</button>
-        </div>
-      </form>
-    </div>
+      </details>
+    </form>
   </div>
 
   <% if (characters.length > 0) { %>
@@ -164,7 +177,12 @@
       <% } %>
     </div>
   <% } else { %>
-    <p class="empty-state-text">No characters yet. Add your first character above!</p>
+    <%- include('partials/empty-state', {
+      icon: '⚔️',
+      title: 'No Characters Yet',
+      description: 'Create your first character to join the adventure!',
+      cta: ''
+    }) %>
   <% } %>
 </div>
 
@@ -266,6 +284,34 @@ document.addEventListener('click', function(e) {
     document.getElementById('edit-char-sheet-link').href = '/profile/characters/' + id + '/sheet';
     document.getElementById('edit-char-modal').style.display = 'block';
   }
+});
+
+// Initialize birthday picker
+window.__timeFormat = '<%= (typeof user !== 'undefined' && user && user.time_format) ? user.time_format : '24h' %>';
+window.__weekStart = '<%= (typeof user !== 'undefined' && user && user.week_start) ? user.week_start : 'monday' %>';
+</script>
+<script src="/js/datetime-picker.js?v=<%= appVersion %>"></script>
+<script>
+// Handle birthday date picker
+document.addEventListener('DOMContentLoaded', function() {
+  const birthdayDisplay = document.getElementById('birthday-display');
+  const birthdayHidden = document.getElementById('birthday');
+
+  // Wait for picker to initialize, then set initial value
+  setTimeout(function() {
+    if (birthdayHidden.value && birthdayDisplay.dateTimePicker) {
+      const date = new Date(birthdayHidden.value + 'T00:00:00');
+      birthdayDisplay.dataset.date = birthdayHidden.value;
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                          'July', 'August', 'September', 'October', 'November', 'December'];
+      birthdayDisplay.value = monthNames[date.getMonth()] + ' ' + date.getDate() + ', ' + date.getFullYear();
+    }
+  }, 100);
+
+  // Update hidden field on birthday change
+  birthdayDisplay.addEventListener('change', function() {
+    birthdayHidden.value = this.dataset.date || '';
+  });
 });
 </script>
 

@@ -6,7 +6,7 @@
 </div>
 
 <div class="card" style="margin-bottom: 1.5rem;">
-  <form action="/board" method="POST">
+  <form action="/board" method="POST" enctype="multipart/form-data">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="form-group">
       <label for="board-content">Post a Message</label>
@@ -140,4 +140,5 @@
   </div>
 <% } %>
 
+<script src="/js/image-upload.js?v=<%= appVersion %>"></script>
 <%- include('partials/foot') %>

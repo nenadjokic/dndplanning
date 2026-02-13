@@ -1,9 +1,36 @@
 const express = require('express');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 const db = require('../db/connection');
 const { requireLogin } = require('../middleware/auth');
 const { notifyMentions } = require('../helpers/notifications');
 const sse = require('../helpers/sse');
 const router = express.Router();
+
+// Setup upload directory for board images
+const uploadDir = path.join(__dirname, '..', 'data', 'uploads', 'board');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Multer configuration for board image uploads
+const boardImageUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, 'board-' + uniqueSuffix + ext);
+    }
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, allowed.includes(ext));
+  }
+});
 
 router.get('/', requireLogin, (req, res) => {
   const posts = db.prepare(`
@@ -38,15 +65,15 @@ router.get('/', requireLogin, (req, res) => {
   const userPostReactions = {};
   if (postIds.length > 0) {
     const ph = postIds.map(() => '?').join(',');
-    const reactions = db.prepare(`SELECT post_id, reaction_type, COUNT(*) as count FROM post_reactions WHERE post_id IN (${ph}) GROUP BY post_id, reaction_type`).all(...postIds);
+    const reactions = db.prepare(`SELECT post_id, emoji, COUNT(*) as count FROM post_reactions WHERE post_id IN (${ph}) GROUP BY post_id, emoji`).all(...postIds);
     for (const r of reactions) {
       if (!postReactions[r.post_id]) postReactions[r.post_id] = { likes: 0, dislikes: 0 };
-      if (r.reaction_type === 'like') postReactions[r.post_id].likes = r.count;
+      if (r.emoji === 'like') postReactions[r.post_id].likes = r.count;
       else postReactions[r.post_id].dislikes = r.count;
     }
-    const userReactions = db.prepare(`SELECT post_id, reaction_type FROM post_reactions WHERE post_id IN (${ph}) AND user_id = ?`).all(...postIds, req.user.id);
+    const userReactions = db.prepare(`SELECT post_id, emoji FROM post_reactions WHERE post_id IN (${ph}) AND user_id = ?`).all(...postIds, req.user.id);
     for (const ur of userReactions) {
-      userPostReactions[ur.post_id] = ur.reaction_type;
+      userPostReactions[ur.post_id] = ur.emoji;
     }
   }
 
@@ -63,15 +90,15 @@ router.get('/', requireLogin, (req, res) => {
   const userReplyReactions = {};
   if (allReplyIds.length > 0) {
     const ph = allReplyIds.map(() => '?').join(',');
-    const reactions = db.prepare(`SELECT reply_id, reaction_type, COUNT(*) as count FROM reply_reactions WHERE reply_id IN (${ph}) GROUP BY reply_id, reaction_type`).all(...allReplyIds);
+    const reactions = db.prepare(`SELECT reply_id, emoji, COUNT(*) as count FROM reply_reactions WHERE reply_id IN (${ph}) GROUP BY reply_id, emoji`).all(...allReplyIds);
     for (const r of reactions) {
       if (!replyReactions[r.reply_id]) replyReactions[r.reply_id] = { likes: 0, dislikes: 0 };
-      if (r.reaction_type === 'like') replyReactions[r.reply_id].likes = r.count;
+      if (r.emoji === 'like') replyReactions[r.reply_id].likes = r.count;
       else replyReactions[r.reply_id].dislikes = r.count;
     }
-    const userReactions = db.prepare(`SELECT reply_id, reaction_type FROM reply_reactions WHERE reply_id IN (${ph}) AND user_id = ?`).all(...allReplyIds, req.user.id);
+    const userReactions = db.prepare(`SELECT reply_id, emoji FROM reply_reactions WHERE reply_id IN (${ph}) AND user_id = ?`).all(...allReplyIds, req.user.id);
     for (const ur of userReactions) {
-      userReplyReactions[ur.reply_id] = ur.reaction_type;
+      userReplyReactions[ur.reply_id] = ur.emoji;
     }
   }
 
@@ -117,7 +144,7 @@ function isValidImageUrl(url) {
   return false;
 }
 
-router.post('/', requireLogin, (req, res) => {
+router.post('/', requireLogin, boardImageUpload.single('image_file'), (req, res) => {
   const { content, image_url, poll_question } = req.body;
   // Express with extended:true parses poll_options[] as poll_options
   let pollOptions = req.body.poll_options || req.body['poll_options[]'];
@@ -128,9 +155,16 @@ router.post('/', requireLogin, (req, res) => {
     return res.redirect('/board');
   }
 
-  // Validate image URL if provided
+  // Determine image URL: prioritize uploaded file over URL
   let validImageUrl = null;
-  if (image_url && image_url.trim()) {
+
+  // Check if file was uploaded
+  if (req.file) {
+    // Use local path for uploaded file
+    validImageUrl = '/uploads/board/' + req.file.filename;
+  }
+  // Otherwise check if URL was provided
+  else if (image_url && image_url.trim()) {
     if (isValidImageUrl(image_url)) {
       validImageUrl = image_url.trim();
     } else {
@@ -152,7 +186,7 @@ router.post('/', requireLogin, (req, res) => {
   if (poll_question && poll_question.trim() && pollOptions) {
     const validOptions = pollOptions.filter(o => o && o.trim());
     if (validOptions.length >= 2) {
-      const pollResult = db.prepare('INSERT INTO polls (post_id, question) VALUES (?, ?)').run(postId, poll_question.trim());
+      const pollResult = db.prepare('INSERT INTO polls (post_id, user_id, question) VALUES (?, ?, ?)').run(postId, req.user.id, poll_question.trim());
       const pollId = pollResult.lastInsertRowid;
       for (let i = 0; i < validOptions.length; i++) {
         db.prepare('INSERT INTO poll_options (poll_id, option_text, sort_order) VALUES (?, ?, ?)').run(pollId, validOptions[i].trim(), i);
@@ -222,10 +256,10 @@ router.post('/:id/delete', requireLogin, (req, res) => {
 // --- Reactions ---
 
 router.post('/:postId/react', requireLogin, (req, res) => {
-  const { reaction_type } = req.body;
+  const { emoji } = req.body;
   const postId = parseInt(req.params.postId, 10);
 
-  if (!['like', 'dislike'].includes(reaction_type)) {
+  if (!['like', 'dislike'].includes(emoji)) {
     return res.status(400).json({ error: 'Invalid reaction type' });
   }
 
@@ -237,38 +271,38 @@ router.post('/:postId/react', requireLogin, (req, res) => {
   const existing = db.prepare('SELECT * FROM post_reactions WHERE post_id = ? AND user_id = ?').get(postId, req.user.id);
 
   if (existing) {
-    if (existing.reaction_type === reaction_type) {
+    if (existing.emoji === emoji) {
       db.prepare('DELETE FROM post_reactions WHERE id = ?').run(existing.id);
     } else {
-      db.prepare('UPDATE post_reactions SET reaction_type = ? WHERE id = ?').run(reaction_type, existing.id);
+      db.prepare('UPDATE post_reactions SET emoji = ? WHERE id = ?').run(emoji, existing.id);
     }
   } else {
-    db.prepare('INSERT INTO post_reactions (post_id, user_id, reaction_type) VALUES (?, ?, ?)').run(postId, req.user.id, reaction_type);
+    db.prepare('INSERT INTO post_reactions (post_id, user_id, emoji) VALUES (?, ?, ?)').run(postId, req.user.id, emoji);
   }
 
-  const likes = db.prepare('SELECT COUNT(*) as count FROM post_reactions WHERE post_id = ? AND reaction_type = ?').get(postId, 'like').count;
-  const dislikes = db.prepare('SELECT COUNT(*) as count FROM post_reactions WHERE post_id = ? AND reaction_type = ?').get(postId, 'dislike').count;
-  const userReaction = db.prepare('SELECT reaction_type FROM post_reactions WHERE post_id = ? AND user_id = ?').get(postId, req.user.id);
+  const likes = db.prepare('SELECT COUNT(*) as count FROM post_reactions WHERE post_id = ? AND emoji = ?').get(postId, 'like').count;
+  const dislikes = db.prepare('SELECT COUNT(*) as count FROM post_reactions WHERE post_id = ? AND emoji = ?').get(postId, 'dislike').count;
+  const userReaction = db.prepare('SELECT emoji FROM post_reactions WHERE post_id = ? AND user_id = ?').get(postId, req.user.id);
 
   // Broadcast to all clients
   sse.broadcast('post-reaction', { postId, likes, dislikes });
 
   // Broadcast like activity
-  if (reaction_type === 'like' && (!existing || existing.reaction_type !== 'like')) {
+  if (emoji === 'like' && (!existing || existing.emoji !== 'like')) {
     sse.broadcast('like-activity', {
       username: req.user.username,
       postId: postId
     });
   }
 
-  res.json({ likes, dislikes, userReaction: userReaction ? userReaction.reaction_type : null });
+  res.json({ likes, dislikes, userReaction: userReaction ? userReaction.emoji : null });
 });
 
 router.post('/reply/:replyId/react', requireLogin, (req, res) => {
-  const { reaction_type } = req.body;
+  const { emoji } = req.body;
   const replyId = parseInt(req.params.replyId, 10);
 
-  if (!['like', 'dislike'].includes(reaction_type)) {
+  if (!['like', 'dislike'].includes(emoji)) {
     return res.status(400).json({ error: 'Invalid reaction type' });
   }
 
@@ -280,23 +314,23 @@ router.post('/reply/:replyId/react', requireLogin, (req, res) => {
   const existing = db.prepare('SELECT * FROM reply_reactions WHERE reply_id = ? AND user_id = ?').get(replyId, req.user.id);
 
   if (existing) {
-    if (existing.reaction_type === reaction_type) {
+    if (existing.emoji === emoji) {
       db.prepare('DELETE FROM reply_reactions WHERE id = ?').run(existing.id);
     } else {
-      db.prepare('UPDATE reply_reactions SET reaction_type = ? WHERE id = ?').run(reaction_type, existing.id);
+      db.prepare('UPDATE reply_reactions SET emoji = ? WHERE id = ?').run(emoji, existing.id);
     }
   } else {
-    db.prepare('INSERT INTO reply_reactions (reply_id, user_id, reaction_type) VALUES (?, ?, ?)').run(replyId, req.user.id, reaction_type);
+    db.prepare('INSERT INTO reply_reactions (reply_id, user_id, emoji) VALUES (?, ?, ?)').run(replyId, req.user.id, emoji);
   }
 
-  const likes = db.prepare('SELECT COUNT(*) as count FROM reply_reactions WHERE reply_id = ? AND reaction_type = ?').get(replyId, 'like').count;
-  const dislikes = db.prepare('SELECT COUNT(*) as count FROM reply_reactions WHERE reply_id = ? AND reaction_type = ?').get(replyId, 'dislike').count;
-  const userReaction = db.prepare('SELECT reaction_type FROM reply_reactions WHERE reply_id = ? AND user_id = ?').get(replyId, req.user.id);
+  const likes = db.prepare('SELECT COUNT(*) as count FROM reply_reactions WHERE reply_id = ? AND emoji = ?').get(replyId, 'like').count;
+  const dislikes = db.prepare('SELECT COUNT(*) as count FROM reply_reactions WHERE reply_id = ? AND emoji = ?').get(replyId, 'dislike').count;
+  const userReaction = db.prepare('SELECT emoji FROM reply_reactions WHERE reply_id = ? AND user_id = ?').get(replyId, req.user.id);
 
   // Broadcast to all clients
   sse.broadcast('reply-reaction', { replyId, likes, dislikes });
 
-  res.json({ likes, dislikes, userReaction: userReaction ? userReaction.reaction_type : null });
+  res.json({ likes, dislikes, userReaction: userReaction ? userReaction.emoji : null });
 });
 
 // --- Polls ---

@@ -96,6 +96,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/avatars', express.static(path.join(__dirname, 'data', 'avatars')));
 app.use('/maps', express.static(path.join(__dirname, 'data', 'maps')));
 app.use('/thumbnails', express.static(path.join(__dirname, 'data', 'thumbnails')));
+app.use('/uploads', express.static(path.join(__dirname, 'data', 'uploads')));
 
 app.use(session({
   store: new SQLiteStore({
@@ -151,6 +152,14 @@ function csrfProtection(req, res, next) {
     return next();
   }
 
+  // Skip multipart/form-data requests - they will be validated after Multer parses them
+  const contentType = req.get('content-type') || '';
+  if (contentType.includes('multipart/form-data')) {
+    // Mark that CSRF check is deferred for later validation
+    req._csrfDeferred = true;
+    return next();
+  }
+
   // Check CSRF token
   const token = req.body._csrf || req.query._csrf || req.headers['x-csrf-token'];
   const sessionToken = req.session?.csrfToken;
@@ -172,6 +181,39 @@ function csrfProtection(req, res, next) {
 
   next();
 }
+
+// Helper function to validate CSRF for multipart forms (after Multer)
+function validateDeferredCSRF(req, res) {
+  if (!req._csrfDeferred) {
+    return true; // Not a deferred check, already validated
+  }
+
+  const token = req.body._csrf || req.query._csrf || req.headers['x-csrf-token'];
+  const sessionToken = req.session?.csrfToken;
+
+  if (!token) {
+    console.error('[CSRF] No token provided in multipart request:', req.method, req.path);
+    res.status(403).send('Invalid CSRF token - no token provided');
+    return false;
+  }
+
+  if (!sessionToken) {
+    console.error('[CSRF] No token in session for multipart:', req.method, req.path);
+    res.status(403).send('Invalid CSRF token - session expired, please refresh');
+    return false;
+  }
+
+  if (token !== sessionToken) {
+    console.error('[CSRF] Token mismatch in multipart:', req.method, req.path);
+    res.status(403).send('Invalid CSRF token - token mismatch');
+    return false;
+  }
+
+  return true; // CSRF valid
+}
+
+// Export helper for route handlers
+app.locals.validateCSRF = validateDeferredCSRF;
 
 // Apply CSRF protection to all routes after session
 app.use(csrfProtection);

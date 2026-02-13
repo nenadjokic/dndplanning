@@ -6,31 +6,35 @@
 </div>
 
 <div class="settings-section card">
-  <h2>Theme</h2>
-  <form action="/settings/theme" method="POST">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <div class="form-group">
-      <div class="radio-group">
-        <label><input type="radio" name="theme" value="dark" <%= (settingsUser.theme || 'dark') === 'dark' ? 'checked' : '' %>> Dark (Dungeon)</label>
-        <label><input type="radio" name="theme" value="light" <%= settingsUser.theme === 'light' ? 'checked' : '' %>> Light (Parchment)</label>
-        <label><input type="radio" name="theme" value="auto" <%= settingsUser.theme === 'auto' ? 'checked' : '' %>> Auto (Light 6AM&ndash;7PM)</label>
-      </div>
-    </div>
-    <button type="submit" class="btn btn-primary btn-small">Save Theme</button>
-  </form>
-</div>
+  <h2>Appearance & Format</h2>
+  <p class="form-hint">Changes save automatically</p>
+  <form id="settings-form" action="/settings" method="POST">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
-<div class="settings-section card">
-  <h2>Time Format</h2>
-  <form action="/settings/time-format" method="POST">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="form-group">
+      <label>Theme</label>
       <div class="radio-group">
-        <label><input type="radio" name="time_format" value="24h" <%= (user.time_format || '24h') === '24h' ? 'checked' : '' %>> 24-hour (14:30)</label>
-        <label><input type="radio" name="time_format" value="12h" <%= user.time_format === '12h' ? 'checked' : '' %>> 12-hour (2:30 PM)</label>
+        <label><input type="radio" name="theme" value="dark" data-autosave <%= (settingsUser.theme || 'dark') === 'dark' ? 'checked' : '' %>> Dark (Dungeon)</label>
+        <label><input type="radio" name="theme" value="light" data-autosave <%= settingsUser.theme === 'light' ? 'checked' : '' %>> Light (Parchment)</label>
+        <label><input type="radio" name="theme" value="auto" data-autosave <%= settingsUser.theme === 'auto' ? 'checked' : '' %>> Auto (Light 6AM&ndash;7PM)</label>
       </div>
     </div>
-    <button type="submit" class="btn btn-primary btn-small">Save Time Format</button>
+
+    <div class="form-group">
+      <label>Time Format</label>
+      <div class="radio-group">
+        <label><input type="radio" name="time_format" value="24h" data-autosave <%= (user.time_format || '24h') === '24h' ? 'checked' : '' %>> 24-hour (14:30)</label>
+        <label><input type="radio" name="time_format" value="12h" data-autosave <%= user.time_format === '12h' ? 'checked' : '' %>> 12-hour (2:30 PM)</label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Week Starts On</label>
+      <div class="radio-group">
+        <label><input type="radio" name="week_start" value="monday" data-autosave <%= (user.week_start || 'monday') === 'monday' ? 'checked' : '' %>> Monday</label>
+        <label><input type="radio" name="week_start" value="sunday" data-autosave <%= user.week_start === 'sunday' ? 'checked' : '' %>> Sunday</label>
+      </div>
+    </div>
   </form>
 </div>
 
@@ -57,11 +61,12 @@
 <div class="settings-section card">
   <h2>Unavailability Days</h2>
   <p class="form-hint">Mark dates when you cannot play. The DM will see these when creating sessions.</p>
-  <form action="/settings/unavailability" method="POST" class="unavail-form">
+  <form action="/settings/unavailability" method="POST" class="unavail-form" id="unavail-form">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="form-group">
       <label for="unavail_date">Date</label>
-      <input type="date" id="unavail_date" name="date" required>
+      <input type="text" class="date-only" id="unavail_date_display" placeholder="Select date..." readonly required>
+      <input type="hidden" id="unavail_date" name="date">
     </div>
     <div class="form-group">
       <label for="unavail_reason">Reason (optional)</label>
@@ -142,5 +147,41 @@
   <% } %>
 </div>
 <% } %>
+
+<script>
+  window.__timeFormat = '<%= (typeof user !== 'undefined' && user && user.time_format) ? user.time_format : '24h' %>';
+  window.__weekStart = '<%= (typeof user !== 'undefined' && user && user.week_start) ? user.week_start : 'monday' %>';
+</script>
+<script src="/js/datetime-picker.js?v=<%= appVersion %>"></script>
+<script>
+// Handle unavailability date picker
+document.addEventListener('DOMContentLoaded', function() {
+  const unavailDisplay = document.getElementById('unavail_date_display');
+  const unavailHidden = document.getElementById('unavail_date');
+  const unavailForm = document.getElementById('unavail-form');
+
+  // Update hidden field when date is selected
+  if (unavailDisplay) {
+    unavailDisplay.addEventListener('change', function() {
+      unavailHidden.value = this.dataset.date || '';
+    });
+  }
+
+  // Validate on submit
+  if (unavailForm) {
+    unavailForm.addEventListener('submit', function(e) {
+      if (!unavailHidden.value) {
+        e.preventDefault();
+        if (window.Toast) {
+          window.Toast.info('Please select a date');
+        } else {
+          alert('Please select a date');
+        }
+      }
+    });
+  }
+});
+</script>
+<script src="/js/auto-save.js?v=<%= appVersion %>"></script>
 
 <%- include('partials/foot') %>

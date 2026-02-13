@@ -30,9 +30,9 @@ RUN mkdir -p /app/data && \
 # Switch to non-root user
 USER node
 
-# Volume for data persistence (SQLite database, avatars, uploads)
-# For Railway deployment: See Dockerfile.railway (VOLUME keyword not supported)
-VOLUME /app/data
+# NOTE: VOLUME keyword is NOT used for Railway compatibility
+# Railway requires volumes to be configured through the Railway dashboard
+# See: https://docs.railway.com/reference/volumes
 
 EXPOSE 3000
 

@@ -31,6 +31,49 @@ router.get('/', requireLogin, (req, res) => {
   res.render('settings', { unavailabilities, calendarUrl, publicCalendarUrl, settingsUser: freshUser, notifPrefs, googleEnabled: isGoogleEnabled() });
 });
 
+// Unified settings endpoint for auto-save (Phase 2.3)
+router.post('/', requireLogin, (req, res) => {
+  const { theme, time_format, week_start } = req.body;
+  const updates = [];
+  const values = [];
+
+  // Validate and add theme if provided
+  if (theme) {
+    if (!['dark', 'light', 'auto'].includes(theme)) {
+      return res.json({ success: false, message: 'Invalid theme' });
+    }
+    updates.push('theme = ?');
+    values.push(theme);
+  }
+
+  // Validate and add time_format if provided
+  if (time_format) {
+    if (!['12h', '24h'].includes(time_format)) {
+      return res.json({ success: false, message: 'Invalid time format' });
+    }
+    updates.push('time_format = ?');
+    values.push(time_format);
+  }
+
+  // Validate and add week_start if provided
+  if (week_start) {
+    if (!['monday', 'sunday'].includes(week_start)) {
+      return res.json({ success: false, message: 'Invalid week start' });
+    }
+    updates.push('week_start = ?');
+    values.push(week_start);
+  }
+
+  // Update database if there are changes
+  if (updates.length > 0) {
+    values.push(req.user.id);
+    const sql = `UPDATE users SET ${updates.join(', ')} WHERE id = ?`;
+    db.prepare(sql).run(...values);
+  }
+
+  res.json({ success: true });
+});
+
 router.post('/time-format', requireLogin, (req, res) => {
   const { time_format } = req.body;
   if (!['12h', '24h'].includes(time_format)) {

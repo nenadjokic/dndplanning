@@ -1,6 +1,9 @@
 <% if (flash.success) { %>
-  <div class="flash flash-success"><%= flash.success %></div>
+  <meta name="flash-success" content="<%= flash.success %>">
 <% } %>
 <% if (flash.error) { %>
-  <div class="flash flash-error"><%= flash.error %></div>
+  <meta name="flash-error" content="<%= flash.error %>">
+<% } %>
+<% if (flash.info) { %>
+  <meta name="flash-info" content="<%= flash.info %>">
 <% } %>

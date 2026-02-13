@@ -25,51 +25,64 @@
 
 <div class="card">
   <form action="/sessions" method="POST" id="session-form">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <div class="form-group">
-      <label for="category">Category</label>
-      <select id="category" name="category">
-        <option value="dnd">D&D</option>
-        <option value="rpg">RPG</option>
-        <option value="gamenight">Game Night</option>
-        <option value="casual">Casual</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label for="title">Quest Title</label>
-      <input type="text" id="title" name="title" required placeholder="e.g. The Mines of Phandelver - Session 5">
-    </div>
-    <div class="form-group">
-      <label for="description">Quest Description (optional)</label>
-      <textarea id="description" name="description" rows="3" placeholder="Brief description of the session..."></textarea>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <!-- Quick Post: Title + Category Inline -->
+    <div class="quick-post-header">
+      <div class="form-group form-group-inline">
+        <label for="title">Quest Title</label>
+        <input type="text" id="title" name="title" required placeholder="e.g. The Mines of Phandelver - Session 5" autofocus>
+      </div>
+      <div class="form-group form-group-category">
+        <label for="category">Category</label>
+        <select id="category" name="category">
+          <option value="dnd">🎲 D&D</option>
+          <option value="rpg">⚔️ RPG</option>
+          <option value="gamenight">🎮 Game Night</option>
+          <option value="casual">☕ Casual</option>
+        </select>
+      </div>
     </div>
 
-    <% if (typeof mapLocations !== 'undefined' && mapLocations.length > 0) { %>
+    <!-- Quick Post: First Time Slot with Smart Defaults -->
     <div class="form-group">
-      <label for="location_id">Location (optional)</label>
-      <select id="location_id" name="location_id">
-        <option value="">-- No location --</option>
-        <% for (const loc of mapLocations) { %>
-          <option value="<%= loc.id %>"><%= loc.map_name ? loc.map_name + ' — ' : '' %><%= loc.name %></option>
-        <% } %>
-      </select>
-    </div>
-    <% } %>
-
-    <div class="form-group">
-      <label>Proposed Time Slots</label>
-      <p class="form-hint">Add possible dates and times for the party to vote on.</p>
+      <label>First Time Slot</label>
+      <p class="form-hint">Click to pick date and time</p>
       <div id="slots-container">
         <div class="slot-row">
-          <input type="date" name="slot_dates_date" required>
-          <select name="slot_dates_time" class="time-select"></select>
+          <input type="text" class="datetime-input" id="first-slot-datetime" placeholder="Select date & time..." readonly required>
+          <input type="hidden" name="slot_dates_date" id="first-slot-date">
+          <input type="hidden" name="slot_dates_time" id="first-slot-time">
           <input type="text" name="slot_labels" placeholder="Label (optional, e.g. Evening)">
-          <button type="button" class="btn btn-small btn-danger remove-slot" title="Remove slot">&times;</button>
+          <span class="remove-slot-placeholder"></span>
           <div class="slot-unavail-warning"></div>
         </div>
       </div>
       <button type="button" id="add-slot" class="btn btn-outline btn-small">+ Add Another Slot</button>
     </div>
+
+    <!-- More Options (Collapsible) -->
+    <details class="more-options">
+      <summary>▼ More Options</summary>
+      <div class="more-options-content">
+        <div class="form-group">
+          <label for="description">Quest Description (optional)</label>
+          <textarea id="description" name="description" rows="3" placeholder="Brief description of the session..."></textarea>
+        </div>
+
+        <% if (typeof mapLocations !== 'undefined' && mapLocations.length > 0) { %>
+        <div class="form-group">
+          <label for="location_id">Location (optional)</label>
+          <select id="location_id" name="location_id">
+            <option value="">-- No location --</option>
+            <% for (const loc of mapLocations) { %>
+              <option value="<%= loc.id %>"><%= loc.map_name ? loc.map_name + ' — ' : '' %><%= loc.name %></option>
+            <% } %>
+          </select>
+        </div>
+        <% } %>
+      </div>
+    </details>
 
     <button type="submit" class="btn btn-primary">Post to Tavern Board</button>
   </form>
@@ -78,6 +91,9 @@
 <script>
   window.__unavailData = <%- JSON.stringify(unavailabilities.map(u => ({ date: u.date, username: u.username, reason: u.reason }))) %>;
   window.__timeFormat = '<%= (typeof user !== 'undefined' && user && user.time_format) ? user.time_format : '24h' %>';
+  window.__weekStart = '<%= (typeof user !== 'undefined' && user && user.week_start) ? user.week_start : 'monday' %>';
 </script>
+<script src="/js/datetime-picker.js?v=<%= appVersion %>"></script>
+<script src="/js/quick-post.js?v=<%= appVersion %>"></script>
 
 <%- include('../partials/foot') %>

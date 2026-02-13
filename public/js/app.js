@@ -439,16 +439,19 @@ document.addEventListener('DOMContentLoaded', function() {
       var row = document.createElement('div');
       row.className = 'slot-row';
       row.innerHTML =
-        '<input type="date" name="slot_dates_date" required>' +
-        '<select name="slot_dates_time" class="time-select"></select>' +
+        '<input type="text" class="datetime-input" placeholder="Select date & time..." readonly required>' +
+        '<input type="hidden" name="slot_dates_date">' +
+        '<input type="hidden" name="slot_dates_time">' +
         '<input type="text" name="slot_labels" placeholder="Label (optional, e.g. Evening)">' +
         '<button type="button" class="btn btn-small btn-danger remove-slot" title="Remove slot">&times;</button>' +
         '<div class="slot-unavail-warning"></div>';
       slotsContainer.appendChild(row);
-      var sel = row.querySelector('.time-select');
-      populateTimeSelect(sel);
-      var dateInp = row.querySelector('input[type="date"]');
-      dateInp.addEventListener('change', function() { checkSlotUnavailability(dateInp); });
+
+      // Initialize datetime picker for the new input
+      var datetimeInput = row.querySelector('.datetime-input');
+      if (window.DateTimePicker) {
+        new window.DateTimePicker(datetimeInput);
+      }
     });
 
     slotsContainer.addEventListener('click', function(e) {
@@ -576,7 +579,7 @@ document.addEventListener('DOMContentLoaded', function() {
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        reaction_type: reactionType,
+        emoji: reactionType,
         _csrf: getCsrfToken()
       })
     })
@@ -644,15 +647,8 @@ document.addEventListener('DOMContentLoaded', function() {
 // Note: checkForUpdate() and performAppUpdate() are defined in admin/users.ejs
 // They use Server-Sent Events for real-time progress updates
 
-// === Activity Feed Bar ===
+// === Activity Feed (Toast Notifications) ===
 (function() {
-  var feedBar = document.getElementById('activity-feed-bar');
-  if (!feedBar) return;
-
-  var feedMessage = feedBar.querySelector('.activity-message');
-  var hideTimeout;
-  var animTimeout;
-
   function escapeHtml(text) {
     var div = document.createElement('div');
     div.textContent = text;
@@ -660,32 +656,15 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function showActivity(message, link) {
-    if (hideTimeout) clearTimeout(hideTimeout);
-    if (animTimeout) clearTimeout(animTimeout);
-
-    var content = '<span class="activity-message-inner">';
-    if (link) {
-      content += '<a href="' + link + '">' + message + '</a>';
-    } else {
-      content += message;
+    // Show as toast notification (info type, 4 seconds)
+    if (window.Toast) {
+      // Strip HTML tags for toast message
+      var tempDiv = document.createElement('div');
+      tempDiv.innerHTML = message;
+      var plainText = tempDiv.textContent || tempDiv.innerText || '';
+      window.Toast.info(plainText, 4000);
     }
-    content += '</span>';
-
-    feedMessage.innerHTML = content;
-    feedBar.classList.remove('hidden');
-    feedBar.style.opacity = '1';
-
-    // After 20 seconds, completely hide the bar
-    hideTimeout = setTimeout(function() {
-      feedBar.style.opacity = '0';
-      animTimeout = setTimeout(function() {
-        feedBar.classList.add('hidden');
-      }, 300); // Wait for fade out animation
-    }, 20000);
   }
-
-  // Start with bar hidden
-  feedBar.classList.add('hidden');
 
   // Listen to SSE events
   if (typeof EventSource === 'undefined') return;
@@ -828,7 +807,11 @@ function shareSession(platform, sessionId, sessionTitle) {
     case 'discord':
       // Discord doesn't have direct share URL, copy to clipboard instead
       copyToClipboard(message + '\n' + url);
-      alert('Link copied to clipboard! Paste it in Discord.');
+      if (window.Toast) {
+        window.Toast.success('Link copied to clipboard! Paste it in Discord.');
+      } else {
+        alert('Link copied to clipboard! Paste it in Discord.');
+      }
       break;
 
     case 'email':
@@ -842,7 +825,11 @@ function shareSession(platform, sessionId, sessionTitle) {
     case 'copy':
       // Copy link to clipboard
       copyToClipboard(message + '\n' + url);
-      alert('Link copied to clipboard!');
+      if (window.Toast) {
+        window.Toast.success('Link copied to clipboard!');
+      } else {
+        alert('Link copied to clipboard!');
+      }
       break;
   }
 }

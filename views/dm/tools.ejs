@@ -229,7 +229,14 @@ document.addEventListener('click', function(e) {
 function fetchFavicon(prefix) {
   var urlInput = prefix === 'add' ? document.getElementById('tool-url') : document.getElementById('edit-tool-url');
   var url = urlInput ? urlInput.value : '';
-  if (!url) { alert('Enter the tool URL first.'); return; }
+  if (!url) {
+    if (window.Toast) {
+      window.Toast.info('Enter the tool URL first.');
+    } else {
+      alert('Enter the tool URL first.');
+    }
+    return;
+  }
   var status = document.getElementById(prefix + '-favicon-status');
   status.textContent = 'Fetching...';
   fetch('/dm-tools/fetch-favicon', {

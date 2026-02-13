@@ -12,8 +12,13 @@
 <% } %>
 
 <% if (sessions.length === 0) { %>
-  <div class="card empty-state">
-    <p>No quests have been posted yet. Create your first session to summon the party!</p>
+  <div class="card">
+    <%- include('../partials/empty-state', {
+      icon: '📜',
+      title: 'No Quests Posted',
+      description: 'Create your first session to summon the party and begin the adventure!',
+      cta: '<a href="/sessions/new" class="btn btn-primary">Post Your First Quest</a>'
+    }) %>
   </div>
 <% } else { %>
   <div class="session-grid">

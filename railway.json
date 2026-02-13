@@ -1,19 +1,34 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS"
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile.railway"
   },
   "deploy": {
     "startCommand": "node server.js",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   },
-  "environments": {
-    "production": {
-      "variables": {
-        "NODE_ENV": "production",
-        "PORT": "3000"
-      }
+  "env": {
+    "NODE_ENV": {
+      "description": "Node environment",
+      "default": "production"
+    },
+    "PORT": {
+      "description": "Port to run the server on",
+      "default": "3000"
+    },
+    "SESSION_SECRET": {
+      "description": "Secret key for session encryption (generate a random string)",
+      "generator": "secret"
+    },
+    "TRUST_PROXY": {
+      "description": "Trust proxy headers (required for Railway)",
+      "default": "true"
+    },
+    "SECURE_COOKIES": {
+      "description": "Use secure cookies (HTTPS only)",
+      "default": "true"
     }
   }
 }

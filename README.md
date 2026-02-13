@@ -9,7 +9,7 @@ Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. L
 
 Deploy Quest Planner with one click - no command line needed:
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/dndplanning)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template/github/nenadjokic/dndplanning)
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/nenadjokic/dndplanning)
 
 **Or use Docker:**
@@ -721,6 +721,32 @@ The admin can also check for updates from the **Guild Settings** page using the 
 ---
 
 ## Changelog
+
+### v2.0.0 (2026-02-13) 🎉 MAJOR UPDATE
+
+**🎨 Phase 3 - Premium Polish:**
+- **✨ Toast Notification System** — Beautiful fade-in notifications with medieval theme; auto-dismiss with smooth animations; replaces old flash messages
+- **🎭 Enhanced Empty States** — Premium floating icons with glow effects when no data exists (sessions, characters); engaging visual feedback
+- **💀 Skeleton Loading States** — Shimmer animations for async content loading; better perceived performance
+
+**⚔️ Phase 4 - Advanced Features:**
+- **📋 Reorganized Hamburger Menu** — Grouped navigation with collapsible sections (Tools, DM Zone, Admin); localStorage remembers your preferences; 9 top-level items down from 16
+- **🎯 Inline Character Creation** — Always-visible compact form (Name + Class + Race in one row); 60% fewer clicks; race autocomplete; collapsible "More Details" section
+- **📸 Bulletin Board Image Upload** — Drag & drop images, paste from clipboard (Ctrl+V), or browse files; live preview before posting; 5MB limit; supports .jpg/.png/.gif/.webp
+
+**✨ Phase 2 Bonus (from previous session):**
+- **📅 Premium DateTime Picker** — Custom medieval-themed picker; respects 12h/24h format and week start preference; smart defaults (Next Sunday 18:00)
+- **💾 Auto-Save Settings** — No more "Save" buttons; changes save automatically with visual checkmark feedback
+
+**🚂 Railway Deployment Fix:**
+- **🐳 Dual Dockerfile System** — Separate `Dockerfile.railway` for Railway compatibility (VOLUME keyword removed); original `Dockerfile` unchanged for Docker Hub users
+
+**Bug Fixes:**
+- Fixed floating label CSS conflict causing login form issues
+- Fixed EJS comment syntax in empty-state partial
+- Fixed Railway deployment (VOLUME keyword incompatibility)
+
+---
 
 ### v1.0.18 (2026-02-12)
 
