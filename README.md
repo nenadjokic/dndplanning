@@ -1,6 +1,6 @@
-# Quest Planner v1.0.18 — D&D Session Scheduler
+# Quest Planner v2.0.4 — D&D Session Scheduler
 
-> **Latest release:** v1.0.18 (2026-02-12)
+> **Latest release:** v2.0.4 (2026-02-13)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -803,6 +803,34 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v2.0.4 (2026-02-13) 🔧 CRITICAL HOTFIX
+
+**Database Migration Fix:**
+- **✅ Complete Migration Script** — Handles ALL legacy database schemas from v0.9.23+; migrates `reaction_type` → `emoji`; recreates polls table with correct schema (`post_id` + `user_id`); adds all missing tables and columns
+- **🔄 Auto-Migration on Startup** — Migrations now run automatically when Docker container starts; no manual steps needed; just `docker compose build && docker compose up -d`
+- **📊 Analytics Fix** — Added missing `votes.created_at` column; analytics page now works correctly
+- **📚 Migration Documentation** — Added `db/MIGRATION-GUIDE.md` with schema history, debugging guide, and best practices for future changes
+
+**Schema Fixes:**
+- Fixed `db/connection.js` — now creates correct schema (emoji, post_id, user_id)
+- Fixed `routes/install.js` — web installer creates correct schema
+- Fixed `db/schema.sql` — added votes.created_at for analytics
+
+**Problems Solved:**
+- ❌ "NOT NULL constraint failed: post_reactions.reaction_type" → ✅ Fixed
+- ❌ "table polls has no column named user_id" → ✅ Fixed
+- ❌ "no such column: v.created_at" (analytics) → ✅ Fixed
+- ❌ Manual migration steps required → ✅ Automated
+
+**For Existing Installations:**
+```bash
+git pull origin main
+docker compose build && docker compose up -d
+# Migrations run automatically on startup!
+```
+
+---
 
 ### v2.0.0 (2026-02-13) 🎉 MAJOR UPDATE
 

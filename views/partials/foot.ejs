@@ -29,24 +29,19 @@
   <% if (typeof showWhatsNew !== 'undefined' && showWhatsNew) { %>
     <div class="welcome-overlay" id="whatsnew-overlay">
       <div class="welcome-modal whatsnew-modal">
-        <h2>What's New in v<%= appVersion %> 🎉</h2>
+        <h2>What's New in v<%= appVersion %> 🔧</h2>
         <div class="whatsnew-content">
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Major Update - Premium Polish & Advanced Features</h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Critical Hotfix - Database Migration & Auto-Update</h3>
           <ul class="whatsnew-list">
-            <li><strong>✨ Toast Notifications</strong> &mdash; Beautiful fade-in notifications with medieval theme; smooth animations replace old flash messages</li>
-            <li><strong>📋 Reorganized Navigation</strong> &mdash; Collapsible menu groups (Tools, DM Zone, Admin); cleaner navigation with localStorage memory</li>
-            <li><strong>🎯 Inline Character Creation</strong> &mdash; Always-visible compact form; 60% fewer clicks; just enter Name + Class and you're done!</li>
-            <li><strong>📸 Image Upload</strong> &mdash; Drag & drop or paste images directly in Bulletin Board; live preview before posting</li>
-            <li><strong>📅 Premium DateTime Picker</strong> &mdash; Custom medieval-themed picker; respects your time format and week start preferences</li>
-            <li><strong>💾 Auto-Save Settings</strong> &mdash; No more "Save" buttons; changes save automatically with visual feedback</li>
-            <li><strong>🎭 Enhanced Empty States</strong> &mdash; Beautiful floating icons with glow effects when lists are empty</li>
-            <li><strong>🚂 Railway Deployment</strong> &mdash; Fixed one-click Railway deployment with optimized Dockerfile</li>
+            <li><strong>🔄 Auto-Migration on Startup</strong> &mdash; Migrations now run automatically when container starts; no manual steps needed!</li>
+            <li><strong>✅ Complete Migration Script</strong> &mdash; Handles ALL legacy database schemas; migrates old reactions and polls to new format</li>
+            <li><strong>📊 Analytics Fixed</strong> &mdash; Analytics page now works correctly; added missing database column</li>
+            <li><strong>📚 Migration Documentation</strong> &mdash; Added comprehensive guide for schema changes and debugging</li>
           </ul>
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Bug Fixes</h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">For Existing Installations</h3>
           <ul class="whatsnew-list">
-            <li>Fixed floating label CSS conflict on login form</li>
-            <li>Fixed EJS comment syntax in empty state component</li>
-            <li>Improved Railway deployment compatibility</li>
+            <li><strong>Update Command:</strong> <code style="background: var(--bg-secondary); padding: 0.2rem 0.4rem; border-radius: 3px;">docker compose build && docker compose up -d</code></li>
+            <li>Migrations run automatically on startup &mdash; no manual steps!</li>
           </ul>
         </div>
         <div class="whatsnew-links">
