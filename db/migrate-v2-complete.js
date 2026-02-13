@@ -423,8 +423,7 @@ try {
   const missingColumns = [
     { table: 'users', column: 'socials', sql: 'ALTER TABLE users ADD COLUMN socials TEXT' },
     { table: 'posts', column: 'image_url', sql: 'ALTER TABLE posts ADD COLUMN image_url TEXT' },
-    { table: 'replies', column: 'image_url', sql: 'ALTER TABLE replies ADD COLUMN image_url TEXT' },
-    { table: 'votes', column: 'created_at', sql: "ALTER TABLE votes ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime('now'))" }
+    { table: 'replies', column: 'image_url', sql: 'ALTER TABLE replies ADD COLUMN image_url TEXT' }
   ];
 
   for (const col of missingColumns) {
@@ -438,6 +437,19 @@ try {
         console.log(`✓ ${col.table}.${col.column} already exists`);
       }
     }
+  }
+
+  // Special handling for votes.created_at (SQLite doesn't allow DEFAULT datetime() in ALTER)
+  if (tableExists('votes') && !columnExists('votes', 'created_at')) {
+    console.log('➕ Adding votes.created_at (with backfill)...');
+    db.exec(`
+      ALTER TABLE votes ADD COLUMN created_at TEXT;
+      UPDATE votes SET created_at = datetime('now') WHERE created_at IS NULL;
+    `);
+    changesMade++;
+    console.log('✅ votes.created_at added and existing votes backfilled');
+  } else if (tableExists('votes')) {
+    console.log('✓ votes.created_at already exists');
   }
 
   db.close();
