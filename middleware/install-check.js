@@ -21,9 +21,9 @@ function isInstalled() {
 
       // Database has users = app is installed!
       if (result && result.count > 0) {
-        console.log('⚠️  Lock file missing but database exists with users. Recreating lock file...');
+        console.log('⚠️  Lock file missing but database exists with users. App is installed.');
 
-        // Recreate lock file
+        // Try to recreate lock file (but don't fail if we can't)
         try {
           const dataDir = path.join(__dirname, '..', 'data');
           if (!fs.existsSync(dataDir)) {
@@ -32,10 +32,12 @@ function isInstalled() {
           fs.writeFileSync(lockFile, new Date().toISOString());
           console.log('✅ Lock file recreated successfully');
         } catch (err) {
-          console.error('❌ Failed to recreate lock file:', err.message);
+          // Permission denied - this is OK! App can still run without lock file
+          console.warn('⚠️  Could not recreate lock file (permission denied). This is OK - continuing anyway.');
+          console.warn('   If using Docker, run: sudo chmod -R 777 $(docker volume inspect <volume-name> -f \'{{.Mountpoint}}\')');
         }
 
-        return true; // App is installed
+        return true; // App is installed (even if we couldn't create lock file)
       }
     } catch (err) {
       console.error('Error checking database:', err.message);

@@ -720,6 +720,88 @@ The admin can also check for updates from the **Guild Settings** page using the 
 
 ---
 
+## Troubleshooting
+
+### Docker: "permission denied" or "readonly database" errors
+
+**Symptoms:**
+- App crashes in a restart loop after updating
+- Logs show: `EACCES: permission denied, open '/app/data/installed.lock'`
+- Logs show: `SqliteError: attempt to write a readonly database`
+
+**Cause:** Docker volume permissions issue. The volume is owned by root but the container runs as user `node` (UID 1000).
+
+**Solution:**
+
+```bash
+# Stop the container
+docker compose down
+
+# Fix volume permissions
+sudo chmod -R 777 $(docker volume inspect <volume-name> -f '{{.Mountpoint}}')
+
+# For Quest Planner, the volume is usually named:
+# dndplanning_quest-planner-data or quest-planner-data
+
+# Example:
+sudo chmod -R 777 $(docker volume inspect dndplanning_quest-planner-data -f '{{.Mountpoint}}')
+
+# Restart
+docker compose up -d
+```
+
+**Alternative:** Run container as root (add to `docker-compose.yml`):
+
+```yaml
+services:
+  app:
+    user: "0:0"  # Run as root
+    # ... rest of config
+```
+
+**Note:** After v2.0.2, the app will detect this situation and continue running even without write permissions to the lock file.
+
+### Installer Appears on Existing Installation
+
+**Symptoms:**
+- After updating, you see the installation wizard instead of your app
+- You already have data and users in the database
+
+**Cause:** The `data/installed.lock` file is missing.
+
+**Solution:**
+
+```bash
+# Docker:
+docker exec quest-planner sh -c "echo '$(date)' > /app/data/installed.lock"
+docker restart quest-planner
+
+# Without Docker:
+echo "$(date)" > data/installed.lock
+pm2 restart quest-planner
+```
+
+**Note:** After v2.0.1, the app automatically detects existing databases and won't show the installer.
+
+### CSRF Token Errors Behind Reverse Proxy
+
+**Symptoms:**
+- "Invalid CSRF token" errors when submitting forms
+- Session keeps logging out
+
+**Cause:** Missing proxy configuration.
+
+**Solution:** Add to your `.env` file:
+
+```env
+TRUST_PROXY=true
+SECURE_COOKIES=true  # Only if using HTTPS
+```
+
+Then restart the server.
+
+---
+
 ## Changelog
 
 ### v2.0.0 (2026-02-13) 🎉 MAJOR UPDATE
