@@ -252,33 +252,33 @@ db.exec(`
   );
 `);
 
-// Post/Reply Reactions (like/dislike)
+// Post/Reply Reactions (like/dislike) - UPDATED SCHEMA for v2.0+
 db.exec(`
   CREATE TABLE IF NOT EXISTS post_reactions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id),
-    reaction_type TEXT NOT NULL CHECK(reaction_type IN ('like', 'dislike')),
+    emoji TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now')),
-    UNIQUE(post_id, user_id)
+    UNIQUE(post_id, user_id, emoji)
   );
 
   CREATE TABLE IF NOT EXISTS reply_reactions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     reply_id INTEGER NOT NULL REFERENCES replies(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id),
-    reaction_type TEXT NOT NULL CHECK(reaction_type IN ('like', 'dislike')),
+    emoji TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now')),
-    UNIQUE(reply_id, user_id)
+    UNIQUE(reply_id, user_id, emoji)
   );
 `);
 
-// Polls system
+// Polls system - UPDATED SCHEMA for v2.0+ (post_id + user_id required)
 db.exec(`
   CREATE TABLE IF NOT EXISTS polls (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
-    reply_id INTEGER REFERENCES replies(id) ON DELETE CASCADE,
+    post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id),
     question TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now'))
   );
