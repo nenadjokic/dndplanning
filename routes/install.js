@@ -258,7 +258,7 @@ router.post('/', requireNotInstalled, async (req, res) => {
 
       CREATE TABLE IF NOT EXISTS polls (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        session_id INTEGER REFERENCES sessions(id) ON DELETE CASCADE,
+        post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
         user_id INTEGER NOT NULL REFERENCES users(id),
         question TEXT NOT NULL,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -267,7 +267,8 @@ router.post('/', requireNotInstalled, async (req, res) => {
       CREATE TABLE IF NOT EXISTS poll_options (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         poll_id INTEGER NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
-        option_text TEXT NOT NULL
+        option_text TEXT NOT NULL,
+        sort_order INTEGER DEFAULT 0
       );
 
       CREATE TABLE IF NOT EXISTS poll_votes (
