@@ -23,6 +23,9 @@ COPY --from=builder /app/node_modules ./node_modules
 # Copy application files
 COPY . .
 
+# Make entrypoint script executable
+RUN chmod +x /app/docker-entrypoint.sh
+
 # Create data directories with proper permissions
 RUN mkdir -p /app/data/avatars && \
     mkdir -p /app/data/uploads/board && \
@@ -45,4 +48,5 @@ ENV NODE_ENV=production
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 302 || r.statusCode === 200 ? 0 : 1)})"
 
-CMD ["node", "server.js"]
+# Use entrypoint script that runs migrations before starting server
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
