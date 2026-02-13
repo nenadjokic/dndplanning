@@ -8,8 +8,13 @@ const { requireLogin } = require('../middleware/auth');
 const router = express.Router();
 
 const avatarDir = path.join(__dirname, '..', 'data', 'avatars');
-if (!fs.existsSync(avatarDir)) {
-  fs.mkdirSync(avatarDir, { recursive: true });
+try {
+  if (!fs.existsSync(avatarDir)) {
+    fs.mkdirSync(avatarDir, { recursive: true });
+  }
+} catch (err) {
+  console.warn('⚠️  Could not create avatars directory. Avatar uploads may not work.');
+  console.warn('   Fix: sudo chmod -R 777 $(docker volume inspect <volume-name> -f \'{{.Mountpoint}}\')');
 }
 
 const avatarUpload = multer({

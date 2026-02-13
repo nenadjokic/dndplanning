@@ -23,8 +23,11 @@ COPY --from=builder /app/node_modules ./node_modules
 # Copy application files
 COPY . .
 
-# Create data directory with proper permissions
-RUN mkdir -p /app/data && \
+# Create data directories with proper permissions
+RUN mkdir -p /app/data/avatars && \
+    mkdir -p /app/data/uploads/board && \
+    mkdir -p /app/data/maps && \
+    mkdir -p /app/data/thumbnails && \
     chown -R node:node /app/data
 
 # Switch to non-root user

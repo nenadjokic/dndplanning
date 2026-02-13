@@ -8,8 +8,13 @@ const sse = require('../helpers/sse');
 const router = express.Router();
 
 const mapsDir = path.join(__dirname, '..', 'data', 'maps');
-if (!fs.existsSync(mapsDir)) {
-  fs.mkdirSync(mapsDir, { recursive: true });
+try {
+  if (!fs.existsSync(mapsDir)) {
+    fs.mkdirSync(mapsDir, { recursive: true });
+  }
+} catch (err) {
+  console.warn('⚠️  Could not create maps directory. Map uploads may not work.');
+  console.warn('   Fix: sudo chmod -R 777 $(docker volume inspect <volume-name> -f \'{{.Mountpoint}}\')');
 }
 
 function mapUpload(req, res, next) {

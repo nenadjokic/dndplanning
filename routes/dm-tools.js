@@ -8,8 +8,13 @@ const { requireLogin, requireDM } = require('../middleware/auth');
 const router = express.Router();
 
 const thumbDir = path.join(__dirname, '..', 'data', 'thumbnails');
-if (!fs.existsSync(thumbDir)) {
-  fs.mkdirSync(thumbDir, { recursive: true });
+try {
+  if (!fs.existsSync(thumbDir)) {
+    fs.mkdirSync(thumbDir, { recursive: true });
+  }
+} catch (err) {
+  console.warn('⚠️  Could not create thumbnails directory. Thumbnail generation may not work.');
+  console.warn('   Fix: sudo chmod -R 777 $(docker volume inspect <volume-name> -f \'{{.Mountpoint}}\')');
 }
 
 const upload = multer({

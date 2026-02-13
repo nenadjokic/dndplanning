@@ -10,8 +10,13 @@ const router = express.Router();
 
 // Setup upload directory for board images
 const uploadDir = path.join(__dirname, '..', 'data', 'uploads', 'board');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+try {
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+} catch (err) {
+  console.warn('⚠️  Could not create board uploads directory. Image uploads may not work.');
+  console.warn('   Fix: sudo chmod -R 777 $(docker volume inspect <volume-name> -f \'{{.Mountpoint}}\')');
 }
 
 // Multer configuration for board image uploads
