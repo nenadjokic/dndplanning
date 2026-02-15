@@ -426,12 +426,36 @@
     }
 
     show() {
-      // Position picker relative to input (fixed positioning uses viewport coordinates)
       const rect = this.input.getBoundingClientRect();
-      this.picker.style.top = `${rect.bottom + 5}px`;
-      this.picker.style.left = `${rect.left}px`;
+      const vh = window.innerHeight;
+      const isMobile = window.innerWidth <= 768;
 
       this.picker.style.display = 'block';
+
+      // Let browser render so we can measure actual height
+      const pickerHeight = this.picker.offsetHeight || 400;
+
+      if (isMobile) {
+        // Center vertically on mobile, CSS handles horizontal centering
+        let top = Math.max(8, (vh - pickerHeight) / 2);
+        this.picker.style.top = `${top}px`;
+        this.picker.style.left = '50%';
+      } else {
+        // Desktop: position below input, flip above if no space
+        let top = rect.bottom + 5;
+        if (top + pickerHeight > vh - 10) {
+          // Try above
+          if (rect.top > pickerHeight + 10) {
+            top = rect.top - pickerHeight - 5;
+          } else {
+            // Center in viewport
+            top = Math.max(10, (vh - pickerHeight) / 2);
+          }
+        }
+        this.picker.style.top = `${top}px`;
+        this.picker.style.left = `${rect.left}px`;
+      }
+
       setTimeout(() => this.picker.classList.add('visible'), 10);
     }
 

@@ -29,19 +29,18 @@
   <% if (typeof showWhatsNew !== 'undefined' && showWhatsNew) { %>
     <div class="welcome-overlay" id="whatsnew-overlay">
       <div class="welcome-modal whatsnew-modal">
-        <h2>What's New in v<%= appVersion %> 🔧</h2>
+        <h2>What's New in v<%= appVersion %> 🎲</h2>
         <div class="whatsnew-content">
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Critical Hotfix - Database Migration & Auto-Update</h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">3D Dice Roller Upgrade</h3>
           <ul class="whatsnew-list">
-            <li><strong>🔄 Auto-Migration on Startup</strong> &mdash; Migrations now run automatically when container starts; no manual steps needed!</li>
-            <li><strong>✅ Complete Migration Script</strong> &mdash; Handles ALL legacy database schemas; migrates old reactions and polls to new format</li>
-            <li><strong>📊 Analytics Fixed</strong> &mdash; Analytics page now works correctly; added missing database column</li>
-            <li><strong>📚 Migration Documentation</strong> &mdash; Added comprehensive guide for schema changes and debugging</li>
+            <li><strong>🎨 8 New Dice Themes</strong> &mdash; Marble Palace, Magma Forge, Smoke Nebula, Frost Shard, Blood Chalice, Forest Druid, Celestial Star, Dragon Scale</li>
+            <li><strong>💥 Dice Collisions</strong> &mdash; Dice now bounce off each other with realistic physics</li>
+            <li><strong>🔧 Fixed Dice Geometry</strong> &mdash; Eliminated visible edge gaps between dice faces</li>
           </ul>
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">For Existing Installations</h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Session & UI Improvements</h3>
           <ul class="whatsnew-list">
-            <li><strong>Update Command:</strong> <code style="background: var(--bg-secondary); padding: 0.2rem 0.4rem; border-radius: 3px;">docker compose build && docker compose up -d</code></li>
-            <li>Migrations run automatically on startup &mdash; no manual steps!</li>
+            <li><strong>👥 Party Availability for All</strong> &mdash; All players can now see everyone's votes, not just the DM</li>
+            <li><strong>📅 Calendar Fix</strong> &mdash; Date picker now scrolls properly on small screens</li>
           </ul>
         </div>
         <div class="whatsnew-links">
@@ -107,6 +106,8 @@
   <% if (typeof user !== 'undefined' && user) { %>
     <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
     <link rel="stylesheet" href="/css/dice-roller.css?v=<%= appVersion %>">
+    <script src="/js/dice-geometry.js?v=<%= appVersion %>"></script>
+    <script src="/js/dice-themes.js?v=<%= appVersion %>"></script>
     <script type="module" src="/js/dice-roller.js?v=<%= appVersion %>"></script>
   <% } %>
 </body>

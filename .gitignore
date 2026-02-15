@@ -29,6 +29,12 @@ docs/
 *.bak2
 .DS_Store
 
+# Test/debug artifacts
+PRODUCTION-TEST-REPORT.md
+PRODUKCIJA-IZVESTAJ.md
+cookies.txt
+production-*.log
+
 # Screenshots and test images
 *.png
 !public/icons/*.png

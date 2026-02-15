@@ -123,6 +123,13 @@
   <% } %>
 </div>
 
+<% if (typeof players !== 'undefined' && players.length > 0) { %>
+<div class="card">
+  <h2>Party Availability</h2>
+  <%- include('../partials/slot-grid', { slots, players, voteMap, slotSummary, preferenceMap: {}, allUsersMap: typeof allUsersMap !== 'undefined' ? allUsersMap : {}, unavailabilityMap: typeof unavailabilityMap !== 'undefined' ? unavailabilityMap : {} }) %>
+</div>
+<% } %>
+
 <%- include('../partials/comments', { session, sessionPosts, sessionReplyMap }) %>
 
 <%- include('../partials/foot') %>

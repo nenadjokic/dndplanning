@@ -804,6 +804,20 @@ Then restart the server.
 
 ## Changelog
 
+### v2.0.5 (2026-02-15) 🎲 Dice Themes, Collisions & Vote Visibility
+
+**3D Dice Roller:**
+- **8 New Dice Themes** — Marble Palace, Magma Forge, Smoke Nebula, Frost Shard, Blood Chalice, Forest Druid, Celestial Star, Dragon Scale (12 themes total)
+- **Dice Collisions** — Dice now bounce off each other with realistic elastic collision physics
+- **Fixed Dice Geometry** — Eliminated visible edge gaps between dice faces; clean polyhedron rendering
+
+**Session Improvements:**
+- **Party Availability for All Players** — All players can now see everyone's votes in the availability grid, not just DM/admin
+
+**UI Fixes:**
+- **Calendar Scrolling** — Date picker now scrolls properly on small screens instead of overflowing the viewport
+- **Frost Shard Theme** — Fixed nearly invisible numbers on ice dice
+
 ### v2.0.4 (2026-02-13) 🔧 CRITICAL HOTFIX
 
 **Database Migration Fix:**

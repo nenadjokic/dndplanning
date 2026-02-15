@@ -6,7 +6,7 @@ var menuOpen = false;
 var rolling = false;
 var hiddenMode = false;
 
-var fabBtn, bubbleMenu, splitBtns, rollBtn, clearBtn, hiddenBtn;
+var fabBtn, bubbleMenu, splitBtns, rollBtn, clearBtn, hiddenBtn, themeBtn, themePicker;
 var resultsBanner, resultTotal, resultDetail, resultHidden;
 var historyEl, historyPollTimer, historyFadeTimer;
 var isMobile = window.innerWidth <= 768;
@@ -22,7 +22,7 @@ var cleanupTimeout = null;
 
 var DIE_TYPES = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100'];
 
-/* ── Procedural dice rolling sound (Web Audio API) ── */
+/* ── Procedural dice rolling sound (Web Audio API, theme-aware) ── */
 var audioCtx = null;
 function playDiceSound() {
   try {
@@ -31,20 +31,28 @@ function playDiceSound() {
     var now = ctx.currentTime;
     var duration = 1.2;
 
+    // Get theme sound config
+    var cfg = getThemeConfig();
+    var snd = cfg.sound || { filterFreq: 800, filterQ: 1.5, oscFreq: 120, character: 'wood' };
+
     // Master gain
     var master = ctx.createGain();
     master.gain.setValueAtTime(0.35, now);
     master.connect(ctx.destination);
 
-    // Number of individual "click" impacts
-    var numClicks = 12 + Math.floor(Math.random() * 6);
+    // Adjust click count based on material character
+    var baseClicks = snd.character === 'crystal' ? 16 : snd.character === 'metal' ? 14 : 12;
+    var numClicks = baseClicks + Math.floor(Math.random() * 6);
+
     for (var i = 0; i < numClicks; i++) {
-      // Each click happens at an increasing interval (dice settling)
       var t = now + (i / numClicks) * duration * (0.3 + 0.7 * (i / numClicks));
       var clickGain = ctx.createGain();
       var vol = (1.0 - (i / numClicks) * 0.7) * (0.8 + Math.random() * 0.4);
       clickGain.gain.setValueAtTime(vol, t);
-      clickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.04 + Math.random() * 0.02);
+
+      // Crystal theme has longer ring, metal has shorter sharp attack
+      var decayTime = snd.character === 'crystal' ? 0.06 : snd.character === 'metal' ? 0.03 : 0.04;
+      clickGain.gain.exponentialRampToValueAtTime(0.001, t + decayTime + Math.random() * 0.02);
       clickGain.connect(master);
 
       // Noise burst for impact
@@ -57,24 +65,25 @@ function playDiceSound() {
       var noise = ctx.createBufferSource();
       noise.buffer = noiseBuf;
 
-      // Bandpass filter for wooden thud character
+      // Theme-specific bandpass filter
       var filter = ctx.createBiquadFilter();
       filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(800 + Math.random() * 1200, t);
-      filter.Q.setValueAtTime(1.5 + Math.random() * 2, t);
+      filter.frequency.setValueAtTime(snd.filterFreq + Math.random() * (snd.filterFreq * 0.5), t);
+      filter.Q.setValueAtTime(snd.filterQ + Math.random() * 2, t);
       noise.connect(filter);
       filter.connect(clickGain);
 
       noise.start(t);
       noise.stop(t + 0.06);
 
-      // Low resonance for wood surface body (every few clicks)
+      // Theme-specific low resonance body tone
       if (i % 3 === 0) {
         var osc = ctx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(120 + Math.random() * 80, t);
+        osc.type = snd.character === 'crystal' ? 'triangle' : 'sine';
+        osc.frequency.setValueAtTime(snd.oscFreq + Math.random() * (snd.oscFreq * 0.5), t);
         var oscGain = ctx.createGain();
-        oscGain.gain.setValueAtTime(vol * 0.25, t);
+        var oscVol = snd.character === 'metal' ? vol * 0.35 : vol * 0.25;
+        oscGain.gain.setValueAtTime(oscVol, t);
         oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
         osc.connect(oscGain);
         oscGain.connect(master);
@@ -149,6 +158,23 @@ function buildDOM() {
     bubbleMenu.appendChild(b);
   });
 
+  // Theme picker button (palette icon) at end of bubble menu
+  themeBtn = document.createElement('button');
+  themeBtn.className = 'dice-theme-btn';
+  themeBtn.setAttribute('aria-label', 'Dice Theme');
+  themeBtn.title = 'Dice Theme';
+  themeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<circle cx="13.5" cy="6.5" r="2.5"/>' +
+    '<circle cx="17.5" cy="10.5" r="2.5"/>' +
+    '<circle cx="8.5" cy="7.5" r="2.5"/>' +
+    '<circle cx="6.5" cy="12" r="2.5"/>' +
+    '<path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.75 1.5-1.5 0-.39-.14-.74-.38-1.01A1.49 1.49 0 0 1 13.5 18c.83 0 1.5-.67 1.5-1.5 0-5.52 4.48-3 4.48-8.5C19.48 4.13 16.18 2 12 2z"/>' +
+    '</svg>';
+  bubbleMenu.appendChild(themeBtn);
+
+  // Theme picker panel
+  buildThemePicker();
+
   resultsBanner = document.createElement('div');
   resultsBanner.className = 'dice-results-banner';
   resultsBanner.id = 'dice-results-banner';
@@ -171,6 +197,7 @@ function buildDOM() {
   document.body.appendChild(fab);
   document.body.appendChild(resultsBanner);
   document.body.appendChild(historyEl);
+  if (themePicker) document.body.appendChild(themePicker);
 
   // Start polling history + inactivity fade
   fetchHistory();
@@ -260,6 +287,24 @@ function bindEvents() {
     selectedDice = {};
     updateBubbleUI();
   });
+
+  // Theme picker toggle
+  themeBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    if (themePicker) {
+      var isOpen = themePicker.classList.contains('open');
+      themePicker.classList.toggle('open', !isOpen);
+    }
+  });
+
+  // Close theme picker when clicking outside
+  document.addEventListener('click', function(e) {
+    if (themePicker && themePicker.classList.contains('open')) {
+      if (!themePicker.contains(e.target) && e.target !== themeBtn && !themeBtn.contains(e.target)) {
+        themePicker.classList.remove('open');
+      }
+    }
+  });
 }
 
 function updateBubbleUI() {
@@ -276,9 +321,75 @@ function updateBubbleUI() {
   fabBtn.style.display = hasSelection ? 'none' : 'flex';
 }
 
+/* ── Theme Picker Panel ── */
+function buildThemePicker() {
+  if (!window.DiceThemeManager) return;
+
+  themePicker = document.createElement('div');
+  themePicker.className = 'dice-theme-picker';
+  themePicker.id = 'dice-theme-picker';
+
+  var title = document.createElement('div');
+  title.className = 'dice-theme-picker-title';
+  title.textContent = 'DICE THEME';
+  themePicker.appendChild(title);
+
+  var grid = document.createElement('div');
+  grid.className = 'dice-theme-grid';
+
+  var themes = window.DiceThemeManager.getThemeList();
+  var currentId = window.DiceThemeManager.currentTheme;
+
+  themes.forEach(function(t) {
+    var themeData = window.DICE_THEMES[t.id];
+    var darkCfg = themeData.dark;
+
+    var card = document.createElement('div');
+    card.className = 'dice-theme-card' + (t.id === currentId ? ' active' : '');
+    card.setAttribute('data-theme-id', t.id);
+
+    var swatch = document.createElement('div');
+    swatch.className = 'dice-theme-swatch';
+    swatch.style.setProperty('--swatch-body', darkCfg.bodyColor);
+    swatch.style.setProperty('--swatch-number', darkCfg.numberColor);
+
+    var name = document.createElement('div');
+    name.className = 'dice-theme-card-name';
+    name.textContent = t.name;
+
+    var desc = document.createElement('div');
+    desc.className = 'dice-theme-card-desc';
+    desc.textContent = t.description;
+
+    card.appendChild(swatch);
+    card.appendChild(name);
+    card.appendChild(desc);
+    grid.appendChild(card);
+
+    card.addEventListener('click', function() {
+      window.DiceThemeManager.setTheme(t.id);
+      // Update active state
+      var allCards = grid.querySelectorAll('.dice-theme-card');
+      for (var i = 0; i < allCards.length; i++) {
+        allCards[i].classList.toggle('active', allCards[i].getAttribute('data-theme-id') === t.id);
+      }
+      // Close picker after short delay
+      setTimeout(function() {
+        themePicker.classList.remove('open');
+      }, 300);
+    });
+  });
+
+  themePicker.appendChild(grid);
+}
+
 function performRoll() {
   rolling = true;
-  hideResults();
+  // Hide results banner directly — do NOT call hideResults() which schedules
+  // a deferred cleanupActiveRoll() that would kill the new animation at 500ms
+  resultsBanner.classList.remove('visible');
+  if (resultTimeout) { clearTimeout(resultTimeout); resultTimeout = null; }
+  if (hideCleanupTimeout) { clearTimeout(hideCleanupTimeout); hideCleanupTimeout = null; }
   cleanupActiveRoll();
   playDiceSound();
   var tc = document.createElement('canvas');
@@ -303,17 +414,35 @@ function fallbackTextRoll() {
   rolling = false;
 }
 
-/* ── Face Texture ── */
-function createFaceTexture(text, size) {
+/* ── Face Texture (theme-aware) ── */
+function getThemeConfig() {
+  if (window.DiceThemeManager) return window.DiceThemeManager.getConfig();
+  // Fallback if themes not loaded
+  return {
+    bodyColor: '#6b4423', numberColor: '#f0d9a0', edgeColor: '#5a3818',
+    roughness: 0.5, metalness: 0.15, materialType: 'standard', flatShading: true,
+    font: 'MedievalSharp, cursive',
+    lighting: {
+      ambient: { color: 0xffffff, intensity: 1.2 },
+      directional: { color: 0xffffff, intensity: 0.8 },
+      point: { color: 0xd4a843, intensity: 0.5, distance: 20 }
+    },
+    sound: { filterFreq: 800, filterQ: 1.5, oscFreq: 120, character: 'wood' }
+  };
+}
+
+function createFaceTexture(text, size, themeConfig) {
   size = size || 128;
+  var cfg = themeConfig || getThemeConfig();
   var c = document.createElement('canvas');
   c.width = size; c.height = size;
   var ctx = c.getContext('2d');
-  ctx.fillStyle = '#6b4423';
+  ctx.fillStyle = cfg.bodyColor;
   ctx.fillRect(0, 0, size, size);
-  ctx.fillStyle = '#f0d9a0';
+  ctx.fillStyle = cfg.numberColor;
+  var fontFamily = cfg.font || 'MedievalSharp, cursive';
   var fontSize = String(text).length > 2 ? size * 0.22 : String(text).length > 1 ? size * 0.28 : size * 0.35;
-  ctx.font = 'bold ' + Math.floor(fontSize) + 'px MedievalSharp, cursive';
+  ctx.font = 'bold ' + Math.floor(fontSize) + 'px ' + fontFamily;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(String(text), size / 2, size / 2);
@@ -322,361 +451,93 @@ function createFaceTexture(text, size) {
   return tex;
 }
 
-function makeMat(text) {
+function makeMat(text, themeConfig) {
+  var cfg = themeConfig || getThemeConfig();
+  var tex = createFaceTexture(text, 128, cfg);
+
+  if (cfg.materialType === 'physical' && THREE.MeshPhysicalMaterial) {
+    var opts = {
+      map: tex,
+      roughness: cfg.roughness || 0.1,
+      metalness: cfg.metalness || 0.0,
+      flatShading: !!cfg.flatShading,
+      side: THREE.DoubleSide
+    };
+    if (cfg.transmission !== undefined) opts.transmission = cfg.transmission;
+    if (cfg.thickness !== undefined) opts.thickness = cfg.thickness;
+    if (cfg.clearcoat !== undefined) opts.clearcoat = cfg.clearcoat;
+    if (cfg.clearcoatRoughness !== undefined) opts.clearcoatRoughness = cfg.clearcoatRoughness;
+    if (cfg.ior !== undefined) opts.ior = cfg.ior;
+    if (cfg.emissive) { opts.emissive = new THREE.Color(cfg.emissive); opts.emissiveIntensity = cfg.emissiveIntensity || 0.1; }
+    return new THREE.MeshPhysicalMaterial(opts);
+  }
+
+  var stdOpts = {
+    map: tex,
+    roughness: cfg.roughness || 0.5,
+    metalness: cfg.metalness || 0.15,
+    flatShading: cfg.flatShading !== false,
+    side: THREE.DoubleSide
+  };
+  if (cfg.emissive) { stdOpts.emissive = new THREE.Color(cfg.emissive); stdOpts.emissiveIntensity = cfg.emissiveIntensity || 0.1; }
+  return new THREE.MeshStandardMaterial(stdOpts);
+}
+
+/* ── Edge material for chamfer bevel faces (theme-aware) ── */
+function makeEdgeMat(themeConfig) {
+  var cfg = themeConfig || getThemeConfig();
+  // Derive edge color from bodyColor, darken by only 5% to eliminate visible gaps
+  var hex = cfg.bodyColor || '#6b4423';
+  var r = Math.round(parseInt(hex.slice(1, 3), 16) * 0.95);
+  var g = Math.round(parseInt(hex.slice(3, 5), 16) * 0.95);
+  var b = Math.round(parseInt(hex.slice(5, 7), 16) * 0.95);
+  var edgeHex = '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
   return new THREE.MeshStandardMaterial({
-    map: createFaceTexture(text),
-    roughness: 0.5,
-    metalness: 0.15,
-    flatShading: true,  // Hide triangle edge lines on kite faces
-    side: THREE.DoubleSide  // Render both sides of faces
+    color: edgeHex,
+    roughness: (cfg.roughness || 0.5) * 0.8,
+    metalness: (cfg.metalness || 0.15) * 1.3,
+    flatShading: cfg.flatShading !== false,
+    side: THREE.DoubleSide
   });
 }
 
-/* ── UV Assignment via face-plane projection ── */
-function assignFaceUVs(geo) {
-  var pos = geo.getAttribute('position');
-  var uvArr = new Float32Array(pos.count * 2);
-  var groups = geo.groups;
+/* ── Unified dice mesh creation using chamfered geometry (theme-aware) ── */
+function createDiceMesh(diceType, themeConfig) {
+  var DG = window.DiceGeometry;
+  var result = DG.createDiceGeometry(diceType);
+  var geo = result.geometry;
+  var config = result.config;
+  var labels = config.labels;
+  var cfg = themeConfig || getThemeConfig();
 
-  for (var g = 0; g < groups.length; g++) {
-    var start = groups[g].start;
-    var count = groups[g].count;
-    var verts = [];
-    for (var i = 0; i < count; i++)
-      verts.push(new THREE.Vector3().fromBufferAttribute(pos, start + i));
-
-    var seen = {};
-    var unique = [];
-    for (var i = 0; i < verts.length; i++) {
-      var key = verts[i].x.toFixed(5) + ',' + verts[i].y.toFixed(5) + ',' + verts[i].z.toFixed(5);
-      if (!seen[key]) { seen[key] = true; unique.push(verts[i]); }
-    }
-    var center = new THREE.Vector3();
-    for (var i = 0; i < unique.length; i++) center.add(unique[i]);
-    center.divideScalar(unique.length);
-
-    var ab = new THREE.Vector3().subVectors(verts[1], verts[0]);
-    var ac = new THREE.Vector3().subVectors(verts[2], verts[0]);
-    var normal = new THREE.Vector3().crossVectors(ab, ac).normalize();
-    var tangent = ab.clone().normalize();
-    var bitangent = new THREE.Vector3().crossVectors(normal, tangent).normalize();
-
-    var coords = [];
-    var maxExt = 0;
-    for (var i = 0; i < verts.length; i++) {
-      var rel = new THREE.Vector3().subVectors(verts[i], center);
-      var u = rel.dot(tangent);
-      var v = rel.dot(bitangent);
-      coords.push([u, v]);
-      maxExt = Math.max(maxExt, Math.abs(u), Math.abs(v));
-    }
-
-    var scale = maxExt > 0 ? 0.42 / maxExt : 1;
-    for (var i = 0; i < coords.length; i++) {
-      uvArr[(start + i) * 2] = coords[i][0] * scale + 0.5;
-      uvArr[(start + i) * 2 + 1] = coords[i][1] * scale + 0.5;
-    }
-  }
-
-  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvArr, 2));
-}
-
-/* ── Edge outline — thin brown lines on die edges ── */
-var edgeLineMat = null;
-function addEdgeLines(mesh) {
-  if (!edgeLineMat) {
-    edgeLineMat = new THREE.LineBasicMaterial({ color: 0x3b2112, linewidth: 1 });
-  }
-  var edges = new THREE.EdgesGeometry(mesh.geometry, 15);
-  var lines = new THREE.LineSegments(edges, edgeLineMat);
-  mesh.add(lines);
-}
-
-/* ── D4 ── */
-function createD4Mesh() {
-  var vals = [1, 2, 3, 4];
-  var geo = new THREE.TetrahedronGeometry(0.9, 0);
-  geo = geo.toNonIndexed();
-  geo.clearGroups();
+  // Create materials array: one per labeled face
   var mats = [];
-  for (var f = 0; f < 4; f++) { geo.addGroup(f * 3, 3, f); mats.push(makeMat(vals[f])); }
-  assignFaceUVs(geo);
+  for (var i = 0; i < labels.length; i++) {
+    mats.push(makeMat(labels[i], cfg));
+  }
+
   return new THREE.Mesh(geo, mats);
 }
 
-function createD4Body(material) {
-  var r = 0.9, s = r / Math.sqrt(3);
-  var verts = [
-    new CANNON.Vec3(s, s, s), new CANNON.Vec3(s, -s, -s),
-    new CANNON.Vec3(-s, s, -s), new CANNON.Vec3(-s, -s, s)
-  ];
-  var faces = [[0, 1, 2], [0, 3, 1], [0, 2, 3], [1, 3, 2]];
-  return new CANNON.Body({ mass: 1, shape: new CANNON.ConvexPolyhedron({ vertices: verts, faces: faces }), material: material });
+/* ── Physics body — Sphere for smooth rolling (visual mesh shows face changes) ── */
+function createDiceBody(diceType, cannonMaterial) {
+  var DG = window.DiceGeometry;
+  var config = DG.DICE_GEOM[diceType];
+  var radius = (config.radius || 0.85) * (config.scaleFactor || 1.0);
+  return new CANNON.Body({ mass: 1, shape: new CANNON.Sphere(radius), material: cannonMaterial });
 }
 
-/* ── D6 ── */
-function createD6Mesh() {
-  var vals = [1, 6, 2, 5, 3, 4];
-  var geo = new THREE.BoxGeometry(1, 1, 1);
-  geo = geo.toNonIndexed();
-  geo.clearGroups();
-  var mats = [];
-  for (var f = 0; f < 6; f++) { geo.addGroup(f * 6, 6, f); mats.push(makeMat(vals[f])); }
-  return new THREE.Mesh(geo, mats);
-}
-
-function createD6Body(material) {
-  return new CANNON.Body({ mass: 1, shape: new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5)), material: material });
-}
-
-/* ── D8 ── */
-function createD8Mesh() {
-  var vals = [1, 2, 3, 4, 5, 6, 7, 8];
-  var geo = new THREE.OctahedronGeometry(0.8, 0);
-  geo = geo.toNonIndexed();
-  geo.clearGroups();
-  var mats = [];
-  for (var f = 0; f < 8; f++) { geo.addGroup(f * 3, 3, f); mats.push(makeMat(vals[f])); }
-  assignFaceUVs(geo);
-  return new THREE.Mesh(geo, mats);
-}
-
-function createD8Body(material) {
-  var r = 0.8;
-  var verts = [
-    new CANNON.Vec3(r, 0, 0), new CANNON.Vec3(-r, 0, 0),
-    new CANNON.Vec3(0, r, 0), new CANNON.Vec3(0, -r, 0),
-    new CANNON.Vec3(0, 0, r), new CANNON.Vec3(0, 0, -r)
-  ];
-  var faces = [[0,2,4],[0,4,3],[0,3,5],[0,5,2],[1,4,2],[1,3,4],[1,5,3],[1,2,5]];
-  return new CANNON.Body({ mass: 1, shape: new CANNON.ConvexPolyhedron({ vertices: verts, faces: faces }), material: material });
-}
-
-/* ── D10 / D100 geometry ── */
-function makeD10Verts(r) {
-  r = r || 0.8;
-  // Pentagonal trapezohedron - exact mathematical vertices for perfectly flat faces
-  // Source: https://blender.stackexchange.com/questions/40548/
-  var baseVerts = [
-    [0.5257311, 0.381966, 0.8506508],
-    [-0.2008114, 0.618034, 0.8506508],
-    [-0.6498394, 0, 0.8506508],
-    [0.5257311, -1.618034, 0.8506508],
-    [1.051462, 0, -0.2008114],
-    [0.8506508, 0.618034, 0.2008114],
-    [-0.5257311, 1.618034, -0.8506508],
-    [-1.051462, 0, 0.2008114],
-    [-0.8506508, -0.618034, -0.2008114],
-    [0.2008114, -0.618034, -0.8506508],
-    [0.6498394, 0, -0.8506508],
-    [-0.5257311, -0.381966, -0.8506508]
-  ];
-
-  // Find bounding sphere radius to scale to desired size
-  var maxDist = 0;
-  for (var i = 0; i < baseVerts.length; i++) {
-    var v = baseVerts[i];
-    var dist = Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-    if (dist > maxDist) maxDist = dist;
+/* ── Read physics result: top face index → dice value ── */
+function faceIndexToValue(diceType, faceIdx) {
+  var geomType = diceType;
+  if (diceType === 'd100tens') geomType = 'd100';
+  if (diceType === 'd100units') geomType = 'd10';
+  var labels = window.DiceGeometry.DICE_GEOM[geomType].labels;
+  if (faceIdx >= 0 && faceIdx < labels.length) {
+    var v = labels[faceIdx];
+    return (typeof v === 'string') ? (parseInt(v) || 0) : v;
   }
-  var scale = r / maxDist;
-
-  // Uniform scale - original mathematically correct proportions
-  return baseVerts.map(function(v) {
-    return [v[0] * scale, v[1] * scale, v[2] * scale];
-  });
-}
-
-function buildD10Mesh(r, labels) {
-  var verts = makeD10Verts(r);
-  var positions = [], normals = [];
-
-  function pushTri(a, b, c, n) {
-    positions.push(a[0],a[1],a[2], b[0],b[1],b[2], c[0],c[1],c[2]);
-    normals.push(n[0],n[1],n[2], n[0],n[1],n[2], n[0],n[1],n[2]);
-  }
-
-  function kiteFace(p0, p1, p2, p3) {
-    // Calculate center for normal direction
-    var cx = (p0[0]+p1[0]+p2[0]+p3[0])/4;
-    var cy = (p0[1]+p1[1]+p2[1]+p3[1])/4;
-    var cz = (p0[2]+p1[2]+p2[2]+p3[2])/4;
-
-    // Calculate face normal from diagonals
-    var d1 = [p2[0]-p0[0], p2[1]-p0[1], p2[2]-p0[2]];
-    var d2 = [p3[0]-p1[0], p3[1]-p1[1], p3[2]-p1[2]];
-    var nx = d1[1]*d2[2]-d1[2]*d2[1], ny = d1[2]*d2[0]-d1[0]*d2[2], nz = d1[0]*d2[1]-d1[1]*d2[0];
-    var len = Math.sqrt(nx*nx+ny*ny+nz*nz);
-    nx/=len; ny/=len; nz/=len;
-
-    // Ensure normal points outward
-    if (cx*nx+cy*ny+cz*nz < 0) { nx=-nx; ny=-ny; nz=-nz; }
-    var n = [nx, ny, nz];
-
-    // Split kite into 2 triangles (with ringY=0, faces are perfectly flat!)
-    pushTri(p0, p1, p2, n);
-    pushTri(p0, p2, p3, n);
-  }
-
-  // Face definitions from mathematically correct pentagonal trapezohedron
-  var faces = [
-    [3,0,1,2], [0,3,4,5], [1,0,5,6], [2,1,6,7], [3,2,7,8],
-    [4,3,9,10], [5,4,10,6], [7,6,11,8], [3,8,11,9], [10,9,11,6]
-  ];
-  for (var i = 0; i < faces.length; i++) {
-    var f = faces[i];
-    kiteFace(verts[f[0]], verts[f[1]], verts[f[2]], verts[f[3]]);
-  }
-
-  var geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-  geo.clearGroups();
-  var mats = [];
-  for (var f = 0; f < 10; f++) {
-    geo.addGroup(f * 6, 6, f);  // 2 triangles per face (6 vertices)
-    mats.push(makeMat(labels[f]));
-  }
-  assignFaceUVs(geo);
-  return new THREE.Mesh(geo, mats);
-}
-
-function buildD10Body(r, material) {
-  var v = makeD10Verts(r);
-  var cv = v.map(function(p) { return new CANNON.Vec3(p[0], p[1], p[2]); });
-  // Face definitions matching the mathematically correct pentagonal trapezohedron
-  var faces = [
-    [3,0,1,2], [0,3,4,5], [1,0,5,6], [2,1,6,7], [3,2,7,8],
-    [4,3,9,10], [5,4,10,6], [7,6,11,8], [3,8,11,9], [10,9,11,6]
-  ];
-  return new CANNON.Body({ mass: 1, shape: new CANNON.ConvexPolyhedron({ vertices: cv, faces: faces }), material: material });
-}
-
-function createD10Mesh() { return buildD10Mesh(0.8, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]); }
-function createD10Body(m) { return buildD10Body(0.8, m); }
-function createD100TensMesh() { return buildD10Mesh(0.85, ['00', '10', '20', '30', '40', '50', '60', '70', '80', '90']); }
-function createD100TensBody(m) { return buildD10Body(0.85, m); }
-
-/* ── D12 ── */
-function createD12Mesh() {
-  var vals = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-  var geo = new THREE.DodecahedronGeometry(0.85, 0);
-  geo = geo.toNonIndexed();
-  geo.clearGroups();
-  var mats = [];
-  for (var f = 0; f < 12; f++) { geo.addGroup(f * 9, 9, f); mats.push(makeMat(vals[f])); }
-  assignFaceUVs(geo);
-  return new THREE.Mesh(geo, mats);
-}
-
-function createD12Body(material) {
-  var r = 0.85;
-  var phi = (1 + Math.sqrt(5)) / 2;
-  var a = r / Math.sqrt(3), b = a / phi, c = a * phi;
-  var verts = [
-    new CANNON.Vec3(a, a, a), new CANNON.Vec3(a, a, -a),
-    new CANNON.Vec3(a, -a, a), new CANNON.Vec3(a, -a, -a),
-    new CANNON.Vec3(-a, a, a), new CANNON.Vec3(-a, a, -a),
-    new CANNON.Vec3(-a, -a, a), new CANNON.Vec3(-a, -a, -a),
-    new CANNON.Vec3(0, b, c), new CANNON.Vec3(0, b, -c),
-    new CANNON.Vec3(0, -b, c), new CANNON.Vec3(0, -b, -c),
-    new CANNON.Vec3(b, c, 0), new CANNON.Vec3(b, -c, 0),
-    new CANNON.Vec3(-b, c, 0), new CANNON.Vec3(-b, -c, 0),
-    new CANNON.Vec3(c, 0, b), new CANNON.Vec3(c, 0, -b),
-    new CANNON.Vec3(-c, 0, b), new CANNON.Vec3(-c, 0, -b)
-  ];
-  var faces = [
-    [0, 8, 10, 2, 16], [0, 16, 17, 1, 12], [0, 12, 14, 4, 8],
-    [1, 17, 3, 11, 9], [1, 9, 5, 14, 12], [2, 10, 6, 15, 13],
-    [2, 13, 3, 17, 16], [3, 13, 15, 7, 11], [4, 14, 5, 19, 18],
-    [4, 18, 6, 10, 8], [5, 9, 11, 7, 19], [6, 18, 19, 7, 15]
-  ];
-  return new CANNON.Body({ mass: 1, shape: new CANNON.ConvexPolyhedron({ vertices: verts, faces: faces }), material: material });
-}
-
-/* ── D20 ── */
-function createD20Mesh() {
-  var vals = [];
-  for (var i = 1; i <= 20; i++) vals.push(i);
-  var geo = new THREE.IcosahedronGeometry(0.85, 0);
-  geo = geo.toNonIndexed();
-  geo.clearGroups();
-  var mats = [];
-  for (var f = 0; f < 20; f++) { geo.addGroup(f * 3, 3, f); mats.push(makeMat(vals[f])); }
-  assignFaceUVs(geo);
-  return new THREE.Mesh(geo, mats);
-}
-
-function createD20Body(material) {
-  var r = 0.85;
-  var t = (1 + Math.sqrt(5)) / 2;
-  var s = r / Math.sqrt(1 + t * t);
-  var verts = [
-    new CANNON.Vec3(-s, t*s, 0), new CANNON.Vec3(s, t*s, 0),
-    new CANNON.Vec3(-s, -t*s, 0), new CANNON.Vec3(s, -t*s, 0),
-    new CANNON.Vec3(0, -s, t*s), new CANNON.Vec3(0, s, t*s),
-    new CANNON.Vec3(0, -s, -t*s), new CANNON.Vec3(0, s, -t*s),
-    new CANNON.Vec3(t*s, 0, -s), new CANNON.Vec3(t*s, 0, s),
-    new CANNON.Vec3(-t*s, 0, -s), new CANNON.Vec3(-t*s, 0, s)
-  ];
-  var faces = [
-    [0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],
-    [1,5,9],[5,11,4],[11,10,2],[10,7,6],[7,1,8],
-    [3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],
-    [4,9,5],[2,4,11],[6,2,10],[8,6,7],[9,8,1]
-  ];
-  return new CANNON.Body({ mass: 1, shape: new CANNON.ConvexPolyhedron({ vertices: verts, faces: faces }), material: material });
-}
-
-/* ── Create a single die ── */
-function createDie(type, index, total, scene, world, material, bounds) {
-  var mesh, body;
-  switch (type) {
-    case 'd4':        mesh = createD4Mesh();        body = createD4Body(material);        break;
-    case 'd6':        mesh = createD6Mesh();        body = createD6Body(material);        break;
-    case 'd8':        mesh = createD8Mesh();        body = createD8Body(material);        break;
-    case 'd10':       mesh = createD10Mesh();       body = createD10Body(material);       break;
-    case 'd100tens':  mesh = createD100TensMesh();  body = createD100TensBody(material);  break;
-    case 'd100units': mesh = createD10Mesh();       body = createD10Body(material);       break;
-    case 'd12':       mesh = createD12Mesh();       body = createD12Body(material);       break;
-    case 'd20':       mesh = createD20Mesh();       body = createD20Body(material);       break;
-    default:          mesh = createD6Mesh();        body = createD6Body(material);
-  }
-
-  addEdgeLines(mesh);
-
-  // Spawn from a cloud above the scene — random spread within visible bounds
-  var bx = bounds ? bounds.halfX : 3;
-  var bz = bounds ? bounds.halfZ : 3;
-  var px = (Math.random() - 0.5) * bx * 0.6;
-  var pz = (Math.random() - 0.5) * bz * 0.6;
-  var py = 6 + Math.random() * 2;
-  body.position.set(px, py, pz);
-
-  body.linearDamping = 0.01;
-  body.angularDamping = 0.05;
-
-  body.allowSleep = true;
-  body.sleepSpeedLimit = 0.3;
-  body.sleepTimeLimit = 0.3;
-
-  // Minimal tumble - very gentle rotation
-  body.angularVelocity.set(
-    (Math.random() - 0.5) * 0.5,
-    (Math.random() - 0.5) * 0.5,
-    (Math.random() - 0.5) * 0.5
-  );
-
-  // Very gentle drop - almost no horizontal movement
-  body.velocity.set(
-    (Math.random() - 0.5) * 0.5,
-    -0.5,
-    (Math.random() - 0.5) * 0.5
-  );
-
-  scene.add(mesh);
-  world.addBody(body);
-  return { mesh: mesh, body: body };
+  return 1;
 }
 
 /* ── Pre-determined results ── */
@@ -708,26 +569,94 @@ function valueToFaceIndex(type, value) {
   }
 }
 
-function getLocalFaceNormal(mesh, groupIndex) {
-  var geo = mesh.geometry;
-  var pos = geo.getAttribute('position');
-  var s = geo.groups[groupIndex].start;
-  var a = new THREE.Vector3().fromBufferAttribute(pos, s);
-  var b = new THREE.Vector3().fromBufferAttribute(pos, s + 1);
-  var c = new THREE.Vector3().fromBufferAttribute(pos, s + 2);
-  return new THREE.Vector3().crossVectors(
-    new THREE.Vector3().subVectors(b, a),
-    new THREE.Vector3().subVectors(c, a)
-  ).normalize();
+/* ── Physics helpers: face normals, top-face detection, shift quaternion ── */
+function computeFaceNormals(diceType) {
+  var DG = window.DiceGeometry;
+  var config = DG.DICE_GEOM[diceType];
+  var verts = config.vertices.map(function(v) { return [v[0], v[1], v[2]]; });
+  DG.normalizeVectors(verts);
+  var normals = [];
+  for (var i = 0; i < config.faces.length; i++) {
+    var face = config.faces[i];
+    var a = verts[face[0]], b = verts[face[1]], c = verts[face[2]];
+    var ab = [b[0]-a[0], b[1]-a[1], b[2]-a[2]];
+    var ac = [c[0]-a[0], c[1]-a[1], c[2]-a[2]];
+    var nx = ab[1]*ac[2] - ab[2]*ac[1];
+    var ny = ab[2]*ac[0] - ab[0]*ac[2];
+    var nz = ab[0]*ac[1] - ab[1]*ac[0];
+    var len = Math.sqrt(nx*nx + ny*ny + nz*nz);
+    if (len > 0) { nx /= len; ny /= len; nz /= len; }
+    normals.push(new THREE.Vector3(nx, ny, nz));
+  }
+  return normals;
 }
 
-function computeFaceQuaternion(mesh, faceIndex, targetDir) {
-  var localN = getLocalFaceNormal(mesh, faceIndex);
-  var q = new THREE.Quaternion().setFromUnitVectors(localN, targetDir);
-  var yawQ = new THREE.Quaternion().setFromAxisAngle(
-    new THREE.Vector3(0, 1, 0), Math.random() * Math.PI * 2
-  );
-  return new THREE.Quaternion().multiplyQuaternions(yawQ, q);
+function getTopFaceIndex(diceType, bodyQuaternion) {
+  var geomType = diceType;
+  if (diceType === 'd100tens') geomType = 'd100';
+  if (diceType === 'd100units') geomType = 'd10';
+  var config = window.DiceGeometry.DICE_GEOM[geomType];
+  var normals = computeFaceNormals(geomType);
+  var up = config.invertUpside ? new THREE.Vector3(0, -1, 0) : new THREE.Vector3(0, 1, 0);
+  var q = new THREE.Quaternion(bodyQuaternion.x, bodyQuaternion.y, bodyQuaternion.z, bodyQuaternion.w);
+  var bestDot = -Infinity, bestIdx = 0;
+  for (var i = 0; i < normals.length; i++) {
+    var wn = normals[i].clone().applyQuaternion(q);
+    var dot = wn.dot(up);
+    if (dot > bestDot) { bestDot = dot; bestIdx = i; }
+  }
+  return bestIdx;
+}
+
+function computeShiftQuat(diceType, actualFaceIdx, desiredFaceIdx) {
+  if (actualFaceIdx === desiredFaceIdx) return new THREE.Quaternion();
+  var geomType = diceType;
+  if (diceType === 'd100tens') geomType = 'd100';
+  if (diceType === 'd100units') geomType = 'd10';
+  var normals = computeFaceNormals(geomType);
+  return new THREE.Quaternion().setFromUnitVectors(normals[desiredFaceIdx], normals[actualFaceIdx]);
+}
+
+function preSimulate(world, bodies, maxSteps, dt) {
+  var frames = [];
+  var settledCount = 0;
+  for (var step = 0; step < maxSteps; step++) {
+    world.step(dt);
+    var frame = [];
+    var allSlow = true;
+    for (var i = 0; i < bodies.length; i++) {
+      var b = bodies[i];
+      frame.push({
+        position: { x: b.position.x, y: b.position.y, z: b.position.z },
+        quaternion: { x: b.quaternion.x, y: b.quaternion.y, z: b.quaternion.z, w: b.quaternion.w }
+      });
+      var v = b.velocity, av = b.angularVelocity;
+      var spd = Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
+      var aspd = Math.sqrt(av.x*av.x + av.y*av.y + av.z*av.z);
+      if (spd > 0.15 || aspd > 0.3) allSlow = false;
+    }
+    frames.push(frame);
+    if (allSlow) { settledCount++; if (settledCount >= 20) break; }
+    else settledCount = 0;
+  }
+  // If not settled, force stop and add tail frames
+  if (settledCount < 20) {
+    for (var i = 0; i < bodies.length; i++) {
+      bodies[i].velocity.set(0, 0, 0);
+      bodies[i].angularVelocity.set(0, 0, 0);
+    }
+    for (var t = 0; t < 10; t++) {
+      var frame = [];
+      for (var i = 0; i < bodies.length; i++) {
+        frame.push({
+          position: { x: bodies[i].position.x, y: bodies[i].position.y, z: bodies[i].position.z },
+          quaternion: { x: bodies[i].quaternion.x, y: bodies[i].quaternion.y, z: bodies[i].quaternion.z, w: bodies[i].quaternion.w }
+        });
+      }
+      frames.push(frame);
+    }
+  }
+  return frames;
 }
 
 /* ── 3D Roll ── */
@@ -761,11 +690,18 @@ function run3DRoll() {
   renderer.setClearColor(0x000000, 0);
   overlay.appendChild(renderer.domElement);
 
-  scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-  var dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  // Theme-aware lighting
+  var themeConfig = getThemeConfig();
+  var tl = themeConfig.lighting || {};
+  var ambCfg = tl.ambient || { color: 0xffffff, intensity: 1.2 };
+  var dirCfg = tl.directional || { color: 0xffffff, intensity: 0.8 };
+  var ptCfg = tl.point || { color: 0xd4a843, intensity: 0.5, distance: 20 };
+
+  scene.add(new THREE.AmbientLight(ambCfg.color, ambCfg.intensity));
+  var dirLight = new THREE.DirectionalLight(dirCfg.color, dirCfg.intensity);
   dirLight.position.set(3, 10, 3);
   scene.add(dirLight);
-  var pointLight = new THREE.PointLight(0xd4a843, 0.5, 20);
+  var pointLight = new THREE.PointLight(ptCfg.color, ptCfg.intensity, ptCfg.distance || 20);
   pointLight.position.set(0, 6, 0);
   scene.add(pointLight);
 
@@ -775,385 +711,315 @@ function run3DRoll() {
   var halfZ = groundDist * tanHalfFov * 0.9;
   var halfX = halfZ * aspect * 0.9;
 
-  // Physics world — FULL physics simulation for realistic rolling
-  var world = new CANNON.World({ gravity: new CANNON.Vec3(0, -25, 0) });
-  world.broadphase = new CANNON.SAPBroadphase(world);
-  world.solver.iterations = 8;
-  world.solver.tolerance = 0.001;
-  world.allowSleep = true;
+  // ── Scripted rolling animation — no physics engine, pure math ──
+  // Dice roll like wheels: movement = rotation. When rotation stops, movement stops.
 
-  var groundMat = new CANNON.Material('ground');
-  var groundBody = new CANNON.Body({ type: CANNON.Body.STATIC, shape: new CANNON.Plane(), material: groundMat });
-  groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-  groundBody.position.set(0, -0.5, 0);
-  world.addBody(groundBody);
+  // All dice come from the SAME direction — like thrown from one hand
+  var throwAngle = Math.random() * Math.PI * 2;
+  var throwDirX = Math.cos(throwAngle);
+  var throwDirZ = Math.sin(throwAngle);
+  var perpX = -throwDirZ;
+  var perpZ = throwDirX;
 
-  // Walls at visible screen edges
-  var wallDefs = [
-    { pos: [halfX + 1, 2, 0], rot: [0, -Math.PI / 2, 0] },
-    { pos: [-halfX - 1, 2, 0], rot: [0, Math.PI / 2, 0] },
-    { pos: [0, 2, halfZ + 1], rot: [Math.PI / 2, 0, 0] },
-    { pos: [0, 2, -halfZ - 1], rot: [-Math.PI / 2, 0, 0] }
-  ];
-  wallDefs.forEach(function(w) {
-    var wb = new CANNON.Body({ type: CANNON.Body.STATIC, shape: new CANNON.Plane(), material: groundMat });
-    wb.position.set(w.pos[0], w.pos[1], w.pos[2]);
-    wb.quaternion.setFromEuler(w.rot[0], w.rot[1], w.rot[2]);
-    world.addBody(wb);
-  });
-
-  var diceMat = new CANNON.Material('dice');
-  // More friction and less bounce for realistic rolling
-  world.addContactMaterial(new CANNON.ContactMaterial(groundMat, diceMat, {
-    friction: 0.4, restitution: 0.3
-  }));
-  world.addContactMaterial(new CANNON.ContactMaterial(diceMat, diceMat, {
-    friction: 0.3, restitution: 0.4
-  }));
-
-  // Create dice with physics-driven rotation
-  var diceMeshes = [], diceBodies = [], dieTypes = [];
-  var preResults = [], targetQuats = [];
+  var groundY = -0.5;
+  var diceMeshes = [], dieTypes = [];
+  var numDice = diceList.length;
+  var rollers = [];
 
   diceList.forEach(function(die, idx) {
-    var mesh, body;
-    switch (die) {
-      case 'd4':        mesh = createD4Mesh();        body = createD4Body(diceMat);        break;
-      case 'd6':        mesh = createD6Mesh();        body = createD6Body(diceMat);        break;
-      case 'd8':        mesh = createD8Mesh();        body = createD8Body(diceMat);        break;
-      case 'd10':       mesh = createD10Mesh();       body = createD10Body(diceMat);       break;
-      case 'd100tens':  mesh = createD100TensMesh();  body = createD100TensBody(diceMat);  break;
-      case 'd100units': mesh = createD10Mesh();       body = createD10Body(diceMat);       break;
-      case 'd12':       mesh = createD12Mesh();       body = createD12Body(diceMat);       break;
-      case 'd20':       mesh = createD20Mesh();       body = createD20Body(diceMat);       break;
-      default:          mesh = createD6Mesh();        body = createD6Body(diceMat);
-    }
-    addEdgeLines(mesh);
-
-    // Spawn near center, drop from above with gentle spread
-    var spread = 1.5;
-    var px = (Math.random() - 0.5) * spread;
-    var pz = (Math.random() - 0.5) * spread;
-    var py = 6 + Math.random() * 2;
-
-    body.position.set(px, py, pz);
-    // Minimal horizontal movement, gentle drop
-    body.velocity.set(
-      (Math.random() - 0.5) * 0.5,
-      -0.5,
-      (Math.random() - 0.5) * 0.5
-    );
-
-    // Gentle angular velocity
-    body.angularVelocity.set(
-      (Math.random() - 0.5) * 0.5,
-      (Math.random() - 0.5) * 0.5,
-      (Math.random() - 0.5) * 0.5
-    );
-
-    body.linearDamping = 0.15; // More linear damping for realistic rolling
-    body.angularDamping = 0.35; // More angular damping - dice settle on faces faster
-    body.allowSleep = true;
-    body.sleepSpeedLimit = 0.3; // Lower threshold for sleep
-    body.sleepTimeLimit = 0.3; // Faster sleep after settling
-
-    // Random initial orientation
-    var initQ = new CANNON.Quaternion();
-    initQ.setFromEuler(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2);
-    body.quaternion.copy(initQ);
-
+    var geomType = die;
+    if (die === 'd100tens') geomType = 'd100';
+    if (die === 'd100units') geomType = 'd10';
+    var mesh = createDiceMesh(geomType, themeConfig);
     scene.add(mesh);
-    world.addBody(body);
     diceMeshes.push(mesh);
-    diceBodies.push(body);
     dieTypes.push(die);
 
-    // Pre-determine result
-    var result = randomResult(die);
-    preResults.push(result);
+    var config = window.DiceGeometry.DICE_GEOM[geomType];
+    var dieRadius = (config.radius || 0.85) * (config.scaleFactor || 1.0);
 
-    // Compute target quaternion for final orientation
-    var targetDir = (die === 'd4') ? new THREE.Vector3(0, -1, 0) : new THREE.Vector3(0, 1, 0);
-    var faceIdx = valueToFaceIndex(die, result);
-    targetQuats.push(computeFaceQuaternion(mesh, faceIdx, targetDir));
+    // Spawn at edge
+    var edgeDist = Math.min(halfX, halfZ) * 0.8;
+    var lateralSpread = (idx - (numDice - 1) / 2) * 1.1;
+    var spawnX = throwDirX * edgeDist + perpX * lateralSpread;
+    var spawnZ = throwDirZ * edgeDist + perpZ * lateralSpread;
+
+    // Target: near center with randomness
+    var targetX = (Math.random() - 0.5) * 2.0;
+    var targetZ = (Math.random() - 0.5) * 2.0;
+    var dx = targetX - spawnX;
+    var dz = targetZ - spawnZ;
+    var travelDist = Math.sqrt(dx * dx + dz * dz);
+    var dirX = dx / travelDist;
+    var dirZ = dz / travelDist;
+
+    // Speed calibrated so die reaches target and stops
+    var rollDuration = 1.4 + Math.random() * 0.6; // 1.4-2.0 seconds of rolling
+    var initialSpeed = (2 * travelDist) / rollDuration; // v0 for constant decel to cover travelDist
+    var decelRate = initialSpeed / rollDuration;
+
+    // Entry arc: 45-degree descent
+    var entryHeight = edgeDist * 0.7;
+    var entryDuration = 0.35 + Math.random() * 0.1;
+
+    // Rolling: effective radius controls how many face changes per distance
+    // Smaller = more rotations = more face changes = more suspense
+    var effectiveRadius = dieRadius * 0.55;
+
+    // Roll axis: perpendicular to direction of travel (die rolls forward)
+    var rollAxisVec = new THREE.Vector3(-dirZ, 0, dirX).normalize();
+
+    // Random initial orientation
+    var initQuat = new THREE.Quaternion();
+    initQuat.setFromEuler(new THREE.Euler(
+      Math.random() * Math.PI * 2,
+      Math.random() * Math.PI * 2,
+      Math.random() * Math.PI * 2
+    ));
+
+    rollers.push({
+      x: spawnX, z: spawnZ,
+      dirX: dirX, dirZ: dirZ,
+      speed: initialSpeed,
+      decelRate: decelRate,
+      dieRadius: dieRadius,
+      effectiveRadius: effectiveRadius,
+      rollAxis: rollAxisVec,
+      initQuat: initQuat,
+      totalAngle: 0,
+      entryHeight: entryHeight,
+      entryDuration: entryDuration,
+      time: 0,
+      stopped: false
+    });
   });
 
-  // Animation: Skip physics entirely, pure smooth rolling animation
-  var fixedStep = 1 / 60;
-  var maxSubSteps = 4;
-  var maxTime = 500;
-  var startTime = performance.now();
-  var lastTime = startTime;
-  var elapsed = 0;
-  var allSettled = false;
-  var physicsDone = true;    // Skip physics - go straight to smooth rolling
-  var slerpStartTime = 0;
-  var slerpStartQuats = [];
+  // Animation state
+  var animDone = false;
+  var animStart = performance.now();
+  var lastTime = animStart;
+  var maxAnimTime = 5000;
+
+  // Click overlay to skip
+  overlay.addEventListener('click', function() { finishAnim('overlay-click'); });
+
+  var safetyTimer = setTimeout(function() {
+    if (!animDone) finishAnim('safety-timeout');
+  }, maxAnimTime + 1000);
+
+  function finishAnim(reason) {
+    if (animDone) return;
+    animDone = true;
+    clearTimeout(safetyTimer);
+    if (activeRenderLoop) { clearTimeout(activeRenderLoop); activeRenderLoop = null; }
+
+    // Ensure all rollers are at final position
+    for (var i = 0; i < rollers.length; i++) {
+      var r = rollers[i];
+      if (!r.stopped) {
+        r.stopped = true;
+        r.speed = 0;
+      }
+      var py = groundY + r.dieRadius;
+      diceMeshes[i].position.set(r.x, py, r.z);
+      var rollQ = new THREE.Quaternion();
+      rollQ.setFromAxisAngle(r.rollAxis, r.totalAngle);
+      diceMeshes[i].quaternion.copy(r.initQuat);
+      diceMeshes[i].quaternion.premultiply(rollQ);
+    }
+    try { renderer.render(scene, camera); } catch (e) {}
+    onSettled();
+  }
+
   var frameInterval = 1000 / 60;
-  var lastFrameTime = 0;
+  var _dbgFrames = 0;
 
-  // Multi-step face transition: 5 smooth rolls + final snap = 6 waypoints
-  var faceWaypoints = []; // Array of arrays: faceWaypoints[dieIndex] = [q0, q1, q2, q3, q4, q5(final)]
-  var waypointDurations = [0.3, 0.3, 0.3, 0.3, 0.3, 0.5]; // 5 rolls + final (total 2s - smooth and slower)
-  var totalSlerpDuration = waypointDurations.reduce(function(a, b) { return a + b; }, 0);
+  function animate() {
+    if (animDone) return;
+    _dbgFrames++;
 
-  // Helper to create a rotation quaternion for rolling to the side (90 degree rotation around X or Z axis)
-  function createRollRotation() {
-    // Random horizontal axis (X or Z) for rolling motion
-    var axes = [
-      new THREE.Vector3(1, 0, 0),  // Roll forward/back
-      new THREE.Vector3(-1, 0, 0),
-      new THREE.Vector3(0, 0, 1),  // Roll left/right
-      new THREE.Vector3(0, 0, -1)
-    ];
-    var axis = axes[Math.floor(Math.random() * axes.length)];
-    var angle = Math.PI / 2; // 90 degrees - one face rotation
-    return new THREE.Quaternion().setFromAxisAngle(axis, angle);
-  }
+    try {
+      var now = performance.now();
+      var dt = Math.min((now - lastTime) / 1000, 0.05);
+      lastTime = now;
 
-  // All dice spawn from the SAME point - they MUST collide!
-  var diceCount = diceMeshes.length;
-  var bounceDistance = 1.6; // Distance at which dice bounce (smaller for gentle touch)
-  var targetPositions = [];
-  var velocities = []; // Track velocity for bounce effect
+      var allStopped = true;
 
-  // Generate positions for each die
-  for (var i = 0; i < diceMeshes.length; i++) {
-    // Target position: let them spread naturally from collisions
-    targetPositions.push({ x: 0, y: 0, z: 0 });
-
-    // Initial velocity: tiny random nudge to start the bounce chain
-    var angle = Math.random() * Math.PI * 2;
-    var initialSpeed = 0.05;
-    velocities.push({
-      x: Math.cos(angle) * initialSpeed,
-      y: 0,
-      z: Math.sin(angle) * initialSpeed
-    });
-
-    // ALL start from center with tiny random offset (so they're stacked)
-    var tinyOffset = 0.15;
-    var startX = (Math.random() - 0.5) * tinyOffset;
-    var startZ = (Math.random() - 0.5) * tinyOffset;
-    diceMeshes[i].position.set(startX, 10, startZ);
-    diceBodies[i].position.set(startX, 10, startZ);
-  }
-
-  // Collision detection and bounce - ONLY when dice are on the ground
-  function applyCollisions() {
-    var screenBoundary = 5.5; // Don't let dice go beyond this
-
-    for (var i = 0; i < diceMeshes.length; i++) {
-      // Only apply collision if die is near the ground (Y < 0.8)
-      if (diceMeshes[i].position.y > 0.8) continue;
-
-      for (var j = i + 1; j < diceMeshes.length; j++) {
-        // Both dice must be near ground
-        if (diceMeshes[j].position.y > 0.8) continue;
-
-        var dx = diceMeshes[j].position.x - diceMeshes[i].position.x;
-        var dz = diceMeshes[j].position.z - diceMeshes[i].position.z;
-        var distance = Math.sqrt(dx * dx + dz * dz);
-
-        if (distance < bounceDistance && distance > 0.01) {
-          // Collision! Apply VERY gentle bounce with weight
-          var overlap = bounceDistance - distance;
-          var pushForce = overlap * 0.13; // Heavier dice (was 0.18)
-
-          // Cap maximum push force
-          pushForce = Math.min(pushForce, 0.18);
-
-          // Normalize direction (or random if too close)
-          var dirX = dx / distance;
-          var dirZ = dz / distance;
-
-          if (distance < 0.1) {
-            var randomAngle = Math.random() * Math.PI * 2;
-            dirX = Math.cos(randomAngle);
-            dirZ = Math.sin(randomAngle);
-            pushForce = 0.06; // Even tinier nudge
-          }
-
-          // Push dice apart (ONLY X and Z, never Y!)
-          velocities[i].x -= dirX * pushForce;
-          velocities[i].z -= dirZ * pushForce;
-          velocities[j].x += dirX * pushForce;
-          velocities[j].z += dirZ * pushForce;
+      for (var i = 0; i < rollers.length; i++) {
+        var r = rollers[i];
+        if (r.stopped) {
+          // Keep at final position
+          diceMeshes[i].position.set(r.x, groundY + r.dieRadius, r.z);
+          continue;
         }
-      }
-    }
+        allStopped = false;
+        r.time += dt;
 
-    // Apply velocities, damping, and boundary check
-    for (var i = 0; i < diceMeshes.length; i++) {
-      if (diceMeshes[i].position.y <= 0.8) {
-        diceMeshes[i].position.x += velocities[i].x;
-        diceMeshes[i].position.z += velocities[i].z;
-        targetPositions[i].x += velocities[i].x;
-        targetPositions[i].z += velocities[i].z;
-
-        // Boundary check - bounce off screen edges
-        if (Math.abs(diceMeshes[i].position.x) > screenBoundary) {
-          diceMeshes[i].position.x = Math.sign(diceMeshes[i].position.x) * screenBoundary;
-          velocities[i].x *= -0.5; // Bounce back
-        }
-        if (Math.abs(diceMeshes[i].position.z) > screenBoundary) {
-          diceMeshes[i].position.z = Math.sign(diceMeshes[i].position.z) * screenBoundary;
-          velocities[i].z *= -0.5; // Bounce back
+        // Decelerate
+        r.speed = Math.max(0, r.speed - r.decelRate * dt);
+        if (r.speed < 0.05) {
+          r.speed = 0;
+          r.stopped = true;
         }
 
-        // Progressive damping - more realistic rolling physics
-        // Slower dice lose energy faster (like real friction)
-        var speed = Math.sqrt(velocities[i].x * velocities[i].x + velocities[i].z * velocities[i].z);
-        var dampingFactor = 0.72; // Base damping
+        // Move forward — movement driven by rotation
+        var moveDist = r.speed * dt;
+        r.x += r.dirX * moveDist;
+        r.z += r.dirZ * moveDist;
 
-        // When very slow, apply extra damping to settle quickly on face
-        if (speed < 0.01) {
-          dampingFactor = 0.5; // Much stronger damping when nearly stopped
-        } else if (speed < 0.05) {
-          dampingFactor = 0.65; // Stronger damping when slowing down
-        }
+        // Wall bounces
+        if (r.x > halfX - r.dieRadius) { r.x = halfX - r.dieRadius; r.dirX = -Math.abs(r.dirX); r.rollAxis.set(-r.dirZ, 0, r.dirX).normalize(); }
+        if (r.x < -halfX + r.dieRadius) { r.x = -halfX + r.dieRadius; r.dirX = Math.abs(r.dirX); r.rollAxis.set(-r.dirZ, 0, r.dirX).normalize(); }
+        if (r.z > halfZ - r.dieRadius) { r.z = halfZ - r.dieRadius; r.dirZ = -Math.abs(r.dirZ); r.rollAxis.set(-r.dirZ, 0, r.dirX).normalize(); }
+        if (r.z < -halfZ + r.dieRadius) { r.z = -halfZ + r.dieRadius; r.dirZ = Math.abs(r.dirZ); r.rollAxis.set(-r.dirZ, 0, r.dirX).normalize(); }
 
-        velocities[i].x *= dampingFactor;
-        velocities[i].z *= dampingFactor;
-      }
-    }
-  }
+        // Rolling rotation — angle proportional to distance traveled
+        r.totalAngle += moveDist / r.effectiveRadius;
 
-  // Drop animation variables
-  var dropDuration = 0.4; // 0.4s to drop per die
-  var dropStartTime = 0;
-  var dropDelays = []; // Each die drops with a delay
-  for (var i = 0; i < diceMeshes.length; i++) {
-    dropDelays.push(i * 0.015); // 0.015s between each die (super fast!)
-  }
-
-  // Generate waypoints immediately
-  for (var m = 0; m < diceMeshes.length; m++) {
-    slerpStartQuats.push(diceMeshes[m].quaternion.clone());
-
-    var waypoints = [diceMeshes[m].quaternion.clone()];
-    var currentQuat = diceMeshes[m].quaternion.clone();
-
-    for (var w = 0; w < 5; w++) {
-      var rollQuat = createRollRotation();
-      currentQuat = currentQuat.clone().multiply(rollQuat);
-      waypoints.push(currentQuat.clone());
-    }
-    waypoints.push(targetQuats[m]);
-    faceWaypoints.push(waypoints);
-  }
-
-  function animate(now) {
-    if (allSettled) return;
-
-    // Frame rate limiting
-    var frameDelta = now - lastFrameTime;
-    if (frameDelta < frameInterval * 0.8) {
-      requestAnimationFrame(animate);
-      return;
-    }
-    lastFrameTime = now;
-
-    var dt = Math.min((now - lastTime) / 1000, 0.05);
-    lastTime = now;
-    elapsed += dt;
-
-    // Drop animation phase - each die drops with a delay
-    var maxDropTime = dropDuration + dropDelays[dropDelays.length - 1];
-    if (elapsed < maxDropTime) {
-      // Apply collision detection and bounce (only for grounded dice)
-      applyCollisions();
-
-      for (var i = 0; i < diceMeshes.length; i++) {
-        var dieElapsed = elapsed - dropDelays[i];
-
-        if (dieElapsed < 0) {
-          // Not started yet - keep at top
-          diceMeshes[i].position.y = 10;
-        } else if (dieElapsed < dropDuration) {
-          // Dropping
-          var dropProgress = dieElapsed / dropDuration;
-          // Ease out cubic for smooth landing
-          dropProgress = 1 - Math.pow(1 - dropProgress, 3);
-
-          var startY = 10;
-          var endY = 0;
-          diceMeshes[i].position.y = startY + (endY - startY) * dropProgress;
-
-          // Gentle random rotation during drop
-          var rotSpeed = 0.02;
-          diceMeshes[i].rotation.x += rotSpeed * (Math.random() - 0.5);
-          diceMeshes[i].rotation.z += rotSpeed * (Math.random() - 0.5);
+        // Y position: entry arc (parabolic descent) then on ground with small bounces
+        var py;
+        if (r.time < r.entryDuration) {
+          var t = r.time / r.entryDuration;
+          py = groundY + r.dieRadius + r.entryHeight * (1 - t) * (1 - t);
         } else {
-          // Landed - keep on ground
-          diceMeshes[i].position.y = 0;
+          var groundTime = r.time - r.entryDuration;
+          var bounceAmp = r.entryHeight * 0.2 * Math.exp(-5.0 * groundTime);
+          var bounce = bounceAmp * Math.abs(Math.sin(groundTime * 12));
+          py = groundY + r.dieRadius + bounce;
+        }
+
+        // Apply position
+        diceMeshes[i].position.set(r.x, py, r.z);
+
+        // Apply rotation: initial random orientation + accumulated rolling
+        var rollQ = new THREE.Quaternion();
+        rollQ.setFromAxisAngle(r.rollAxis, r.totalAngle);
+        diceMeshes[i].quaternion.copy(r.initQuat);
+        diceMeshes[i].quaternion.premultiply(rollQ);
+      }
+
+      // Dice-to-dice collision detection & response
+      for (var i = 0; i < rollers.length; i++) {
+        for (var j = i + 1; j < rollers.length; j++) {
+          var ri = rollers[i], rj = rollers[j];
+          var dx = rj.x - ri.x;
+          var dz = rj.z - ri.z;
+          var dist = Math.sqrt(dx * dx + dz * dz);
+          var minDist = ri.dieRadius + rj.dieRadius;
+          if (dist < minDist && dist > 0.001) {
+            // Collision normal (i → j)
+            var nx = dx / dist;
+            var nz = dz / dist;
+
+            // Separate dice so they don't overlap
+            var overlap = (minDist - dist) / 2;
+            ri.x -= nx * overlap;
+            ri.z -= nz * overlap;
+            rj.x += nx * overlap;
+            rj.z += nz * overlap;
+
+            // Relative velocity along collision normal
+            var vi_n = ri.dirX * ri.speed * nx + ri.dirZ * ri.speed * nz;
+            var vj_n = rj.dirX * rj.speed * nx + rj.dirZ * rj.speed * nz;
+
+            // Only collide if dice are approaching each other
+            if (vi_n - vj_n > 0) {
+              // Elastic collision (equal mass) — swap normal components
+              var restitution = 0.7;
+
+              // Velocity components along normal
+              var vi_nx = vi_n * nx, vi_nz = vi_n * nz;
+              var vj_nx = vj_n * nx, vj_nz = vj_n * nz;
+
+              // Tangential components (preserved)
+              var vi_tx = ri.dirX * ri.speed - vi_nx;
+              var vi_tz = ri.dirZ * ri.speed - vi_nz;
+              var vj_tx = rj.dirX * rj.speed - vj_nx;
+              var vj_tz = rj.dirZ * rj.speed - vj_nz;
+
+              // Swap normal components with restitution
+              var new_vi_x = vi_tx + vj_n * restitution * nx;
+              var new_vi_z = vi_tz + vj_n * restitution * nz;
+              var new_vj_x = vj_tx + vi_n * restitution * nx;
+              var new_vj_z = vj_tz + vi_n * restitution * nz;
+
+              // Update speed & direction for die i
+              var si = Math.sqrt(new_vi_x * new_vi_x + new_vi_z * new_vi_z);
+              if (si > 0.05 && !ri.stopped) {
+                ri.speed = si;
+                ri.dirX = new_vi_x / si;
+                ri.dirZ = new_vi_z / si;
+                ri.rollAxis.set(-ri.dirZ, 0, ri.dirX).normalize();
+              }
+
+              // Update speed & direction for die j
+              var sj = Math.sqrt(new_vj_x * new_vj_x + new_vj_z * new_vj_z);
+              if (sj > 0.05 && !rj.stopped) {
+                rj.speed = sj;
+                rj.dirX = new_vj_x / sj;
+                rj.dirZ = new_vj_z / sj;
+                rj.rollAxis.set(-rj.dirZ, 0, rj.dirX).normalize();
+              }
+
+              // Wake up stopped dice if hit hard enough
+              if (ri.stopped && vj_n * restitution > 0.3) {
+                ri.stopped = false;
+                ri.speed = Math.abs(vj_n) * restitution * 0.5;
+                ri.dirX = -nx;
+                ri.dirZ = -nz;
+                ri.rollAxis.set(-ri.dirZ, 0, ri.dirX).normalize();
+              }
+              if (rj.stopped && vi_n * restitution > 0.3) {
+                rj.stopped = false;
+                rj.speed = Math.abs(vi_n) * restitution * 0.5;
+                rj.dirX = nx;
+                rj.dirZ = nz;
+                rj.rollAxis.set(-rj.dirZ, 0, rj.dirX).normalize();
+              }
+            }
+          }
         }
       }
-    } else if (!physicsDone) {
-      // Physics skipped
-    } else {
-      // Multi-step slerp phase: transition through random faces to final result
-      var slerpElapsed = elapsed - slerpStartTime - dropDuration;
 
-      // Determine which segment we're in and local progress
-      var segmentStart = 0;
-      var currentSegment = 0;
-      for (var s = 0; s < waypointDurations.length; s++) {
-        if (slerpElapsed < segmentStart + waypointDurations[s]) {
-          currentSegment = s;
-          break;
-        }
-        segmentStart += waypointDurations[s];
-        if (s === waypointDurations.length - 1) currentSegment = s;
-      }
+      renderer.render(scene, camera);
 
-      var segmentProgress = (slerpElapsed - segmentStart) / waypointDurations[currentSegment];
-      segmentProgress = Math.max(0, Math.min(1, segmentProgress));
-      // Ease in-out for smoother transitions
-      segmentProgress = segmentProgress < 0.5
-        ? 2 * segmentProgress * segmentProgress
-        : 1 - Math.pow(-2 * segmentProgress + 2, 2) / 2;
+      if (allStopped) { finishAnim('settled'); return; }
+      if ((now - animStart) > maxAnimTime) { finishAnim('timeout'); return; }
 
-      for (var i = 0; i < diceMeshes.length; i++) {
-        var fromQuat = faceWaypoints[i][currentSegment];
-        var toQuat = faceWaypoints[i][currentSegment + 1];
-        diceMeshes[i].quaternion.copy(fromQuat.clone().slerp(toQuat, segmentProgress));
-      }
-
-      if (slerpElapsed >= totalSlerpDuration) {
-        for (var i = 0; i < diceMeshes.length; i++) {
-          diceMeshes[i].quaternion.copy(targetQuats[i]);
-        }
-        allSettled = true;
-        renderer.render(scene, camera);
-        onSettled();
-        return;
-      }
+      activeRenderLoop = setTimeout(animate, frameInterval);
+    } catch (e) {
+      console.warn('[Dice] Animation error:', e.message, e.stack);
+      finishAnim('animation-error');
     }
-
-    renderer.render(scene, camera);
-    requestAnimationFrame(animate);
   }
 
-  requestAnimationFrame(animate);
+  activeRenderLoop = setTimeout(animate, frameInterval);
 
   function onSettled() {
-    // Combine D100 pairs (tens + units) into single results
+    // Read results from final die orientation — top face = result
     var results = [];
     var total = 0;
     var i = 0;
     while (i < dieTypes.length) {
       if (dieTypes[i] === 'd100tens' && i + 1 < dieTypes.length && dieTypes[i + 1] === 'd100units') {
-        var tens = preResults[i];
-        var units = preResults[i + 1];
-        var val = tens * 10 + units;
+        var tensQ = diceMeshes[i].quaternion;
+        var unitsQ = diceMeshes[i + 1].quaternion;
+        var tensIdx = getTopFaceIndex('d100tens', tensQ);
+        var unitsIdx = getTopFaceIndex('d100units', unitsQ);
+        var tens = faceIndexToValue('d100tens', tensIdx);
+        var units = faceIndexToValue('d100units', unitsIdx);
+        var val = tens + units;
         if (val === 0) val = 100;
         results.push({ die: 'D100', value: val });
         total += val;
         i += 2;
       } else {
-        results.push({ die: dieTypes[i].toUpperCase(), value: preResults[i] });
-        total += preResults[i];
+        var meshQ = diceMeshes[i].quaternion;
+        var topIdx = getTopFaceIndex(dieTypes[i], meshQ);
+        var value = faceIndexToValue(dieTypes[i], topIdx);
+        if (dieTypes[i] === 'd10' && value === 0) value = 10;
+        results.push({ die: dieTypes[i].toUpperCase(), value: value });
+        total += value;
         i++;
       }
     }
@@ -1162,14 +1028,21 @@ function run3DRoll() {
     activeRenderer = renderer;
     // Single final render - no continuous loop needed
     renderer.render(scene, camera);
+
+    // Check for Natural 20 (critical hit celebration)
+    var hasNat20 = results.some(function(r) { return r.die === 'D20' && r.value === 20; });
+    if (hasNat20 && !prefersReducedMotion()) {
+      spawnCritParticles(overlay);
+    }
+
     showResults(results, total);
     cleanupTimeout = setTimeout(function() {
       doCleanup(overlay, renderer, diceMeshes);
-    }, 1000);
+    }, hasNat20 ? 2500 : 1000);
   }
 
   function doCleanup(ov, ren, meshes) {
-    if (activeRenderLoop) { cancelAnimationFrame(activeRenderLoop); activeRenderLoop = null; }
+    if (activeRenderLoop) { clearTimeout(activeRenderLoop); activeRenderLoop = null; }
     try { ren.dispose(); } catch (e) {}
     meshes.forEach(function(m) {
       if (m.geometry) m.geometry.dispose();
@@ -1186,15 +1059,65 @@ function run3DRoll() {
   }
 }
 
+/* ── Accessibility: reduced motion ── */
+function prefersReducedMotion() {
+  return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/* ── Natural 20 Critical Hit Celebration ── */
+function spawnCritParticles(container) {
+  var cfg = getThemeConfig();
+  var colors = [cfg.numberColor || '#f0d9a0', '#ffd700', '#ffec80', cfg.bodyColor || '#6b4423'];
+  var particleCount = 30;
+
+  for (var i = 0; i < particleCount; i++) {
+    var p = document.createElement('div');
+    p.className = 'dice-crit-particle';
+    var color = colors[Math.floor(Math.random() * colors.length)];
+    var size = 4 + Math.random() * 6;
+    var cx = window.innerWidth / 2;
+    var cy = window.innerHeight / 2;
+    var angle = (Math.PI * 2 * i / particleCount) + (Math.random() - 0.5) * 0.5;
+    var dist = 80 + Math.random() * 180;
+    var tx = Math.cos(angle) * dist;
+    var ty = Math.sin(angle) * dist - 40; // bias upward
+    var delay = Math.random() * 0.15;
+
+    p.style.cssText = 'position:fixed;z-index:1010;pointer-events:none;border-radius:50%;' +
+      'width:' + size + 'px;height:' + size + 'px;' +
+      'background:' + color + ';' +
+      'left:' + cx + 'px;top:' + cy + 'px;' +
+      'box-shadow:0 0 ' + (size * 2) + 'px ' + color + ';' +
+      'opacity:1;' +
+      'animation:dice-crit-burst 0.8s ' + delay + 's ease-out forwards;' +
+      '--tx:' + tx + 'px;--ty:' + ty + 'px;';
+
+    container.appendChild(p);
+  }
+
+  // Show "NATURAL 20!" text flash
+  var flash = document.createElement('div');
+  flash.className = 'dice-crit-text';
+  flash.textContent = 'NATURAL 20!';
+  flash.style.cssText = 'position:fixed;z-index:1011;pointer-events:none;' +
+    'left:50%;top:45%;transform:translate(-50%,-50%) scale(0.5);' +
+    'font-family:MedievalSharp,cursive;font-size:2.5rem;font-weight:700;' +
+    'color:#ffd700;text-shadow:0 0 20px rgba(255,215,0,0.8),0 0 40px rgba(255,215,0,0.4);' +
+    'opacity:0;animation:dice-crit-flash 1.2s ease-out forwards;';
+  container.appendChild(flash);
+}
+
 function cleanupActiveRoll() {
+  if (hideCleanupTimeout) { clearTimeout(hideCleanupTimeout); hideCleanupTimeout = null; }
   if (cleanupTimeout) { clearTimeout(cleanupTimeout); cleanupTimeout = null; }
-  if (activeRenderLoop) { cancelAnimationFrame(activeRenderLoop); activeRenderLoop = null; }
+  if (activeRenderLoop) { clearTimeout(activeRenderLoop); activeRenderLoop = null; }
   if (activeRenderer) { try { activeRenderer.dispose(); } catch (e) {} activeRenderer = null; }
   if (activeOverlay) { try { activeOverlay.remove(); } catch (e) {} activeOverlay = null; }
 }
 
 /* ── Results Banner ── */
 var resultTimeout = null;
+var hideCleanupTimeout = null;
 
 function showResults(results, total) {
   var parts = results.map(function(r) { return r.die + ': ' + r.value; });
@@ -1231,7 +1154,8 @@ function showResults(results, total) {
 function hideResults() {
   resultsBanner.classList.remove('visible');
   if (resultTimeout) { clearTimeout(resultTimeout); resultTimeout = null; }
-  setTimeout(function() { cleanupActiveRoll(); }, 500);
+  if (hideCleanupTimeout) { clearTimeout(hideCleanupTimeout); hideCleanupTimeout = null; }
+  hideCleanupTimeout = setTimeout(function() { cleanupActiveRoll(); hideCleanupTimeout = null; }, 500);
 }
 
 /* ── History ── */

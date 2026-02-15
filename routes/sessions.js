@@ -293,7 +293,7 @@ router.get('/:id', requireLogin, (req, res) => {
         myVotes[v.slot_id] = v.status;
       }
     }
-    res.render('player/vote', { session, slots, myVotes, sessionPosts, sessionReplyMap, locationName, postReactions, userPostReactions, replyReactions, userReplyReactions, postPolls, sessionForOG, protocol, host });
+    res.render('player/vote', { session, slots, myVotes, players, voteMap, slotSummary, allUsersMap, unavailabilityMap, sessionPosts, sessionReplyMap, locationName, postReactions, userPostReactions, replyReactions, userReplyReactions, postPolls, sessionForOG, protocol, host });
   }
 });
 

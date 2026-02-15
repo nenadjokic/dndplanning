@@ -5345,6 +5345,8 @@ h2 {
               inset 0 1px 0 rgba(212, 168, 67, 0.15);
   padding: 1rem;
   min-width: 320px;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
   opacity: 0;
   transform: translateY(-10px);
   transition: opacity 0.3s ease, transform 0.3s ease;
@@ -5581,8 +5583,18 @@ h2 {
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .datetime-picker {
-    min-width: 280px;
+    min-width: unset;
+    width: calc(100vw - 2rem);
+    max-width: 320px;
+    left: 50% !important;
+    transform: translateX(-50%);
     font-size: 0.9rem;
+    max-height: calc(100vh - 1rem);
+    padding: 0.75rem;
+  }
+
+  .datetime-picker.visible {
+    transform: translateX(-50%);
   }
 
   .picker-day {

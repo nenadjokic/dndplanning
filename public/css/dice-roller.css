@@ -411,6 +411,203 @@
   opacity: 0;
 }
 
+/* === Dice Theme Picker === */
+.dice-theme-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--gold-dim);
+  background: var(--bg-card);
+  color: var(--gold);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s, border-color 0.15s, background 0.15s;
+  opacity: 0;
+  transform: scale(0.5) translateY(10px);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.dice-bubble-menu.open .dice-theme-btn {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition-delay: 0.21s;
+}
+
+.dice-theme-btn:hover {
+  transform: scale(1.12);
+  border-color: var(--gold);
+  background: rgba(212, 168, 67, 0.15);
+}
+
+.dice-theme-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.dice-theme-picker {
+  position: fixed;
+  bottom: 9rem;
+  right: 4.5rem;
+  z-index: 998;
+  background: var(--bg-card);
+  border: 2px solid var(--gold-dim);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(212, 168, 67, 0.08);
+  padding: 0.75rem;
+  opacity: 0;
+  transform: translateX(10px) scale(0.95);
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  width: 320px;
+}
+
+.dice-theme-picker.open {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  pointer-events: auto;
+}
+
+.dice-theme-picker-title {
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  color: var(--gold);
+  text-align: center;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.5px;
+}
+
+.dice-theme-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.4rem;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.dice-theme-card {
+  background: var(--bg-secondary);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+  text-align: center;
+}
+
+.dice-theme-card:hover {
+  border-color: var(--gold-dim);
+  transform: scale(1.03);
+}
+
+.dice-theme-card.active {
+  border-color: var(--gold-bright);
+  background: rgba(212, 168, 67, 0.1);
+  box-shadow: 0 0 10px rgba(212, 168, 67, 0.15);
+}
+
+.dice-theme-swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  margin: 0 auto 0.35rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Diagonal split: body color + number color */
+.dice-theme-swatch::before,
+.dice-theme-swatch::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.dice-theme-swatch::before {
+  background: var(--swatch-body);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+.dice-theme-swatch::after {
+  background: var(--swatch-number);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+
+.dice-theme-card-name {
+  font-family: var(--font-heading);
+  font-size: 0.7rem;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.dice-theme-card-desc {
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+  line-height: 1.2;
+  margin-top: 0.15rem;
+}
+
+/* Mobile: position picker above the FAB */
+@media (max-width: 640px) {
+  .dice-theme-picker {
+    right: 0.75rem;
+    bottom: 9rem;
+    width: 280px;
+  }
+
+  .dice-theme-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .dice-theme-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* === Natural 20 Critical Hit Celebration === */
+@keyframes dice-crit-burst {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+}
+
+@keyframes dice-crit-flash {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.1) translateY(-20px); }
+}
+
+/* Reduced motion: disable dice animations */
+@media (prefers-reduced-motion: reduce) {
+  .dice-bubble,
+  .dice-theme-btn {
+    transition: none;
+    transform: none;
+    opacity: 1;
+  }
+
+  .dice-bubble-menu.open .dice-bubble,
+  .dice-bubble-menu.open .dice-theme-btn {
+    transition: none;
+    transform: none;
+  }
+
+  .dice-crit-particle,
+  .dice-crit-text {
+    display: none !important;
+  }
+}
+
 /* Light theme adjustments */
 [data-theme="light"] .dice-fab-btn {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
@@ -431,4 +628,12 @@
 
 [data-theme="light"] .dice-toast {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .dice-theme-picker {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .dice-theme-btn {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
