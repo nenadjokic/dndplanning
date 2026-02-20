@@ -1,6 +1,6 @@
-# Quest Planner v2.0.4 — D&D Session Scheduler
+# Quest Planner v2.0.6 — D&D Session Scheduler
 
-> **Latest release:** v2.0.4 (2026-02-13)
+> **Latest release:** v2.0.6 (2026-02-20)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -70,7 +70,7 @@ If you enjoy Quest Planner, consider buying me a coffee:
 - **Session History** — Dedicated `/history` page showing all completed D&D/RPG sessions in reverse chronological order
 - **Date + Time Picker** — Separate date and time select (30-min increments, 12h/24h)
 - **Dynamic Unavailability Warnings** — Inline warnings when a selected date conflicts with player unavailability
-- **Bulletin Board** — Global post/reply board for tavern gossip and announcements
+- **Bulletin Board** — phpBB-style category-based board with topic lists, breadcrumbs, Markdown support, admin category management, and dashboard feed
 - **Social Reactions** — React to posts and replies with like/dislike buttons; live vote counts via real-time updates
 - **Polls & GIFs** — Create polls with 2-4 options and attach images/GIFs from Giphy, Tenor, or Imgur to posts, replies, and session comments
 - **Session Comments** — Per-session "Quest Discussion" threads with replies, supporting images, GIFs, and polls
@@ -82,7 +82,7 @@ If you enjoy Quest Planner, consider buying me a coffee:
 - **Light / Dark / Auto Theme** — Dark (Dungeon), Light (Parchment), Auto (switches at 6AM/7PM)
 - **Live Clock** — Current date and time in the nav bar, updates every second
 - **D&D 5e Character Sheet** — Full character sheet with 3 tabs (Stats & Combat, Biography, Spellcasting); owner-editable with read-only public view; auto-calculates ability modifiers, proficiency bonus, saving throws, skills, passive perception, initiative, spell save DC, and spell attack bonus based on class and level
-- **Ancient Lore Library (Vault)** — D&D 5e reference with 936 spells, 26 classes, 158 races, and 2,451 items from 5e.tools; searchable with advanced filters (level, school, source/book, cast type for spells; category and rarity for items); D&D Beyond-style cards with emoji icons, structured stats, Markdown descriptions, and spell scaling tables; admin can import/update data from Guild Settings
+- **Ancient Lore Library (Vault)** — D&D 5e reference with 10 categories: 936 spells, 26 classes, 158 races, 2,451 items, 100+ feats, 200+ optional features, 70+ backgrounds, 2,200+ monsters (full stat blocks), 59 conditions & diseases, and 48 rules from 5e.tools; searchable with advanced filters (level, school, source/book, cast type for spells; category and rarity for items; CR, type, size for monsters); D&D Beyond-style cards with emoji icons, structured stats, Markdown descriptions, and spell scaling tables; admin can import/update data from Guild Settings
 - **User Profile** — Avatar upload, birthday, about section (Markdown), multiple characters with avatars and descriptions
 - **Public Profiles** — View any guild member's profile page with avatar, birthday, about, and characters grid
 - **Push Notifications** — PWA push notifications for session events (create, confirm, cancel, complete, recap) via Web Push API
@@ -803,6 +803,29 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v2.0.6 (2026-02-20) 📚 Vault Expansion, Board Redesign & Session Sorting
+
+**Vault Expansion (6 New Categories):**
+- **📖 Feats** — Browse feats with prerequisite info and source filtering
+- **⚙️ Optional Features** — Eldritch Invocations, Fighting Styles, and more with type filtering
+- **🎭 Backgrounds** — Character backgrounds with full descriptions
+- **🐉 Bestiary** — 2,200+ monsters with full stat blocks (AC, HP, Speed, Abilities, Traits, Actions, Legendary Actions); filter by CR, type, and size
+- **🤒 Conditions & Diseases** — 59 conditions and diseases with descriptions
+- **📜 Rules Glossary** — 48 rules and actions for quick reference
+
+**Bulletin Board Redesign:**
+- **📋 Category System** — phpBB-style board with categories (icon, name, description), topic lists, and breadcrumb navigation
+- **📝 Markdown Support** — Posts and replies rendered with full Markdown (bold, italic, code, links, lists)
+- **🏠 Dashboard Feed** — Latest 5 board posts shown on dashboard with category badges and reply counts
+- **🔧 Admin Management** — Create, edit, and delete board categories with emoji picker; "Tavern Talk" default category
+
+**Session Improvements:**
+- **📊 Smart Sorting** — Cancelled sessions now sort last (after open, confirmed, completed)
+- **📄 Load More Pagination** — Dashboard shows 9 sessions at a time with "Show More" button
+
+**Dice & UI:**
+- **🎲 Fixed Dice Rotation** — Dice now roll in the correct direction for realistic animation
 
 ### v2.0.5 (2026-02-15) 🎲 Dice Themes, Collisions & Vote Visibility
 

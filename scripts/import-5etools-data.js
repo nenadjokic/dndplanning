@@ -316,6 +316,325 @@ async function importItems() {
   return totalItems;
 }
 
+// Import feats
+async function importFeats() {
+  console.log('🎯 Importing feats...');
+
+  let totalFeats = 0;
+  const insertStmt = db.prepare(`
+    INSERT INTO dnd_feats (name, source, prerequisite, raw_data, search_text)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+
+  // Clear existing feats
+  db.prepare('DELETE FROM dnd_feats').run();
+
+  try {
+    const data = await fetchJSON(`${BASE_URL}/feats.json`);
+    const feats = data.feat || [];
+
+    for (const feat of feats) {
+      const name = feat.name;
+      const source = feat.source;
+
+      // Parse prerequisite array into readable text
+      let prerequisite = '';
+      if (feat.prerequisite && Array.isArray(feat.prerequisite)) {
+        const prereqParts = [];
+        for (const prereq of feat.prerequisite) {
+          if (prereq.level) {
+            prereqParts.push(`Level ${prereq.level.level || prereq.level}`);
+          }
+          if (prereq.race) {
+            const races = prereq.race.map(r => r.name + (r.subrace ? ` (${r.subrace})` : '')).join(' or ');
+            prereqParts.push(races);
+          }
+          if (prereq.ability) {
+            const abilities = prereq.ability.map(a => {
+              return Object.entries(a).map(([k, v]) => `${k.toUpperCase()} ${v}+`).join(', ');
+            }).join(' or ');
+            prereqParts.push(abilities);
+          }
+          if (prereq.spellcasting) prereqParts.push('Spellcasting');
+          if (prereq.proficiency) {
+            const profs = prereq.proficiency.map(p => {
+              return Object.entries(p).map(([k, v]) => `${v}`).join(', ');
+            }).join(', ');
+            prereqParts.push(profs);
+          }
+          if (prereq.other) prereqParts.push(prereq.other);
+        }
+        prerequisite = prereqParts.join('; ');
+      }
+
+      const searchText = `${name} ${prerequisite} ${source}`.toLowerCase();
+
+      insertStmt.run(
+        name,
+        source,
+        prerequisite || null,
+        JSON.stringify(feat),
+        searchText
+      );
+
+      totalFeats++;
+    }
+
+    console.log(`✅ Imported ${totalFeats} total feats\n`);
+  } catch (error) {
+    console.error(`✗ Failed to import feats: ${error.message}\n`);
+  }
+
+  return totalFeats;
+}
+
+// Import optional features (Eldritch Invocations, Fighting Styles, etc.)
+async function importOptionalFeatures() {
+  console.log('⚡ Importing optional features...');
+
+  let totalOptFeatures = 0;
+  const insertStmt = db.prepare(`
+    INSERT INTO dnd_optfeatures (name, source, feature_type, raw_data, search_text)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+
+  // Clear existing optional features
+  db.prepare('DELETE FROM dnd_optfeatures').run();
+
+  try {
+    const data = await fetchJSON(`${BASE_URL}/optionalfeatures.json`);
+    const optfeatures = data.optionalfeature || [];
+
+    for (const optfeature of optfeatures) {
+      const name = optfeature.name;
+      const source = optfeature.source;
+      const featureType = optfeature.featureType ? optfeature.featureType.join(', ') : null;
+
+      const searchText = `${name} ${featureType || ''} ${source}`.toLowerCase();
+
+      insertStmt.run(
+        name,
+        source,
+        featureType,
+        JSON.stringify(optfeature),
+        searchText
+      );
+
+      totalOptFeatures++;
+    }
+
+    console.log(`✅ Imported ${totalOptFeatures} total optional features\n`);
+  } catch (error) {
+    console.error(`✗ Failed to import optional features: ${error.message}\n`);
+  }
+
+  return totalOptFeatures;
+}
+
+// Import backgrounds
+async function importBackgrounds() {
+  console.log('📜 Importing backgrounds...');
+
+  let totalBackgrounds = 0;
+  const insertStmt = db.prepare(`
+    INSERT INTO dnd_backgrounds (name, source, raw_data, search_text)
+    VALUES (?, ?, ?, ?)
+  `);
+
+  // Clear existing backgrounds
+  db.prepare('DELETE FROM dnd_backgrounds').run();
+
+  try {
+    const data = await fetchJSON(`${BASE_URL}/backgrounds.json`);
+    const backgrounds = data.background || [];
+
+    for (const bg of backgrounds) {
+      const name = bg.name;
+      const source = bg.source;
+
+      const searchText = `${name} ${source}`.toLowerCase();
+
+      insertStmt.run(
+        name,
+        source,
+        JSON.stringify(bg),
+        searchText
+      );
+
+      totalBackgrounds++;
+    }
+
+    console.log(`✅ Imported ${totalBackgrounds} total backgrounds\n`);
+  } catch (error) {
+    console.error(`✗ Failed to import backgrounds: ${error.message}\n`);
+  }
+
+  return totalBackgrounds;
+}
+
+// Import monsters from all source books
+async function importMonsters() {
+  console.log('🐉 Importing monsters...');
+
+  // Get the index to know which files to download
+  const index = await fetchJSON(`${BASE_URL}/bestiary/index.json`);
+  const sources = Object.keys(index);
+
+  let totalMonsters = 0;
+  const insertStmt = db.prepare(`
+    INSERT INTO dnd_monsters (name, source, cr, type, size, environment, raw_data, search_text)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  // Clear existing monsters
+  db.prepare('DELETE FROM dnd_monsters').run();
+
+  for (let i = 0; i < sources.length; i++) {
+    const source = sources[i];
+    const filename = index[source];
+    console.log(`  Downloading ${source} (${filename})...`);
+
+    try {
+      const data = await fetchJSON(`${BASE_URL}/bestiary/${filename}`);
+      const monsters = data.monster || [];
+
+      for (const monster of monsters) {
+        const name = monster.name;
+
+        // CR can be object {cr: "1/4"} or string
+        let cr = null;
+        if (monster.cr) {
+          cr = typeof monster.cr === 'object' ? monster.cr.cr : String(monster.cr);
+        }
+
+        // Type can be object {type: "beast"} or string
+        let type = null;
+        if (monster.type) {
+          type = typeof monster.type === 'object' ? monster.type.type : monster.type;
+        }
+
+        // Size is an array
+        const size = monster.size ? monster.size.join(', ') : null;
+
+        // Environment is optional array
+        const environment = monster.environment ? monster.environment.join(', ') : null;
+
+        const searchText = `${name} ${type || ''} ${cr || ''} ${source} ${environment || ''}`.toLowerCase();
+
+        insertStmt.run(
+          name,
+          monster.source || source,
+          cr,
+          type,
+          size,
+          environment,
+          JSON.stringify(monster),
+          searchText
+        );
+
+        totalMonsters++;
+      }
+
+      console.log(`    ✓ Imported ${monsters.length} monsters from ${source}`);
+    } catch (error) {
+      console.error(`    ✗ Failed to import ${source}: ${error.message}`);
+    }
+  }
+
+  console.log(`✅ Imported ${totalMonsters} total monsters\n`);
+  return totalMonsters;
+}
+
+// Import conditions and diseases
+async function importConditions() {
+  console.log('🩹 Importing conditions & diseases...');
+
+  let totalConditions = 0;
+  const insertStmt = db.prepare(`
+    INSERT INTO dnd_conditions (name, source, condition_type, raw_data, search_text)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+
+  // Clear existing conditions
+  db.prepare('DELETE FROM dnd_conditions').run();
+
+  try {
+    const data = await fetchJSON(`${BASE_URL}/conditionsdiseases.json`);
+
+    // Process conditions
+    const conditions = data.condition || [];
+    for (const condition of conditions) {
+      const searchText = `${condition.name} condition ${condition.source}`.toLowerCase();
+      insertStmt.run(
+        condition.name,
+        condition.source,
+        'condition',
+        JSON.stringify(condition),
+        searchText
+      );
+      totalConditions++;
+    }
+
+    // Process diseases
+    const diseases = data.disease || [];
+    for (const disease of diseases) {
+      const searchText = `${disease.name} disease ${disease.source}`.toLowerCase();
+      insertStmt.run(
+        disease.name,
+        disease.source,
+        'disease',
+        JSON.stringify(disease),
+        searchText
+      );
+      totalConditions++;
+    }
+
+    console.log(`✅ Imported ${totalConditions} total conditions & diseases\n`);
+  } catch (error) {
+    console.error(`✗ Failed to import conditions: ${error.message}\n`);
+  }
+
+  return totalConditions;
+}
+
+// Import rules/actions
+async function importRules() {
+  console.log('📖 Importing rules/actions...');
+
+  let totalRules = 0;
+  const insertStmt = db.prepare(`
+    INSERT INTO dnd_rules (name, source, raw_data, search_text)
+    VALUES (?, ?, ?, ?)
+  `);
+
+  // Clear existing rules
+  db.prepare('DELETE FROM dnd_rules').run();
+
+  try {
+    const data = await fetchJSON(`${BASE_URL}/actions.json`);
+    const actions = data.action || [];
+
+    for (const action of actions) {
+      const searchText = `${action.name} ${action.source}`.toLowerCase();
+
+      insertStmt.run(
+        action.name,
+        action.source,
+        JSON.stringify(action),
+        searchText
+      );
+
+      totalRules++;
+    }
+
+    console.log(`✅ Imported ${totalRules} total rules/actions\n`);
+  } catch (error) {
+    console.error(`✗ Failed to import rules: ${error.message}\n`);
+  }
+
+  return totalRules;
+}
+
 // Main import function
 async function main() {
   console.log('🚀 Starting 5e.tools data import...\n');
@@ -327,6 +646,12 @@ async function main() {
     const classCount = await importClasses();
     const raceCount = await importRaces();
     const itemCount = await importItems();
+    const featCount = await importFeats();
+    const optfeatureCount = await importOptionalFeatures();
+    const backgroundCount = await importBackgrounds();
+    const monsterCount = await importMonsters();
+    const conditionCount = await importConditions();
+    const ruleCount = await importRules();
 
     // Update metadata
     db.prepare(`
@@ -336,13 +661,19 @@ async function main() {
         spell_count = ?,
         class_count = ?,
         race_count = ?,
-        item_count = ?
+        item_count = ?,
+        feat_count = ?,
+        optfeature_count = ?,
+        background_count = ?,
+        monster_count = ?,
+        condition_count = ?,
+        rule_count = ?
       WHERE id = 1
-    `).run('5etools-mirror-3/master', spellCount, classCount, raceCount, itemCount);
+    `).run('5etools-mirror-3/master', spellCount, classCount, raceCount, itemCount, featCount, optfeatureCount, backgroundCount, monsterCount, conditionCount, ruleCount);
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log(`\n✨ Import completed in ${duration}s`);
-    console.log(`📊 Total imported: ${spellCount} spells, ${classCount} classes, ${raceCount} races, ${itemCount} items`);
+    console.log(`📊 Total imported: ${spellCount} spells, ${classCount} classes, ${raceCount} races, ${itemCount} items, ${featCount} feats, ${optfeatureCount} optional features, ${backgroundCount} backgrounds, ${monsterCount} monsters, ${conditionCount} conditions, ${ruleCount} rules`);
   } catch (error) {
     console.error('❌ Import failed:', error);
     process.exit(1);
@@ -354,4 +685,4 @@ if (require.main === module) {
   main().catch(console.error);
 }
 
-module.exports = { importSpells, importClasses, importRaces, importItems };
+module.exports = { importSpells, importClasses, importRaces, importItems, importFeats, importOptionalFeatures, importBackgrounds, importMonsters, importConditions, importRules };

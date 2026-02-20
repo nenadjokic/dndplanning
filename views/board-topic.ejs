@@ -1,0 +1,153 @@
+<%- include('partials/head', { pageTitle: post.content.split('\n')[0].substring(0, 60) + ' - Board' }) %>
+
+<div class="page-header">
+  <h1><%= post.content.split('\n')[0].substring(0, 60) %></h1>
+  <a href="<%= category ? '/board/category/' + category.id : '/board' %>" class="btn btn-outline">Back to <%= category ? category.name : 'Board' %></a>
+</div>
+
+<div class="breadcrumb">
+  <a href="/board">Board</a>
+  <% if (category) { %>
+    <span class="separator">/</span>
+    <a href="/board/category/<%= category.id %>"><%= category.icon %> <%= category.name %></a>
+  <% } %>
+  <span class="separator">/</span>
+  <span>Topic</span>
+</div>
+
+<!-- Original Post -->
+<div class="card board-post board-post-op">
+  <div class="board-post-header">
+    <% if (post.avatar) { %>
+      <img src="/avatars/<%= post.avatar %>" alt="" class="avatar-small">
+    <% } else { %>
+      <span class="avatar-letter"><%= post.username.charAt(0).toUpperCase() %></span>
+    <% } %>
+    <div class="board-post-author-info">
+      <a href="/profile/<%= encodeURIComponent(post.username) %>" class="profile-link"><strong><%= post.username %></strong></a>
+      <% if (post.socials) { %>
+        <div class="board-post-socials">
+          <% if (post.socials.discord) { %>
+            <span class="social-badge" title="Discord: <%= post.socials.discord %>" style="color: #5865F2;">D</span>
+          <% } %>
+          <% if (post.socials.instagram) { %>
+            <a href="https://instagram.com/<%= post.socials.instagram.replace('@','') %>" target="_blank" class="social-badge" style="color: #E4405F;" title="Instagram">I</a>
+          <% } %>
+          <% if (post.socials.reddit) { %>
+            <a href="https://reddit.com/u/<%= post.socials.reddit.replace('u/','') %>" target="_blank" class="social-badge" style="color: #FF4500;" title="Reddit">R</a>
+          <% } %>
+        </div>
+      <% } %>
+    </div>
+    <span class="text-muted" style="font-size: 0.8rem; margin-left: auto;"><%= formatDate(post.created_at, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) %></span>
+    <% if (post.user_id === user.id || user.role === 'admin') { %>
+      <form action="/board/<%= post.id %>/delete" method="POST" class="inline-form" style="margin-left: 0.5rem;">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this topic and all replies?')">&times;</button>
+      </form>
+    <% } %>
+  </div>
+
+  <div class="board-post-body markdown-content"><%- post.renderedContent %></div>
+
+  <% if (post.image_url) { %>
+    <div class="board-post-image"><img src="<%= post.image_url %>" alt="Attached image" loading="lazy"></div>
+  <% } %>
+
+  <% if (poll) { %>
+    <div class="poll-container" data-poll-id="<%= poll.id %>">
+      <div class="poll-question"><%= poll.question %></div>
+      <div class="poll-options">
+        <% for (const opt of poll.options) { %>
+          <% const pct = poll.totalVotes > 0 ? Math.round((opt.votes / poll.totalVotes) * 100) : 0; %>
+          <button type="button" class="poll-option<%= poll.userVote === opt.id ? ' selected' : '' %>" data-option-id="<%= opt.id %>">
+            <span class="poll-option-bar" style="width: <%= pct %>%;"></span>
+            <span class="poll-option-text"><%= opt.option_text %></span>
+            <span class="poll-option-count"><%= opt.votes %> (<%= pct %>%)</span>
+          </button>
+        <% } %>
+      </div>
+      <div class="poll-total"><%= poll.totalVotes %> vote<%= poll.totalVotes !== 1 ? 's' : '' %></div>
+    </div>
+  <% } %>
+
+  <div class="reaction-buttons" data-post-id="<%= post.id %>">
+    <% const pr = postReactions[post.id] || { likes: 0, dislikes: 0 }; %>
+    <% const upr = userPostReactions[post.id]; %>
+    <button type="button" class="reaction-btn<%= upr === 'like' ? ' active' : '' %>" data-type="like" title="Like">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+      <span class="reaction-count"><%= pr.likes %></span>
+    </button>
+    <button type="button" class="reaction-btn<%= upr === 'dislike' ? ' active' : '' %>" data-type="dislike" title="Dislike">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></svg>
+      <span class="reaction-count"><%= pr.dislikes %></span>
+    </button>
+  </div>
+</div>
+
+<!-- Replies -->
+<% if (replies.length > 0) { %>
+  <h3 style="margin: 1.5rem 0 0.75rem; color: var(--gold);"><%= replies.length %> Repl<%= replies.length === 1 ? 'y' : 'ies' %></h3>
+  <% for (const reply of replies) { %>
+    <div class="card board-post board-reply-card">
+      <div class="board-post-header">
+        <% if (reply.avatar) { %>
+          <img src="/avatars/<%= reply.avatar %>" alt="" class="avatar-small">
+        <% } else { %>
+          <span class="avatar-letter"><%= reply.username.charAt(0).toUpperCase() %></span>
+        <% } %>
+        <div class="board-post-author-info">
+          <a href="/profile/<%= encodeURIComponent(reply.username) %>" class="profile-link"><strong><%= reply.username %></strong></a>
+          <% if (reply.socials) { %>
+            <div class="board-post-socials">
+              <% if (reply.socials.discord) { %>
+                <span class="social-badge" title="Discord: <%= reply.socials.discord %>" style="color: #5865F2;">D</span>
+              <% } %>
+              <% if (reply.socials.instagram) { %>
+                <a href="https://instagram.com/<%= reply.socials.instagram.replace('@','') %>" target="_blank" class="social-badge" style="color: #E4405F;">I</a>
+              <% } %>
+            </div>
+          <% } %>
+        </div>
+        <span class="text-muted" style="font-size: 0.8rem; margin-left: auto;"><%= formatDate(reply.created_at, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) %></span>
+      </div>
+
+      <div class="board-post-body markdown-content"><%- reply.renderedContent %></div>
+
+      <% if (reply.image_url) { %>
+        <div class="board-post-image"><img src="<%= reply.image_url %>" alt="Attached image" loading="lazy"></div>
+      <% } %>
+
+      <div class="reaction-buttons reply-reactions" data-reply-id="<%= reply.id %>">
+        <% const rr = replyReactions[reply.id] || { likes: 0, dislikes: 0 }; %>
+        <% const urr = userReplyReactions[reply.id]; %>
+        <button type="button" class="reaction-btn<%= urr === 'like' ? ' active' : '' %>" data-type="like" title="Like">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+          <span class="reaction-count"><%= rr.likes %></span>
+        </button>
+        <button type="button" class="reaction-btn<%= urr === 'dislike' ? ' active' : '' %>" data-type="dislike" title="Dislike">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></svg>
+          <span class="reaction-count"><%= rr.dislikes %></span>
+        </button>
+      </div>
+    </div>
+  <% } %>
+<% } %>
+
+<!-- Reply Form -->
+<div class="card board-reply-form-card" style="margin-top: 1rem;">
+  <h3 style="margin-bottom: 0.75rem; color: var(--gold);">Post a Reply</h3>
+  <form action="/board/<%= post.id %>/reply" method="POST">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="form-group">
+      <textarea name="content" rows="4" class="mention-input" placeholder="Write your reply... Supports **bold**, *italic*, [links](url), and more." required></textarea>
+    </div>
+    <div class="form-group">
+      <label for="reply-image-url">Image/GIF URL (optional)</label>
+      <input type="text" id="reply-image-url" name="image_url" placeholder="https://media.giphy.com/... or image URL">
+    </div>
+    <button type="submit" class="btn btn-primary btn-small">Post Reply</button>
+  </form>
+</div>
+
+<%- include('partials/foot') %>

@@ -5,6 +5,7 @@ const multer = require('multer');
 const db = require('../db/connection');
 const { requireLogin } = require('../middleware/auth');
 const { notifyMentions } = require('../helpers/notifications');
+const { renderBoardMarkdown } = require('../helpers/markdown');
 const sse = require('../helpers/sse');
 const router = express.Router();
 
@@ -15,8 +16,7 @@ try {
     fs.mkdirSync(uploadDir, { recursive: true });
   }
 } catch (err) {
-  console.warn('⚠️  Could not create board uploads directory. Image uploads may not work.');
-  console.warn('   Fix: sudo chmod -R 777 $(docker volume inspect <volume-name> -f \'{{.Mountpoint}}\')');
+  console.warn('Could not create board uploads directory.');
 }
 
 // Multer configuration for board image uploads
@@ -29,7 +29,7 @@ const boardImageUpload = multer({
       cb(null, 'board-' + uniqueSuffix + ext);
     }
   }),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
     const ext = path.extname(file.originalname).toLowerCase();
@@ -37,107 +37,11 @@ const boardImageUpload = multer({
   }
 });
 
-router.get('/', requireLogin, (req, res) => {
-  const posts = db.prepare(`
-    SELECT p.*, u.username, u.avatar
-    FROM posts p
-    JOIN users u ON p.user_id = u.id
-    WHERE p.session_id IS NULL
-    ORDER BY p.created_at DESC
-  `).all();
-
-  const postIds = posts.map(p => p.id);
-  const replyMap = {};
-
-  if (postIds.length > 0) {
-    const placeholders = postIds.map(() => '?').join(',');
-    const replies = db.prepare(`
-      SELECT r.*, u.username, u.avatar
-      FROM replies r
-      JOIN users u ON r.user_id = u.id
-      WHERE r.post_id IN (${placeholders})
-      ORDER BY r.created_at ASC
-    `).all(...postIds);
-
-    for (const r of replies) {
-      if (!replyMap[r.post_id]) replyMap[r.post_id] = [];
-      replyMap[r.post_id].push(r);
-    }
-  }
-
-  // Load reactions for posts
-  const postReactions = {};
-  const userPostReactions = {};
-  if (postIds.length > 0) {
-    const ph = postIds.map(() => '?').join(',');
-    const reactions = db.prepare(`SELECT post_id, emoji, COUNT(*) as count FROM post_reactions WHERE post_id IN (${ph}) GROUP BY post_id, emoji`).all(...postIds);
-    for (const r of reactions) {
-      if (!postReactions[r.post_id]) postReactions[r.post_id] = { likes: 0, dislikes: 0 };
-      if (r.emoji === 'like') postReactions[r.post_id].likes = r.count;
-      else postReactions[r.post_id].dislikes = r.count;
-    }
-    const userReactions = db.prepare(`SELECT post_id, emoji FROM post_reactions WHERE post_id IN (${ph}) AND user_id = ?`).all(...postIds, req.user.id);
-    for (const ur of userReactions) {
-      userPostReactions[ur.post_id] = ur.emoji;
-    }
-  }
-
-  // Load reactions for replies
-  const allReplyIds = [];
-  for (const pid of postIds) {
-    if (replyMap[pid]) {
-      for (const r of replyMap[pid]) {
-        allReplyIds.push(r.id);
-      }
-    }
-  }
-  const replyReactions = {};
-  const userReplyReactions = {};
-  if (allReplyIds.length > 0) {
-    const ph = allReplyIds.map(() => '?').join(',');
-    const reactions = db.prepare(`SELECT reply_id, emoji, COUNT(*) as count FROM reply_reactions WHERE reply_id IN (${ph}) GROUP BY reply_id, emoji`).all(...allReplyIds);
-    for (const r of reactions) {
-      if (!replyReactions[r.reply_id]) replyReactions[r.reply_id] = { likes: 0, dislikes: 0 };
-      if (r.emoji === 'like') replyReactions[r.reply_id].likes = r.count;
-      else replyReactions[r.reply_id].dislikes = r.count;
-    }
-    const userReactions = db.prepare(`SELECT reply_id, emoji FROM reply_reactions WHERE reply_id IN (${ph}) AND user_id = ?`).all(...allReplyIds, req.user.id);
-    for (const ur of userReactions) {
-      userReplyReactions[ur.reply_id] = ur.emoji;
-    }
-  }
-
-  // Load polls for posts
-  const postPolls = {};
-  if (postIds.length > 0) {
-    const ph = postIds.map(() => '?').join(',');
-    const polls = db.prepare(`SELECT * FROM polls WHERE post_id IN (${ph})`).all(...postIds);
-    for (const poll of polls) {
-      const options = db.prepare('SELECT * FROM poll_options WHERE poll_id = ? ORDER BY sort_order').all(poll.id);
-      const voteCounts = db.prepare('SELECT option_id, COUNT(*) as count FROM poll_votes WHERE poll_id = ? GROUP BY option_id').all(poll.id);
-      const voteMap = {};
-      for (const vc of voteCounts) voteMap[vc.option_id] = vc.count;
-      const userVote = db.prepare('SELECT option_id FROM poll_votes WHERE poll_id = ? AND user_id = ?').get(poll.id, req.user.id);
-      const totalVotes = db.prepare('SELECT COUNT(*) as count FROM poll_votes WHERE poll_id = ?').get(poll.id).count;
-      postPolls[poll.post_id] = {
-        ...poll,
-        options: options.map(o => ({ ...o, votes: voteMap[o.id] || 0 })),
-        userVote: userVote ? userVote.option_id : null,
-        totalVotes
-      };
-    }
-  }
-
-  const allUsers = db.prepare('SELECT username FROM users ORDER BY username').all();
-  res.render('board', { posts, replyMap, allUsers, postReactions, userPostReactions, replyReactions, userReplyReactions, postPolls });
-});
-
 // Image URL validation helper
 function isValidImageUrl(url) {
   if (!url) return false;
   url = url.trim();
   if (!url.startsWith('http://') && !url.startsWith('https://')) return false;
-  // Allow common image hosts and extensions
   const allowedHosts = ['giphy.com', 'tenor.com', 'imgur.com', 'i.imgur.com', 'media.giphy.com', 'media.tenor.com'];
   const allowedExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
   try {
@@ -149,9 +53,189 @@ function isValidImageUrl(url) {
   return false;
 }
 
+// Helper: get user socials
+function getUserSocials(userId) {
+  const user = db.prepare('SELECT socials FROM users WHERE id = ?').get(userId);
+  if (!user || !user.socials) return {};
+  try { return JSON.parse(user.socials); } catch (e) { return {}; }
+}
+
+// === Category List (main /board page) ===
+router.get('/', requireLogin, (req, res) => {
+  const categories = db.prepare(`
+    SELECT bc.*,
+      (SELECT COUNT(*) FROM posts p WHERE p.category_id = bc.id AND p.session_id IS NULL) as topic_count,
+      (SELECT COUNT(*) FROM replies r JOIN posts p ON r.post_id = p.id WHERE p.category_id = bc.id AND p.session_id IS NULL) as reply_count,
+      (SELECT MAX(COALESCE(
+        (SELECT MAX(r2.created_at) FROM replies r2 WHERE r2.post_id = p2.id),
+        p2.created_at
+      )) FROM posts p2 WHERE p2.category_id = bc.id AND p2.session_id IS NULL) as last_activity
+    FROM board_categories bc
+    ORDER BY bc.sort_order, bc.name
+  `).all();
+
+  // Get last poster for each category
+  for (const cat of categories) {
+    if (cat.last_activity) {
+      const lastPost = db.prepare(`
+        SELECT p.id, u.username, u.avatar
+        FROM posts p
+        JOIN users u ON p.user_id = u.id
+        WHERE p.category_id = ? AND p.session_id IS NULL
+        ORDER BY COALESCE(
+          (SELECT MAX(r.created_at) FROM replies r WHERE r.post_id = p.id),
+          p.created_at
+        ) DESC
+        LIMIT 1
+      `).get(cat.id);
+      cat.lastPoster = lastPost;
+    }
+  }
+
+  res.render('board-categories', { categories });
+});
+
+// === Topic List (within a category) ===
+router.get('/category/:id', requireLogin, (req, res) => {
+  const categoryId = parseInt(req.params.id, 10);
+  const page = parseInt(req.query.page) || 1;
+  const perPage = 20;
+  const offset = (page - 1) * perPage;
+
+  const category = db.prepare('SELECT * FROM board_categories WHERE id = ?').get(categoryId);
+  if (!category) {
+    req.flash('error', 'Category not found.');
+    return res.redirect('/board');
+  }
+
+  const totalTopics = db.prepare('SELECT COUNT(*) as count FROM posts WHERE category_id = ? AND session_id IS NULL').get(categoryId).count;
+  const totalPages = Math.ceil(totalTopics / perPage);
+
+  const topics = db.prepare(`
+    SELECT p.id, p.content, p.created_at, p.image_url,
+      u.username, u.avatar,
+      (SELECT COUNT(*) FROM replies r WHERE r.post_id = p.id) as reply_count,
+      COALESCE(
+        (SELECT MAX(r.created_at) FROM replies r WHERE r.post_id = p.id),
+        p.created_at
+      ) as last_activity,
+      (SELECT u2.username FROM replies r2 JOIN users u2 ON r2.user_id = u2.id WHERE r2.post_id = p.id ORDER BY r2.created_at DESC LIMIT 1) as last_reply_by
+    FROM posts p
+    JOIN users u ON p.user_id = u.id
+    WHERE p.category_id = ? AND p.session_id IS NULL
+    ORDER BY last_activity DESC
+    LIMIT ? OFFSET ?
+  `).all(categoryId, perPage, offset);
+
+  // Extract title from content (first line or first 80 chars)
+  topics.forEach(t => {
+    const firstLine = t.content.split('\n')[0].trim();
+    t.title = firstLine.length > 80 ? firstLine.substring(0, 77) + '...' : firstLine;
+    t.preview = t.content.length > 150 ? t.content.substring(0, 147) + '...' : t.content;
+  });
+
+  res.render('board-category', { category, topics, page, totalPages });
+});
+
+// === Single Topic View ===
+router.get('/topic/:id', requireLogin, (req, res) => {
+  const postId = parseInt(req.params.id, 10);
+
+  const post = db.prepare(`
+    SELECT p.*, u.username, u.avatar, u.socials, u.id as author_id
+    FROM posts p
+    JOIN users u ON p.user_id = u.id
+    WHERE p.id = ? AND p.session_id IS NULL
+  `).get(postId);
+
+  if (!post) {
+    req.flash('error', 'Topic not found.');
+    return res.redirect('/board');
+  }
+
+  // Get category
+  const category = post.category_id ? db.prepare('SELECT * FROM board_categories WHERE id = ?').get(post.category_id) : null;
+
+  // Parse socials
+  post.socials = {};
+  try { if (post.socials) post.socials = JSON.parse(post.socials); } catch (e) { post.socials = {}; }
+
+  // Render markdown for OP
+  post.renderedContent = renderBoardMarkdown(post.content);
+
+  // Get replies
+  const replies = db.prepare(`
+    SELECT r.*, u.username, u.avatar, u.socials, u.id as author_id
+    FROM replies r
+    JOIN users u ON r.user_id = u.id
+    WHERE r.post_id = ?
+    ORDER BY r.created_at ASC
+  `).all(postId);
+
+  replies.forEach(r => {
+    r.renderedContent = renderBoardMarkdown(r.content);
+    try { r.socials = r.socials ? JSON.parse(r.socials) : {}; } catch (e) { r.socials = {}; }
+  });
+
+  // Load reactions for post
+  const postReactions = {};
+  const userPostReactions = {};
+  const pr = db.prepare('SELECT emoji, COUNT(*) as count FROM post_reactions WHERE post_id = ? GROUP BY emoji').all(postId);
+  postReactions[postId] = { likes: 0, dislikes: 0 };
+  for (const r of pr) {
+    if (r.emoji === 'like') postReactions[postId].likes = r.count;
+    else postReactions[postId].dislikes = r.count;
+  }
+  const upr = db.prepare('SELECT emoji FROM post_reactions WHERE post_id = ? AND user_id = ?').get(postId, req.user.id);
+  if (upr) userPostReactions[postId] = upr.emoji;
+
+  // Load reactions for replies
+  const replyReactions = {};
+  const userReplyReactions = {};
+  const replyIds = replies.map(r => r.id);
+  if (replyIds.length > 0) {
+    const ph = replyIds.map(() => '?').join(',');
+    const rReactions = db.prepare(`SELECT reply_id, emoji, COUNT(*) as count FROM reply_reactions WHERE reply_id IN (${ph}) GROUP BY reply_id, emoji`).all(...replyIds);
+    for (const r of rReactions) {
+      if (!replyReactions[r.reply_id]) replyReactions[r.reply_id] = { likes: 0, dislikes: 0 };
+      if (r.emoji === 'like') replyReactions[r.reply_id].likes = r.count;
+      else replyReactions[r.reply_id].dislikes = r.count;
+    }
+    const urReactions = db.prepare(`SELECT reply_id, emoji FROM reply_reactions WHERE reply_id IN (${ph}) AND user_id = ?`).all(...replyIds, req.user.id);
+    for (const ur of urReactions) userReplyReactions[ur.reply_id] = ur.emoji;
+  }
+
+  // Load poll
+  let poll = null;
+  const pollRow = db.prepare('SELECT * FROM polls WHERE post_id = ?').get(postId);
+  if (pollRow) {
+    const options = db.prepare('SELECT * FROM poll_options WHERE poll_id = ? ORDER BY sort_order').all(pollRow.id);
+    const voteCounts = db.prepare('SELECT option_id, COUNT(*) as count FROM poll_votes WHERE poll_id = ? GROUP BY option_id').all(pollRow.id);
+    const voteMap = {};
+    for (const vc of voteCounts) voteMap[vc.option_id] = vc.count;
+    const userVote = db.prepare('SELECT option_id FROM poll_votes WHERE poll_id = ? AND user_id = ?').get(pollRow.id, req.user.id);
+    const totalVotes = db.prepare('SELECT COUNT(*) as count FROM poll_votes WHERE poll_id = ?').get(pollRow.id).count;
+    poll = {
+      ...pollRow,
+      options: options.map(o => ({ ...o, votes: voteMap[o.id] || 0 })),
+      userVote: userVote ? userVote.option_id : null,
+      totalVotes
+    };
+  }
+
+  const allUsers = db.prepare('SELECT username FROM users ORDER BY username').all();
+
+  res.render('board-topic', {
+    post, replies, category, poll,
+    postReactions, userPostReactions,
+    replyReactions, userReplyReactions,
+    allUsers
+  });
+});
+
+// === Create New Topic ===
 router.post('/', requireLogin, boardImageUpload.single('image_file'), (req, res) => {
-  const { content, image_url, poll_question } = req.body;
-  // Express with extended:true parses poll_options[] as poll_options
+  const { content, image_url, poll_question, category_id } = req.body;
   let pollOptions = req.body.poll_options || req.body['poll_options[]'];
   if (pollOptions && !Array.isArray(pollOptions)) pollOptions = [pollOptions];
 
@@ -160,34 +244,32 @@ router.post('/', requireLogin, boardImageUpload.single('image_file'), (req, res)
     return res.redirect('/board');
   }
 
-  // Determine image URL: prioritize uploaded file over URL
+  // Determine image URL
   let validImageUrl = null;
-
-  // Check if file was uploaded
   if (req.file) {
-    // Use local path for uploaded file
     validImageUrl = '/uploads/board/' + req.file.filename;
-  }
-  // Otherwise check if URL was provided
-  else if (image_url && image_url.trim()) {
+  } else if (image_url && image_url.trim()) {
     if (isValidImageUrl(image_url)) {
       validImageUrl = image_url.trim();
     } else {
-      req.flash('error', 'Invalid image URL. Use direct image links or Giphy/Tenor/Imgur URLs.');
-      return res.redirect('/board');
+      req.flash('error', 'Invalid image URL.');
+      return res.redirect(category_id ? '/board/category/' + category_id : '/board');
     }
   }
 
-  const result = db.prepare('INSERT INTO posts (user_id, content, image_url) VALUES (?, ?, ?)').run(req.user.id, content.trim(), validImageUrl);
+  // Default to Tavern Talk if no category specified
+  let catId = parseInt(category_id) || null;
+  if (!catId) {
+    const defaultCat = db.prepare("SELECT id FROM board_categories WHERE name = 'Tavern Talk'").get();
+    catId = defaultCat ? defaultCat.id : null;
+  }
+
+  const result = db.prepare('INSERT INTO posts (user_id, content, image_url, category_id) VALUES (?, ?, ?, ?)').run(req.user.id, content.trim(), validImageUrl, catId);
   const postId = result.lastInsertRowid;
 
-  // Broadcast new comment
-  sse.broadcast('new-comment', {
-    username: req.user.username,
-    postId: postId
-  });
+  sse.broadcast('new-comment', { username: req.user.username, postId });
 
-  // Create poll if question and at least 2 options provided
+  // Create poll if provided
   if (poll_question && poll_question.trim() && pollOptions) {
     const validOptions = pollOptions.filter(o => o && o.trim());
     if (validOptions.length >= 2) {
@@ -196,51 +278,42 @@ router.post('/', requireLogin, boardImageUpload.single('image_file'), (req, res)
       for (let i = 0; i < validOptions.length; i++) {
         db.prepare('INSERT INTO poll_options (poll_id, option_text, sort_order) VALUES (?, ?, ?)').run(pollId, validOptions[i].trim(), i);
       }
-      // Broadcast poll created
-      sse.broadcast('poll-created', {
-        username: req.user.username,
-        question: poll_question.trim()
-      });
+      sse.broadcast('poll-created', { username: req.user.username, question: poll_question.trim() });
     }
   }
 
-  notifyMentions(content.trim(), req.user.id, req.user.username, '/board');
-  req.flash('success', 'Message posted to the board.');
-  res.redirect('/board');
+  notifyMentions(content.trim(), req.user.id, req.user.username, '/board/topic/' + postId);
+  req.flash('success', 'Topic posted.');
+  res.redirect('/board/topic/' + postId);
 });
 
+// === Reply to Topic ===
 router.post('/:id/reply', requireLogin, (req, res) => {
   const { content, image_url } = req.body;
-  const post = db.prepare('SELECT id FROM posts WHERE id = ?').get(req.params.id);
+  const postId = parseInt(req.params.id, 10);
+  const post = db.prepare('SELECT id FROM posts WHERE id = ?').get(postId);
   if (!post) {
     req.flash('error', 'Post not found.');
     return res.redirect('/board');
   }
   if (!content || !content.trim()) {
     req.flash('error', 'Reply content is required.');
-    return res.redirect('/board');
+    return res.redirect('/board/topic/' + postId);
   }
 
-  // Validate image URL if provided
   let validImageUrl = null;
   if (image_url && image_url.trim()) {
-    if (isValidImageUrl(image_url)) {
-      validImageUrl = image_url.trim();
-    }
+    if (isValidImageUrl(image_url)) validImageUrl = image_url.trim();
   }
 
-  db.prepare('INSERT INTO replies (post_id, user_id, content, image_url) VALUES (?, ?, ?, ?)').run(post.id, req.user.id, content.trim(), validImageUrl);
-
-  // Broadcast new reply
-  sse.broadcast('new-comment', {
-    username: req.user.username
-  });
-
-  notifyMentions(content.trim(), req.user.id, req.user.username, '/board');
+  db.prepare('INSERT INTO replies (post_id, user_id, content, image_url) VALUES (?, ?, ?, ?)').run(postId, req.user.id, content.trim(), validImageUrl);
+  sse.broadcast('new-comment', { username: req.user.username });
+  notifyMentions(content.trim(), req.user.id, req.user.username, '/board/topic/' + postId);
   req.flash('success', 'Reply posted.');
-  res.redirect('/board');
+  res.redirect('/board/topic/' + postId);
 });
 
+// === Delete Topic ===
 router.post('/:id/delete', requireLogin, (req, res) => {
   const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(req.params.id);
   if (!post) {
@@ -251,15 +324,78 @@ router.post('/:id/delete', requireLogin, (req, res) => {
     req.flash('error', 'You can only delete your own posts.');
     return res.redirect('/board');
   }
+  // Clean up related data
   db.prepare('DELETE FROM post_reactions WHERE post_id = ?').run(post.id);
+  const replyIds = db.prepare('SELECT id FROM replies WHERE post_id = ?').all(post.id).map(r => r.id);
+  if (replyIds.length > 0) {
+    const ph = replyIds.map(() => '?').join(',');
+    db.prepare(`DELETE FROM reply_reactions WHERE reply_id IN (${ph})`).run(...replyIds);
+  }
   db.prepare('DELETE FROM replies WHERE post_id = ?').run(post.id);
+  // Delete polls
+  const polls = db.prepare('SELECT id FROM polls WHERE post_id = ?').all(post.id);
+  for (const p of polls) {
+    db.prepare('DELETE FROM poll_votes WHERE poll_id = ?').run(p.id);
+    db.prepare('DELETE FROM poll_options WHERE poll_id = ?').run(p.id);
+  }
+  db.prepare('DELETE FROM polls WHERE post_id = ?').run(post.id);
   db.prepare('DELETE FROM posts WHERE id = ?').run(post.id);
   req.flash('success', 'Post deleted.');
+  const catId = post.category_id;
+  res.redirect(catId ? '/board/category/' + catId : '/board');
+});
+
+// === Admin: Create Category ===
+router.post('/category', requireLogin, (req, res) => {
+  if (req.user.role !== 'admin') {
+    req.flash('error', 'Admin only.');
+    return res.redirect('/board');
+  }
+  const { name, description, icon } = req.body;
+  if (!name || !name.trim()) {
+    req.flash('error', 'Category name is required.');
+    return res.redirect('/board');
+  }
+  const maxOrder = db.prepare('SELECT MAX(sort_order) as max FROM board_categories').get().max || 0;
+  db.prepare('INSERT INTO board_categories (name, description, icon, sort_order) VALUES (?, ?, ?, ?)').run(name.trim(), (description || '').trim(), icon || '📋', maxOrder + 1);
+  req.flash('success', 'Category created.');
   res.redirect('/board');
 });
 
-// --- Reactions ---
+// === Admin: Edit Category ===
+router.post('/category/:id/edit', requireLogin, (req, res) => {
+  if (req.user.role !== 'admin') {
+    req.flash('error', 'Admin only.');
+    return res.redirect('/board');
+  }
+  const { name, description, icon } = req.body;
+  if (!name || !name.trim()) {
+    req.flash('error', 'Category name is required.');
+    return res.redirect('/board');
+  }
+  db.prepare('UPDATE board_categories SET name = ?, description = ?, icon = ? WHERE id = ?').run(name.trim(), (description || '').trim(), icon || '📋', req.params.id);
+  req.flash('success', 'Category updated.');
+  res.redirect('/board');
+});
 
+// === Admin: Delete Category ===
+router.post('/category/:id/delete', requireLogin, (req, res) => {
+  if (req.user.role !== 'admin') {
+    req.flash('error', 'Admin only.');
+    return res.redirect('/board');
+  }
+  const catId = parseInt(req.params.id, 10);
+  // Move posts to Tavern Talk
+  const tavernTalk = db.prepare("SELECT id FROM board_categories WHERE name = 'Tavern Talk'").get();
+  if (tavernTalk && tavernTalk.id !== catId) {
+    db.prepare('UPDATE posts SET category_id = ? WHERE category_id = ?').run(tavernTalk.id, catId);
+  }
+  db.prepare('DELETE FROM board_categories WHERE id = ?').run(catId);
+  req.flash('success', 'Category deleted. Posts moved to Tavern Talk.');
+  res.redirect('/board');
+});
+
+// === Reactions (unchanged) ===
 router.post('/:postId/react', requireLogin, (req, res) => {
   const { emoji } = req.body;
   const postId = parseInt(req.params.postId, 10);
@@ -269,9 +405,7 @@ router.post('/:postId/react', requireLogin, (req, res) => {
   }
 
   const post = db.prepare('SELECT id FROM posts WHERE id = ?').get(postId);
-  if (!post) {
-    return res.status(404).json({ error: 'Post not found' });
-  }
+  if (!post) return res.status(404).json({ error: 'Post not found' });
 
   const existing = db.prepare('SELECT * FROM post_reactions WHERE post_id = ? AND user_id = ?').get(postId, req.user.id);
 
@@ -289,15 +423,9 @@ router.post('/:postId/react', requireLogin, (req, res) => {
   const dislikes = db.prepare('SELECT COUNT(*) as count FROM post_reactions WHERE post_id = ? AND emoji = ?').get(postId, 'dislike').count;
   const userReaction = db.prepare('SELECT emoji FROM post_reactions WHERE post_id = ? AND user_id = ?').get(postId, req.user.id);
 
-  // Broadcast to all clients
   sse.broadcast('post-reaction', { postId, likes, dislikes });
-
-  // Broadcast like activity
   if (emoji === 'like' && (!existing || existing.emoji !== 'like')) {
-    sse.broadcast('like-activity', {
-      username: req.user.username,
-      postId: postId
-    });
+    sse.broadcast('like-activity', { username: req.user.username, postId });
   }
 
   res.json({ likes, dislikes, userReaction: userReaction ? userReaction.emoji : null });
@@ -312,9 +440,7 @@ router.post('/reply/:replyId/react', requireLogin, (req, res) => {
   }
 
   const reply = db.prepare('SELECT id FROM replies WHERE id = ?').get(replyId);
-  if (!reply) {
-    return res.status(404).json({ error: 'Reply not found' });
-  }
+  if (!reply) return res.status(404).json({ error: 'Reply not found' });
 
   const existing = db.prepare('SELECT * FROM reply_reactions WHERE reply_id = ? AND user_id = ?').get(replyId, req.user.id);
 
@@ -332,30 +458,22 @@ router.post('/reply/:replyId/react', requireLogin, (req, res) => {
   const dislikes = db.prepare('SELECT COUNT(*) as count FROM reply_reactions WHERE reply_id = ? AND emoji = ?').get(replyId, 'dislike').count;
   const userReaction = db.prepare('SELECT emoji FROM reply_reactions WHERE reply_id = ? AND user_id = ?').get(replyId, req.user.id);
 
-  // Broadcast to all clients
   sse.broadcast('reply-reaction', { replyId, likes, dislikes });
-
   res.json({ likes, dislikes, userReaction: userReaction ? userReaction.emoji : null });
 });
 
-// --- Polls ---
-
+// === Polls (unchanged) ===
 router.post('/poll/:pollId/vote', requireLogin, (req, res) => {
   const { option_id } = req.body;
   const pollId = parseInt(req.params.pollId, 10);
   const optionId = parseInt(option_id, 10);
 
   const poll = db.prepare('SELECT id FROM polls WHERE id = ?').get(pollId);
-  if (!poll) {
-    return res.status(404).json({ error: 'Poll not found' });
-  }
+  if (!poll) return res.status(404).json({ error: 'Poll not found' });
 
   const option = db.prepare('SELECT id FROM poll_options WHERE id = ? AND poll_id = ?').get(optionId, pollId);
-  if (!option) {
-    return res.status(400).json({ error: 'Invalid option' });
-  }
+  if (!option) return res.status(400).json({ error: 'Invalid option' });
 
-  // Upsert vote
   const existing = db.prepare('SELECT * FROM poll_votes WHERE poll_id = ? AND user_id = ?').get(pollId, req.user.id);
   if (existing) {
     db.prepare('UPDATE poll_votes SET option_id = ? WHERE id = ?').run(optionId, existing.id);
@@ -363,7 +481,6 @@ router.post('/poll/:pollId/vote', requireLogin, (req, res) => {
     db.prepare('INSERT INTO poll_votes (poll_id, option_id, user_id) VALUES (?, ?, ?)').run(pollId, optionId, req.user.id);
   }
 
-  // Return updated results
   const options = db.prepare('SELECT * FROM poll_options WHERE poll_id = ? ORDER BY sort_order').all(pollId);
   const voteCounts = db.prepare('SELECT option_id, COUNT(*) as count FROM poll_votes WHERE poll_id = ? GROUP BY option_id').all(pollId);
   const voteMap = {};
@@ -375,13 +492,8 @@ router.post('/poll/:pollId/vote', requireLogin, (req, res) => {
     totalVotes
   };
 
-  // Broadcast to all clients
   sse.broadcast('poll-vote', { pollId, ...pollData });
-
-  res.json({
-    ...pollData,
-    userVote: optionId
-  });
+  res.json({ ...pollData, userVote: optionId });
 });
 
 module.exports = router;

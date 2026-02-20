@@ -1,0 +1,103 @@
+<%- include('partials/head', { pageTitle: category.name + ' - Bulletin Board' }) %>
+
+<div class="page-header">
+  <h1><%= category.icon %> <%= category.name %></h1>
+  <a href="/board" class="btn btn-outline">Back to Board</a>
+</div>
+
+<div class="breadcrumb">
+  <a href="/board">Board</a>
+  <span class="separator">/</span>
+  <span><%= category.name %></span>
+</div>
+
+<!-- New Topic Form -->
+<div class="card" style="margin-bottom: 1.5rem;">
+  <form action="/board" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="hidden" name="category_id" value="<%= category.id %>">
+    <div class="form-group">
+      <label for="board-content">Start a New Topic</label>
+      <textarea id="board-content" name="content" rows="3" class="mention-input" placeholder="Write your topic... The first line becomes the title. Supports **bold**, *italic*, and more." required></textarea>
+    </div>
+    <div class="form-group">
+      <label for="image_url">Image/GIF URL (optional)</label>
+      <input type="text" id="image_url" name="image_url" placeholder="https://media.giphy.com/... or image URL">
+    </div>
+    <div class="form-group">
+      <details class="poll-creator">
+        <summary style="cursor: pointer; color: var(--gold);">Add a Poll (optional)</summary>
+        <div style="margin-top: 0.5rem;">
+          <div class="form-group">
+            <label>Poll Question</label>
+            <input type="text" name="poll_question" placeholder="What should we do next session?">
+          </div>
+          <div class="form-group">
+            <label>Options (2-4)</label>
+            <input type="text" name="poll_options[]" placeholder="Option 1" style="margin-bottom: 0.25rem;">
+            <input type="text" name="poll_options[]" placeholder="Option 2" style="margin-bottom: 0.25rem;">
+            <input type="text" name="poll_options[]" placeholder="Option 3 (optional)" style="margin-bottom: 0.25rem;">
+            <input type="text" name="poll_options[]" placeholder="Option 4 (optional)">
+          </div>
+        </div>
+      </details>
+    </div>
+    <button type="submit" class="btn btn-primary btn-small">Post Topic</button>
+  </form>
+</div>
+
+<!-- Topic List -->
+<% if (topics.length === 0) { %>
+  <div class="card">
+    <p class="empty-state-text">No topics in this category yet. Be the first to post!</p>
+  </div>
+<% } else { %>
+  <div class="board-topics">
+    <div class="board-topic-header-row">
+      <span class="board-topic-col-title">Topic</span>
+      <span class="board-topic-col-replies">Replies</span>
+      <span class="board-topic-col-activity">Last Activity</span>
+    </div>
+    <% for (const topic of topics) { %>
+      <a href="/board/topic/<%= topic.id %>" class="board-topic-row">
+        <div class="board-topic-info">
+          <div class="board-topic-avatar">
+            <% if (topic.avatar) { %>
+              <img src="/avatars/<%= topic.avatar %>" alt="" class="avatar-tiny">
+            <% } else { %>
+              <span class="avatar-letter avatar-letter-sm"><%= topic.username.charAt(0).toUpperCase() %></span>
+            <% } %>
+          </div>
+          <div>
+            <div class="board-topic-title"><%= topic.title %></div>
+            <div class="board-topic-meta text-muted">
+              by <strong><%= topic.username %></strong> &bull; <%= formatDate(topic.created_at, { month: 'short', day: 'numeric' }) %>
+            </div>
+          </div>
+        </div>
+        <div class="board-topic-replies"><%= topic.reply_count %></div>
+        <div class="board-topic-activity">
+          <div><%= formatDate(topic.last_activity, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) %></div>
+          <% if (topic.last_reply_by) { %>
+            <div class="text-muted" style="font-size: 0.75rem;">by <%= topic.last_reply_by %></div>
+          <% } %>
+        </div>
+      </a>
+    <% } %>
+  </div>
+
+  <% if (totalPages > 1) { %>
+    <div class="board-pagination">
+      <% for (let p = 1; p <= totalPages; p++) { %>
+        <% if (p === page) { %>
+          <span class="board-page current"><%= p %></span>
+        <% } else { %>
+          <a href="/board/category/<%= category.id %>?page=<%= p %>" class="board-page"><%= p %></a>
+        <% } %>
+      <% } %>
+    </div>
+  <% } %>
+<% } %>
+
+<script src="/js/image-upload.js?v=<%= appVersion %>"></script>
+<%- include('partials/foot') %>

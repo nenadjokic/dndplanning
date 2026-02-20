@@ -606,6 +606,368 @@ function getItemDetails(name) {
   };
 }
 
+// === Feats ===
+function getFeatsList(search = '') {
+  let sql = 'SELECT id, name, source, prerequisite FROM dnd_feats WHERE 1=1';
+  const params = [];
+  if (search) { sql += ' AND search_text LIKE ?'; params.push(`%${search.toLowerCase()}%`); }
+  sql += ' ORDER BY name COLLATE NOCASE LIMIT 200';
+  return db.prepare(sql).all(...params).map(f => ({
+    key: f.name.toLowerCase().replace(/\s+/g, '-'),
+    name: f.name,
+    prerequisite: f.prerequisite || 'None',
+    source: sourceMap[f.source] || f.source
+  }));
+}
+
+function getFeatDetails(name) {
+  const normalized = name.toLowerCase().replace(/-/g, ' ');
+  const feat = db.prepare('SELECT * FROM dnd_feats WHERE LOWER(name) = ?').get(normalized);
+  if (!feat) return null;
+  const fullData = JSON.parse(feat.raw_data);
+
+  let desc = '';
+  if (fullData.entries) {
+    desc = fullData.entries.map(e => {
+      if (typeof e === 'string') return clean5eToolsTags(e);
+      if (e.type === 'list' && e.items) return e.items.map(i => '- ' + clean5eToolsTags(typeof i === 'string' ? i : (i.entry || i.entries?.join(' ') || ''))).join('\n');
+      if (e.type === 'entries' && e.entries) return '**' + (e.name || '') + '** ' + e.entries.map(s => typeof s === 'string' ? clean5eToolsTags(s) : '').join(' ');
+      return '';
+    }).filter(Boolean).join('\n\n');
+  }
+
+  return {
+    name: fullData.name,
+    desc: formatVaultMarkdown(desc || 'A feat from D&D 5e.'),
+    prerequisite: feat.prerequisite || 'None',
+    source: sourceMap[fullData.source] || fullData.source || 'Unknown',
+    apiUsed: '5e.tools (local)'
+  };
+}
+
+// === Optional Features ===
+function getOptFeaturesList(search = '', type = '') {
+  let sql = 'SELECT id, name, source, feature_type FROM dnd_optfeatures WHERE 1=1';
+  const params = [];
+  if (search) { sql += ' AND search_text LIKE ?'; params.push(`%${search.toLowerCase()}%`); }
+  if (type) { sql += ' AND feature_type LIKE ?'; params.push(`%${type}%`); }
+  sql += ' ORDER BY name COLLATE NOCASE LIMIT 200';
+  return db.prepare(sql).all(...params).map(f => ({
+    key: f.name.toLowerCase().replace(/\s+/g, '-'),
+    name: f.name,
+    featureType: f.feature_type || 'General',
+    source: sourceMap[f.source] || f.source
+  }));
+}
+
+function getOptFeatureTypes() {
+  const rows = db.prepare('SELECT DISTINCT feature_type FROM dnd_optfeatures WHERE feature_type IS NOT NULL ORDER BY feature_type').all();
+  const types = new Set();
+  rows.forEach(r => {
+    r.feature_type.split(', ').forEach(t => types.add(t));
+  });
+  return Array.from(types).sort();
+}
+
+function getOptFeatureDetails(name) {
+  const normalized = name.toLowerCase().replace(/-/g, ' ');
+  const feat = db.prepare('SELECT * FROM dnd_optfeatures WHERE LOWER(name) = ?').get(normalized);
+  if (!feat) return null;
+  const fullData = JSON.parse(feat.raw_data);
+
+  let desc = '';
+  if (fullData.entries) {
+    desc = fullData.entries.map(e => {
+      if (typeof e === 'string') return clean5eToolsTags(e);
+      if (e.type === 'list' && e.items) return e.items.map(i => '- ' + clean5eToolsTags(typeof i === 'string' ? i : '')).join('\n');
+      if (e.type === 'entries' && e.entries) return '**' + (e.name || '') + '** ' + e.entries.map(s => typeof s === 'string' ? clean5eToolsTags(s) : '').join(' ');
+      return '';
+    }).filter(Boolean).join('\n\n');
+  }
+
+  return {
+    name: fullData.name,
+    desc: formatVaultMarkdown(desc || 'An optional feature from D&D 5e.'),
+    featureType: feat.feature_type || 'General',
+    source: sourceMap[fullData.source] || fullData.source || 'Unknown',
+    apiUsed: '5e.tools (local)'
+  };
+}
+
+// === Backgrounds ===
+function getBackgroundsList(search = '') {
+  let sql = 'SELECT id, name, source FROM dnd_backgrounds WHERE 1=1';
+  const params = [];
+  if (search) { sql += ' AND search_text LIKE ?'; params.push(`%${search.toLowerCase()}%`); }
+  sql += ' ORDER BY name COLLATE NOCASE LIMIT 200';
+  return db.prepare(sql).all(...params).map(b => ({
+    key: b.name.toLowerCase().replace(/\s+/g, '-'),
+    name: b.name,
+    source: sourceMap[b.source] || b.source
+  }));
+}
+
+function getBackgroundDetails(name) {
+  const normalized = name.toLowerCase().replace(/-/g, ' ');
+  const bg = db.prepare('SELECT * FROM dnd_backgrounds WHERE LOWER(name) = ?').get(normalized);
+  if (!bg) return null;
+  const fullData = JSON.parse(bg.raw_data);
+
+  let desc = '';
+  const traits = [];
+  if (fullData.entries) {
+    fullData.entries.forEach(e => {
+      if (typeof e === 'string') { desc += (desc ? '\n\n' : '') + clean5eToolsTags(e); }
+      else if (e.type === 'entries' && e.name && e.entries) {
+        traits.push({ name: e.name, desc: formatVaultMarkdown(e.entries.map(s => typeof s === 'string' ? clean5eToolsTags(s) : '').join('\n\n')) });
+      }
+      else if (e.type === 'list' && e.items) {
+        desc += '\n\n' + e.items.map(i => '- ' + clean5eToolsTags(typeof i === 'string' ? i : '')).join('\n');
+      }
+    });
+  }
+
+  // Extract skill proficiencies
+  let skills = '';
+  if (fullData.skillProficiencies) {
+    skills = fullData.skillProficiencies.map(sp => Object.keys(sp).filter(k => k !== 'choose').join(', ')).join('; ');
+  }
+
+  return {
+    name: fullData.name,
+    desc: formatVaultMarkdown(desc || 'A background from D&D 5e.'),
+    traits,
+    skills,
+    source: sourceMap[fullData.source] || fullData.source || 'Unknown',
+    apiUsed: '5e.tools (local)'
+  };
+}
+
+// === Monsters/Bestiary ===
+const sizeMapFull = { 'M': 'Medium', 'S': 'Small', 'L': 'Large', 'T': 'Tiny', 'H': 'Huge', 'G': 'Gargantuan' };
+
+function getMonstersList(search = '', cr = '', type = '', size = '') {
+  let sql = 'SELECT id, name, source, cr, type, size FROM dnd_monsters WHERE 1=1';
+  const params = [];
+  if (search) { sql += ' AND search_text LIKE ?'; params.push(`%${search.toLowerCase()}%`); }
+  if (cr) { sql += ' AND cr = ?'; params.push(cr); }
+  if (type) { sql += ' AND type = ?'; params.push(type); }
+  if (size) { sql += ' AND size LIKE ?'; params.push(`%${size}%`); }
+  sql += ' ORDER BY name COLLATE NOCASE LIMIT 100';
+  return db.prepare(sql).all(...params).map(m => ({
+    key: m.name.toLowerCase().replace(/\s+/g, '-'),
+    name: m.name,
+    cr: m.cr || '—',
+    type: m.type || 'Unknown',
+    size: m.size ? m.size.split(', ').map(s => sizeMapFull[s] || s).join('/') : '—',
+    source: sourceMap[m.source] || m.source
+  }));
+}
+
+function getMonsterTypes() {
+  return db.prepare('SELECT DISTINCT type FROM dnd_monsters WHERE type IS NOT NULL ORDER BY type').all().map(r => r.type);
+}
+
+function getMonsterDetails(name) {
+  const normalized = name.toLowerCase().replace(/-/g, ' ');
+  const monster = db.prepare('SELECT * FROM dnd_monsters WHERE LOWER(name) = ?').get(normalized);
+  if (!monster) return null;
+  const d = JSON.parse(monster.raw_data);
+
+  // AC
+  let ac = '—';
+  if (d.ac) {
+    ac = d.ac.map(a => {
+      if (typeof a === 'number') return String(a);
+      if (a.ac) return a.ac + (a.from ? ' (' + a.from.map(f => clean5eToolsTags(f)).join(', ') + ')' : '');
+      return String(a);
+    }).join(', ');
+  }
+
+  // HP
+  let hp = '—';
+  if (d.hp) {
+    hp = (d.hp.average || '') + (d.hp.formula ? ' (' + d.hp.formula + ')' : '');
+  }
+
+  // Speed
+  let speed = '';
+  if (d.speed) {
+    const parts = [];
+    if (d.speed.walk) parts.push(d.speed.walk + ' ft.');
+    if (d.speed.fly) parts.push('fly ' + d.speed.fly + ' ft.' + (d.speed.canHover ? ' (hover)' : ''));
+    if (d.speed.swim) parts.push('swim ' + d.speed.swim + ' ft.');
+    if (d.speed.burrow) parts.push('burrow ' + d.speed.burrow + ' ft.');
+    if (d.speed.climb) parts.push('climb ' + d.speed.climb + ' ft.');
+    speed = parts.join(', ');
+  }
+
+  // Ability scores with pre-computed modifiers
+  // Some monsters use _copy and lack ability scores
+  function mod(score) { const m = Math.floor((score - 10) / 2); return m >= 0 ? '+' + m : String(m); }
+  const hasAbilities = d.str != null || d.dex != null;
+  const rawAbilities = hasAbilities ? { str: d.str || 10, dex: d.dex || 10, con: d.con || 10, int: d.int || 10, wis: d.wis || 10, cha: d.cha || 10 } : null;
+  const abilities = rawAbilities ? {} : null;
+  if (rawAbilities) {
+    for (const [k, v] of Object.entries(rawAbilities)) {
+      abilities[k] = { score: v, mod: mod(v) };
+    }
+  }
+
+  // Type
+  let typeStr = monster.type || 'Unknown';
+  if (d.type && typeof d.type === 'object') {
+    typeStr = d.type.type || '';
+    if (d.type.tags) typeStr += ' (' + d.type.tags.join(', ') + ')';
+  }
+
+  // Size
+  const sizeStr = monster.size ? monster.size.split(', ').map(s => sizeMapFull[s] || s).join('/') : '—';
+
+  // Alignment
+  let alignment = '';
+  if (d.alignmentPrefix) alignment = d.alignmentPrefix + ' ';
+  if (d.alignment) {
+    const alignMap = { 'L': 'Lawful', 'N': 'Neutral', 'C': 'Chaotic', 'G': 'Good', 'E': 'Evil', 'U': 'Unaligned', 'A': 'Any' };
+    alignment += d.alignment.map(a => typeof a === 'string' ? (alignMap[a] || a) : '').join(' ');
+  }
+
+  // Traits, Actions, Legendary Actions
+  function renderEntries(entries) {
+    if (!entries || !Array.isArray(entries)) return '';
+    return entries.map(e => {
+      let text = '';
+      if (e.name) text += '<p><strong><em>' + clean5eToolsTags(e.name) + '.</em></strong> ';
+      else text += '<p>';
+      if (e.entries) {
+        text += e.entries.map(sub => {
+          if (typeof sub === 'string') return clean5eToolsTags(sub);
+          if (sub.type === 'list' && sub.items) return '<ul>' + sub.items.map(i => '<li>' + clean5eToolsTags(typeof i === 'string' ? i : (i.entry || '')) + '</li>').join('') + '</ul>';
+          return '';
+        }).join(' ');
+      } else if (typeof e === 'string') {
+        text += clean5eToolsTags(e);
+      }
+      text += '</p>';
+      return text;
+    }).join('');
+  }
+
+  // Saving throws, skills, resistances, immunities etc
+  let savingThrows = '';
+  if (d.save) { savingThrows = Object.entries(d.save).map(([k, v]) => k.charAt(0).toUpperCase() + k.slice(1) + ' ' + v).join(', '); }
+
+  let skills = '';
+  if (d.skill) { skills = Object.entries(d.skill).map(([k, v]) => k.charAt(0).toUpperCase() + k.slice(1) + ' ' + v).join(', '); }
+
+  let damageResistances = d.resist ? d.resist.map(r => typeof r === 'string' ? r : (r.resist || []).join(', ')).join('; ') : '';
+  let damageImmunities = d.immune ? d.immune.map(r => typeof r === 'string' ? r : (r.immune || []).join(', ')).join('; ') : '';
+  let conditionImmunities = d.conditionImmune ? d.conditionImmune.map(r => typeof r === 'string' ? r : '').join(', ') : '';
+  let senses = d.senses ? d.senses.join(', ') : '';
+  if (d.passive) senses += (senses ? ', ' : '') + 'passive Perception ' + d.passive;
+  let languages = d.languages ? d.languages.join(', ') : '—';
+  let cr = monster.cr || '—';
+  let xp = '';
+  const xpByCr = { '0': '0', '1/8': '25', '1/4': '50', '1/2': '100', '1': '200', '2': '450', '3': '700', '4': '1,100', '5': '1,800', '6': '2,300', '7': '2,900', '8': '3,900', '9': '5,000', '10': '5,900', '11': '7,200', '12': '8,400', '13': '10,000', '14': '11,500', '15': '13,000', '16': '15,000', '17': '18,000', '18': '20,000', '19': '22,000', '20': '25,000', '21': '33,000', '22': '41,000', '23': '50,000', '24': '62,000', '25': '75,000', '26': '90,000', '27': '105,000', '28': '120,000', '29': '135,000', '30': '155,000' };
+  xp = xpByCr[cr] || '';
+
+  return {
+    name: d.name,
+    sizeStr, typeStr, alignment,
+    ac, hp, speed,
+    abilities,
+    savingThrows, skills,
+    damageResistances, damageImmunities, conditionImmunities,
+    senses, languages,
+    cr, xp,
+    traits: renderEntries(d.trait),
+    actions: renderEntries(d.action),
+    bonusActions: renderEntries(d.bonus),
+    reactions: renderEntries(d.reaction),
+    legendaryActions: renderEntries(d.legendary),
+    legendaryHeader: d.legendaryHeader,
+    source: sourceMap[d.source] || d.source || 'Unknown',
+    apiUsed: '5e.tools (local)'
+  };
+}
+
+// === Conditions & Diseases ===
+function getConditionsList(search = '', type = '') {
+  let sql = 'SELECT id, name, source, condition_type FROM dnd_conditions WHERE 1=1';
+  const params = [];
+  if (search) { sql += ' AND search_text LIKE ?'; params.push(`%${search.toLowerCase()}%`); }
+  if (type) { sql += ' AND condition_type = ?'; params.push(type); }
+  sql += ' ORDER BY name COLLATE NOCASE LIMIT 200';
+  return db.prepare(sql).all(...params).map(c => ({
+    key: c.name.toLowerCase().replace(/\s+/g, '-'),
+    name: c.name,
+    conditionType: c.condition_type || 'condition',
+    source: sourceMap[c.source] || c.source
+  }));
+}
+
+function getConditionDetails(name) {
+  const normalized = name.toLowerCase().replace(/-/g, ' ');
+  const cond = db.prepare('SELECT * FROM dnd_conditions WHERE LOWER(name) = ?').get(normalized);
+  if (!cond) return null;
+  const fullData = JSON.parse(cond.raw_data);
+
+  let desc = '';
+  if (fullData.entries) {
+    desc = fullData.entries.map(e => {
+      if (typeof e === 'string') return clean5eToolsTags(e);
+      if (e.type === 'list' && e.items) return e.items.map(i => '- ' + clean5eToolsTags(typeof i === 'string' ? i : (i.entry || ''))).join('\n');
+      if (e.type === 'entries' && e.entries) return '**' + (e.name || '') + '** ' + e.entries.map(s => typeof s === 'string' ? clean5eToolsTags(s) : '').join(' ');
+      return '';
+    }).filter(Boolean).join('\n\n');
+  }
+
+  return {
+    name: fullData.name,
+    desc: formatVaultMarkdown(desc || 'A condition from D&D 5e.'),
+    conditionType: cond.condition_type,
+    source: sourceMap[fullData.source] || fullData.source || 'Unknown',
+    apiUsed: '5e.tools (local)'
+  };
+}
+
+// === Rules/Actions ===
+function getRulesList(search = '') {
+  let sql = 'SELECT id, name, source FROM dnd_rules WHERE 1=1';
+  const params = [];
+  if (search) { sql += ' AND search_text LIKE ?'; params.push(`%${search.toLowerCase()}%`); }
+  sql += ' ORDER BY name COLLATE NOCASE LIMIT 200';
+  return db.prepare(sql).all(...params).map(r => ({
+    key: r.name.toLowerCase().replace(/\s+/g, '-'),
+    name: r.name,
+    source: sourceMap[r.source] || r.source
+  }));
+}
+
+function getRuleDetails(name) {
+  const normalized = name.toLowerCase().replace(/-/g, ' ');
+  const rule = db.prepare('SELECT * FROM dnd_rules WHERE LOWER(name) = ?').get(normalized);
+  if (!rule) return null;
+  const fullData = JSON.parse(rule.raw_data);
+
+  let desc = '';
+  if (fullData.entries) {
+    desc = fullData.entries.map(e => {
+      if (typeof e === 'string') return clean5eToolsTags(e);
+      if (e.type === 'list' && e.items) return e.items.map(i => '- ' + clean5eToolsTags(typeof i === 'string' ? i : (i.entry || ''))).join('\n');
+      if (e.type === 'entries' && e.entries) return '**' + (e.name || '') + '** ' + e.entries.map(s => typeof s === 'string' ? clean5eToolsTags(s) : '').join(' ');
+      return '';
+    }).filter(Boolean).join('\n\n');
+  }
+
+  return {
+    name: fullData.name,
+    desc: formatVaultMarkdown(desc || 'A rule from D&D 5e.'),
+    source: sourceMap[fullData.source] || fullData.source || 'Unknown',
+    apiUsed: '5e.tools (local)'
+  };
+}
+
 module.exports = {
   getRacesList,
   getRaceDetails,
@@ -614,5 +976,19 @@ module.exports = {
   getSpellsList,
   getSpellDetails,
   getItemsList,
-  getItemDetails
+  getItemDetails,
+  getFeatsList,
+  getFeatDetails,
+  getOptFeaturesList,
+  getOptFeatureTypes,
+  getOptFeatureDetails,
+  getBackgroundsList,
+  getBackgroundDetails,
+  getMonstersList,
+  getMonsterTypes,
+  getMonsterDetails,
+  getConditionsList,
+  getConditionDetails,
+  getRulesList,
+  getRuleDetails
 };

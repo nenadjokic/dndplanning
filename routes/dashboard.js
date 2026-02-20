@@ -32,15 +32,27 @@ router.get('/', requireLogin, (req, res) => {
       ORDER BY
         CASE s.status
           WHEN 'open' THEN 0
-          WHEN 'cancelled' THEN 1
-          WHEN 'confirmed' THEN 2
-          WHEN 'completed' THEN 3
+          WHEN 'confirmed' THEN 1
+          WHEN 'completed' THEN 2
+          WHEN 'cancelled' THEN 3
         END,
         CASE WHEN s.status IN ('confirmed', 'completed') THEN sl.date_time END DESC,
         s.created_at DESC
     `).all();
 
-    return res.render('dm/dashboard', { sessions, firstLogin, birthdayUsers, showWhatsNew });
+    // Latest board posts for BB mini feed
+    const boardPosts = db.prepare(`
+      SELECT p.*, u.username, u.avatar, bc.name as category_name, bc.icon as category_icon,
+        (SELECT COUNT(*) FROM replies r WHERE r.post_id = p.id) as reply_count
+      FROM posts p
+      JOIN users u ON p.user_id = u.id
+      LEFT JOIN board_categories bc ON p.category_id = bc.id
+      WHERE p.session_id IS NULL
+      ORDER BY p.created_at DESC
+      LIMIT 5
+    `).all();
+
+    return res.render('dm/dashboard', { sessions, firstLogin, birthdayUsers, showWhatsNew, boardPosts });
   }
 
   // Player dashboard
@@ -53,9 +65,9 @@ router.get('/', requireLogin, (req, res) => {
     ORDER BY
       CASE s.status
         WHEN 'open' THEN 0
-        WHEN 'cancelled' THEN 1
-        WHEN 'confirmed' THEN 2
-        WHEN 'completed' THEN 3
+        WHEN 'confirmed' THEN 1
+        WHEN 'completed' THEN 2
+        WHEN 'cancelled' THEN 3
       END,
       CASE WHEN s.status IN ('confirmed', 'completed') THEN sl.date_time END DESC,
       s.created_at DESC
@@ -69,7 +81,19 @@ router.get('/', requireLogin, (req, res) => {
     WHERE v.user_id = ?
   `).all(req.user.id).map(r => r.session_id);
 
-  res.render('player/dashboard', { sessions, votedSessionIds, firstLogin, birthdayUsers, showWhatsNew });
+  // Latest board posts for BB mini feed
+  const boardPosts = db.prepare(`
+    SELECT p.*, u.username, u.avatar, bc.name as category_name, bc.icon as category_icon,
+      (SELECT COUNT(*) FROM replies r WHERE r.post_id = p.id) as reply_count
+    FROM posts p
+    JOIN users u ON p.user_id = u.id
+    LEFT JOIN board_categories bc ON p.category_id = bc.id
+    WHERE p.session_id IS NULL
+    ORDER BY p.created_at DESC
+    LIMIT 5
+  `).all();
+
+  res.render('player/dashboard', { sessions, votedSessionIds, firstLogin, birthdayUsers, showWhatsNew, boardPosts });
 });
 
 module.exports = router;

@@ -62,6 +62,12 @@
       case 'classes': loadClasses(); break;
       case 'spells': loadSpells(); break;
       case 'items': loadItems(); break;
+      case 'feats': loadFeats(); break;
+      case 'optfeatures': loadOptFeatures(); break;
+      case 'backgrounds': loadBackgrounds(); break;
+      case 'monsters': loadMonsters(); break;
+      case 'conditions': loadConditions(); break;
+      case 'rules': loadRules(); break;
     }
   }
 
@@ -596,6 +602,264 @@
     return emojiMap[category] || '📦';
   }
 
+  // === Feats ===
+  function loadFeats() {
+    var search = document.getElementById('feats-search').value.trim();
+    var container = document.getElementById('feats-results');
+    container.innerHTML = '<div class="vault-loading">Loading...</div>';
+    var url = '/vault/feats' + (search ? '?search=' + encodeURIComponent(search) : '');
+    fetch(url).then(function(r){return r.json();}).then(function(data) {
+      if (!data.results || !data.results.length) { container.innerHTML = '<div class="vault-empty">No feats found</div>'; return; }
+      container.innerHTML = data.results.map(function(f) {
+        return '<div class="vault-card" data-type="feats" data-key="' + f.key + '">' +
+          '<div class="vault-card-title">' + f.name + '</div>' +
+          '<div class="vault-card-meta">' + f.source + '</div>' +
+          '<div class="vault-card-desc">Prerequisite: ' + f.prerequisite + '</div></div>';
+      }).join('');
+    }).catch(function(){container.innerHTML='<div class="vault-error">Failed to load feats</div>';});
+  }
+
+  function showFeatDetail(key) {
+    showModalLoading('Loading...');
+    fetch('/vault/feats/' + encodeURIComponent(key)).then(function(r){return r.json();}).then(function(f) {
+      if (f.error) { showModal('Error', '<p>Could not load feat details.</p>'); return; }
+      var html = '<div class="dnd-card"><h2 class="dnd-title">🎯 ' + f.name + '</h2>';
+      html += '<p class="dnd-subtitle"><em>Feat</em></p><hr class="dnd-divider">';
+      html += '<p><strong>Prerequisite:</strong> ' + f.prerequisite + '</p><hr class="dnd-divider">';
+      html += '<h3 class="dnd-section">Description</h3><div class="dnd-description">' + f.desc + '</div>';
+      html += '<hr class="dnd-divider"><p class="dnd-source"><strong>Source:</strong> ' + f.source + '</p></div>';
+      showModal(f.name, html);
+    });
+  }
+
+  // === Optional Features ===
+  var optFeatureTypesLoaded = false;
+  function loadOptFeatureTypes() {
+    if (optFeatureTypesLoaded) return;
+    fetch('/vault/optfeatures/types').then(function(r){return r.json();}).then(function(data) {
+      var sel = document.getElementById('optfeatures-type');
+      (data.types || []).forEach(function(t) {
+        var opt = document.createElement('option'); opt.value = t; opt.textContent = t; sel.appendChild(opt);
+      });
+      optFeatureTypesLoaded = true;
+    });
+  }
+
+  function loadOptFeatures() {
+    loadOptFeatureTypes();
+    var search = document.getElementById('optfeatures-search').value.trim();
+    var type = document.getElementById('optfeatures-type').value;
+    var container = document.getElementById('optfeatures-results');
+    container.innerHTML = '<div class="vault-loading">Loading...</div>';
+    var params = [];
+    if (search) params.push('search=' + encodeURIComponent(search));
+    if (type) params.push('type=' + encodeURIComponent(type));
+    var url = '/vault/optfeatures' + (params.length ? '?' + params.join('&') : '');
+    fetch(url).then(function(r){return r.json();}).then(function(data) {
+      if (!data.results || !data.results.length) { container.innerHTML = '<div class="vault-empty">No optional features found</div>'; return; }
+      container.innerHTML = data.results.map(function(f) {
+        return '<div class="vault-card" data-type="optfeatures" data-key="' + f.key + '">' +
+          '<div class="vault-card-title">' + f.name + '</div>' +
+          '<div class="vault-card-meta">' + f.featureType + ' &bull; ' + f.source + '</div></div>';
+      }).join('');
+    }).catch(function(){container.innerHTML='<div class="vault-error">Failed to load</div>';});
+  }
+
+  function showOptFeatureDetail(key) {
+    showModalLoading('Loading...');
+    fetch('/vault/optfeatures/' + encodeURIComponent(key)).then(function(r){return r.json();}).then(function(f) {
+      if (f.error) { showModal('Error', '<p>Not found.</p>'); return; }
+      var html = '<div class="dnd-card"><h2 class="dnd-title">⚡ ' + f.name + '</h2>';
+      html += '<p class="dnd-subtitle"><em>' + f.featureType + '</em></p><hr class="dnd-divider">';
+      html += '<h3 class="dnd-section">Description</h3><div class="dnd-description">' + f.desc + '</div>';
+      html += '<hr class="dnd-divider"><p class="dnd-source"><strong>Source:</strong> ' + f.source + '</p></div>';
+      showModal(f.name, html);
+    });
+  }
+
+  // === Backgrounds ===
+  function loadBackgrounds() {
+    var search = document.getElementById('backgrounds-search').value.trim();
+    var container = document.getElementById('backgrounds-results');
+    container.innerHTML = '<div class="vault-loading">Loading...</div>';
+    var url = '/vault/backgrounds' + (search ? '?search=' + encodeURIComponent(search) : '');
+    fetch(url).then(function(r){return r.json();}).then(function(data) {
+      if (!data.results || !data.results.length) { container.innerHTML = '<div class="vault-empty">No backgrounds found</div>'; return; }
+      container.innerHTML = data.results.map(function(b) {
+        return '<div class="vault-card" data-type="backgrounds" data-key="' + b.key + '">' +
+          '<div class="vault-card-title">' + b.name + '</div>' +
+          '<div class="vault-card-meta">' + b.source + '</div></div>';
+      }).join('');
+    }).catch(function(){container.innerHTML='<div class="vault-error">Failed to load</div>';});
+  }
+
+  function showBackgroundDetail(key) {
+    showModalLoading('Loading...');
+    fetch('/vault/backgrounds/' + encodeURIComponent(key)).then(function(r){return r.json();}).then(function(b) {
+      if (b.error) { showModal('Error', '<p>Not found.</p>'); return; }
+      var html = '<div class="dnd-card"><h2 class="dnd-title">📜 ' + b.name + '</h2>';
+      html += '<p class="dnd-subtitle"><em>Background</em></p><hr class="dnd-divider">';
+      if (b.skills) { html += '<p><strong>Skills:</strong> ' + b.skills + '</p><hr class="dnd-divider">'; }
+      html += '<h3 class="dnd-section">Description</h3><div class="dnd-description">' + b.desc + '</div>';
+      if (b.traits && b.traits.length) {
+        html += '<hr class="dnd-divider"><h3 class="dnd-section">Features</h3><div class="dnd-description">';
+        b.traits.forEach(function(t) { html += '<p><strong>' + t.name + '</strong><br>' + t.desc + '</p>'; });
+        html += '</div>';
+      }
+      html += '<hr class="dnd-divider"><p class="dnd-source"><strong>Source:</strong> ' + b.source + '</p></div>';
+      showModal(b.name, html);
+    });
+  }
+
+  // === Bestiary/Monsters ===
+  var monsterTypesLoaded = false;
+  function loadMonsterTypes() {
+    if (monsterTypesLoaded) return;
+    fetch('/vault/monsters/types').then(function(r){return r.json();}).then(function(data) {
+      var sel = document.getElementById('monsters-type');
+      (data.types || []).forEach(function(t) {
+        var opt = document.createElement('option'); opt.value = t; opt.textContent = t.charAt(0).toUpperCase() + t.slice(1); sel.appendChild(opt);
+      });
+      monsterTypesLoaded = true;
+    });
+  }
+
+  function loadMonsters() {
+    loadMonsterTypes();
+    var search = document.getElementById('monsters-search').value.trim();
+    var cr = document.getElementById('monsters-cr').value;
+    var type = document.getElementById('monsters-type').value;
+    var size = document.getElementById('monsters-size').value;
+    var container = document.getElementById('monsters-results');
+    container.innerHTML = '<div class="vault-loading">Loading...</div>';
+    var params = [];
+    if (search) params.push('search=' + encodeURIComponent(search));
+    if (cr) params.push('cr=' + encodeURIComponent(cr));
+    if (type) params.push('type=' + encodeURIComponent(type));
+    if (size) params.push('size=' + encodeURIComponent(size));
+    var url = '/vault/monsters' + (params.length ? '?' + params.join('&') : '');
+    fetch(url).then(function(r){return r.json();}).then(function(data) {
+      if (!data.results || !data.results.length) { container.innerHTML = '<div class="vault-empty">No monsters found. Try a search term.</div>'; return; }
+      container.innerHTML = data.results.map(function(m) {
+        return '<div class="vault-card" data-type="monsters" data-key="' + m.key + '">' +
+          '<div class="vault-card-title">' + m.name + '</div>' +
+          '<div class="vault-card-meta">CR ' + m.cr + ' &bull; ' + m.type + ' &bull; ' + m.size + '</div>' +
+          '<div class="vault-card-desc">' + m.source + '</div></div>';
+      }).join('');
+    }).catch(function(){container.innerHTML='<div class="vault-error">Failed to load</div>';});
+  }
+
+  function showMonsterDetail(key) {
+    showModalLoading('Loading...');
+    fetch('/vault/monsters/' + encodeURIComponent(key)).then(function(r){return r.json();}).then(function(m) {
+      if (m.error) { showModal('Error', '<p>Not found.</p>'); return; }
+      var html = '<div class="dnd-card">';
+      html += '<h2 class="dnd-title">🐉 ' + m.name + '</h2>';
+      html += '<p class="dnd-subtitle"><em>' + m.sizeStr + ' ' + m.typeStr + (m.alignment ? ', ' + m.alignment : '') + '</em></p>';
+      html += '<hr class="dnd-divider">';
+
+      // Core stats
+      html += '<div class="dnd-stats">';
+      html += '<p><strong>AC</strong><br>' + m.ac + '</p>';
+      html += '<p><strong>HP</strong><br>' + m.hp + '</p>';
+      html += '<p><strong>Speed</strong><br>' + m.speed + '</p>';
+      html += '</div><hr class="dnd-divider">';
+
+      // Ability scores (some monsters lack these due to _copy references)
+      if (m.abilities) {
+        html += '<table class="dnd-table"><tr><th>STR</th><th>DEX</th><th>CON</th><th>INT</th><th>WIS</th><th>CHA</th></tr>';
+        html += '<tr>';
+        ['str','dex','con','int','wis','cha'].forEach(function(ab) {
+          var a = m.abilities[ab];
+          html += '<td>' + a.score + ' (' + a.mod + ')</td>';
+        });
+        html += '</tr></table><hr class="dnd-divider">';
+      }
+
+      // Secondary stats
+      if (m.savingThrows) html += '<p><strong>Saving Throws:</strong> ' + m.savingThrows + '</p>';
+      if (m.skills) html += '<p><strong>Skills:</strong> ' + m.skills + '</p>';
+      if (m.damageResistances) html += '<p><strong>Damage Resistances:</strong> ' + m.damageResistances + '</p>';
+      if (m.damageImmunities) html += '<p><strong>Damage Immunities:</strong> ' + m.damageImmunities + '</p>';
+      if (m.conditionImmunities) html += '<p><strong>Condition Immunities:</strong> ' + m.conditionImmunities + '</p>';
+      if (m.senses) html += '<p><strong>Senses:</strong> ' + m.senses + '</p>';
+      html += '<p><strong>Languages:</strong> ' + m.languages + '</p>';
+      html += '<p><strong>CR:</strong> ' + m.cr + (m.xp ? ' (' + m.xp + ' XP)' : '') + '</p>';
+      html += '<hr class="dnd-divider">';
+
+      if (m.traits) { html += '<h3 class="dnd-section">Traits</h3><div class="dnd-description">' + m.traits + '</div><hr class="dnd-divider">'; }
+      if (m.actions) { html += '<h3 class="dnd-section">Actions</h3><div class="dnd-description">' + m.actions + '</div>'; }
+      if (m.bonusActions) { html += '<hr class="dnd-divider"><h3 class="dnd-section">Bonus Actions</h3><div class="dnd-description">' + m.bonusActions + '</div>'; }
+      if (m.reactions) { html += '<hr class="dnd-divider"><h3 class="dnd-section">Reactions</h3><div class="dnd-description">' + m.reactions + '</div>'; }
+      if (m.legendaryActions) { html += '<hr class="dnd-divider"><h3 class="dnd-section">Legendary Actions</h3><div class="dnd-description">' + m.legendaryActions + '</div>'; }
+
+      html += '<hr class="dnd-divider"><p class="dnd-source"><strong>Source:</strong> ' + m.source + '</p></div>';
+      showModal(m.name, html);
+    });
+  }
+
+  // === Conditions ===
+  function loadConditions() {
+    var search = document.getElementById('conditions-search').value.trim();
+    var type = document.getElementById('conditions-type').value;
+    var container = document.getElementById('conditions-results');
+    container.innerHTML = '<div class="vault-loading">Loading...</div>';
+    var params = [];
+    if (search) params.push('search=' + encodeURIComponent(search));
+    if (type) params.push('type=' + encodeURIComponent(type));
+    var url = '/vault/conditions' + (params.length ? '?' + params.join('&') : '');
+    fetch(url).then(function(r){return r.json();}).then(function(data) {
+      if (!data.results || !data.results.length) { container.innerHTML = '<div class="vault-empty">No conditions found</div>'; return; }
+      container.innerHTML = data.results.map(function(c) {
+        var badge = c.conditionType === 'disease' ? '<span class="vault-spell-tags">Disease</span>' : '';
+        return '<div class="vault-card" data-type="conditions" data-key="' + c.key + '">' +
+          '<div class="vault-card-title">' + c.name + ' ' + badge + '</div>' +
+          '<div class="vault-card-meta">' + c.source + '</div></div>';
+      }).join('');
+    }).catch(function(){container.innerHTML='<div class="vault-error">Failed to load</div>';});
+  }
+
+  function showConditionDetail(key) {
+    showModalLoading('Loading...');
+    fetch('/vault/conditions/' + encodeURIComponent(key)).then(function(r){return r.json();}).then(function(c) {
+      if (c.error) { showModal('Error', '<p>Not found.</p>'); return; }
+      var emoji = c.conditionType === 'disease' ? '🦠' : '⚠️';
+      var html = '<div class="dnd-card"><h2 class="dnd-title">' + emoji + ' ' + c.name + '</h2>';
+      html += '<p class="dnd-subtitle"><em>' + (c.conditionType === 'disease' ? 'Disease' : 'Condition') + '</em></p><hr class="dnd-divider">';
+      html += '<h3 class="dnd-section">Description</h3><div class="dnd-description">' + c.desc + '</div>';
+      html += '<hr class="dnd-divider"><p class="dnd-source"><strong>Source:</strong> ' + c.source + '</p></div>';
+      showModal(c.name, html);
+    });
+  }
+
+  // === Rules ===
+  function loadRules() {
+    var search = document.getElementById('rules-search').value.trim();
+    var container = document.getElementById('rules-results');
+    container.innerHTML = '<div class="vault-loading">Loading...</div>';
+    var url = '/vault/rules' + (search ? '?search=' + encodeURIComponent(search) : '');
+    fetch(url).then(function(r){return r.json();}).then(function(data) {
+      if (!data.results || !data.results.length) { container.innerHTML = '<div class="vault-empty">No rules found</div>'; return; }
+      container.innerHTML = data.results.map(function(r) {
+        return '<div class="vault-card" data-type="rules" data-key="' + r.key + '">' +
+          '<div class="vault-card-title">' + r.name + '</div>' +
+          '<div class="vault-card-meta">' + r.source + '</div></div>';
+      }).join('');
+    }).catch(function(){container.innerHTML='<div class="vault-error">Failed to load</div>';});
+  }
+
+  function showRuleDetail(key) {
+    showModalLoading('Loading...');
+    fetch('/vault/rules/' + encodeURIComponent(key)).then(function(r){return r.json();}).then(function(r) {
+      if (r.error) { showModal('Error', '<p>Not found.</p>'); return; }
+      var html = '<div class="dnd-card"><h2 class="dnd-title">📖 ' + r.name + '</h2>';
+      html += '<p class="dnd-subtitle"><em>Rule / Action</em></p><hr class="dnd-divider">';
+      html += '<h3 class="dnd-section">Description</h3><div class="dnd-description">' + r.desc + '</div>';
+      html += '<hr class="dnd-divider"><p class="dnd-source"><strong>Source:</strong> ' + r.source + '</p></div>';
+      showModal(r.name, html);
+    });
+  }
+
   // === Event Handlers ===
   document.getElementById('species-search').addEventListener('input', debounceSearch(loadSpecies));
   document.getElementById('classes-search').addEventListener('input', debounceSearch(loadClasses));
@@ -608,6 +872,17 @@
   document.getElementById('items-category').addEventListener('change', loadItems);
   document.getElementById('items-rarity').addEventListener('change', loadItems);
   document.getElementById('items-magic').addEventListener('change', loadItems);
+  document.getElementById('feats-search').addEventListener('input', debounceSearch(loadFeats));
+  document.getElementById('optfeatures-search').addEventListener('input', debounceSearch(loadOptFeatures));
+  document.getElementById('optfeatures-type').addEventListener('change', loadOptFeatures);
+  document.getElementById('backgrounds-search').addEventListener('input', debounceSearch(loadBackgrounds));
+  document.getElementById('monsters-search').addEventListener('input', debounceSearch(loadMonsters));
+  document.getElementById('monsters-cr').addEventListener('change', loadMonsters);
+  document.getElementById('monsters-type').addEventListener('change', loadMonsters);
+  document.getElementById('monsters-size').addEventListener('change', loadMonsters);
+  document.getElementById('conditions-search').addEventListener('input', debounceSearch(loadConditions));
+  document.getElementById('conditions-type').addEventListener('change', loadConditions);
+  document.getElementById('rules-search').addEventListener('input', debounceSearch(loadRules));
 
   function debounceSearch(fn) {
     return function() {
@@ -630,6 +905,12 @@
       case 'classes': showClassDetail(key); break;
       case 'spell': showSpellDetail(name); break;
       case 'items': showItemDetail(key); break;
+      case 'feats': showFeatDetail(key); break;
+      case 'optfeatures': showOptFeatureDetail(key); break;
+      case 'backgrounds': showBackgroundDetail(key); break;
+      case 'monsters': showMonsterDetail(key); break;
+      case 'conditions': showConditionDetail(key); break;
+      case 'rules': showRuleDetail(key); break;
     }
   });
 

@@ -38,7 +38,8 @@ const alterStatements = [
   "ALTER TABLE users ADD COLUMN last_heartbeat TEXT",
   "ALTER TABLE dice_rolls ADD COLUMN hidden INTEGER DEFAULT 0",
   "ALTER TABLE users ADD COLUMN google_id TEXT",
-  "ALTER TABLE users ADD COLUMN google_email TEXT"
+  "ALTER TABLE users ADD COLUMN google_email TEXT",
+  "ALTER TABLE users ADD COLUMN socials TEXT"
 ];
 
 for (const sql of alterStatements) {
@@ -304,6 +305,47 @@ db.exec(`
 for (const sql of [
   "ALTER TABLE posts ADD COLUMN image_url TEXT",
   "ALTER TABLE replies ADD COLUMN image_url TEXT"
+]) {
+  try { db.exec(sql); } catch (e) { /* already exists */ }
+}
+
+// Board categories table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS board_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    icon TEXT DEFAULT '📋',
+    sort_order INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+// Add category_id to posts table (idempotent)
+try { db.exec("ALTER TABLE posts ADD COLUMN category_id INTEGER REFERENCES board_categories(id)"); } catch (e) { /* already exists */ }
+
+// Create default "Tavern Talk" category if not exists
+const defaultCat = db.prepare('SELECT id FROM board_categories WHERE name = ?').get('Tavern Talk');
+if (!defaultCat) {
+  db.prepare("INSERT INTO board_categories (name, description, icon, sort_order) VALUES (?, ?, ?, ?)").run(
+    'Tavern Talk', 'General discussion and off-topic chatter', '🍺', 0
+  );
+}
+
+// Migrate existing board posts to Tavern Talk
+const tavernCat = db.prepare('SELECT id FROM board_categories WHERE name = ?').get('Tavern Talk');
+if (tavernCat) {
+  db.prepare('UPDATE posts SET category_id = ? WHERE session_id IS NULL AND category_id IS NULL').run(tavernCat.id);
+}
+
+// Add new vault meta columns (idempotent)
+for (const sql of [
+  "ALTER TABLE dnd_data_meta ADD COLUMN feat_count INTEGER DEFAULT 0",
+  "ALTER TABLE dnd_data_meta ADD COLUMN optfeature_count INTEGER DEFAULT 0",
+  "ALTER TABLE dnd_data_meta ADD COLUMN background_count INTEGER DEFAULT 0",
+  "ALTER TABLE dnd_data_meta ADD COLUMN monster_count INTEGER DEFAULT 0",
+  "ALTER TABLE dnd_data_meta ADD COLUMN condition_count INTEGER DEFAULT 0",
+  "ALTER TABLE dnd_data_meta ADD COLUMN rule_count INTEGER DEFAULT 0"
 ]) {
   try { db.exec(sql); } catch (e) { /* already exists */ }
 }

@@ -138,4 +138,128 @@ router.get('/items/:key', (req, res) => {
   }
 });
 
+// Feats list
+router.get('/feats', (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  try {
+    res.json({ results: vaultLocal.getFeatsList(req.query.search || '') });
+  } catch (err) { res.json({ results: [] }); }
+});
+
+// Feat details
+router.get('/feats/:key', (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  try {
+    const feat = vaultLocal.getFeatDetails(req.params.key);
+    if (feat) return res.json(feat);
+    res.json({ error: 'Feat not found' });
+  } catch (err) { res.json({ error: 'Failed to fetch' }); }
+});
+
+// Optional Features list
+router.get('/optfeatures', (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  try {
+    res.json({ results: vaultLocal.getOptFeaturesList(req.query.search || '', req.query.type || '') });
+  } catch (err) { res.json({ results: [] }); }
+});
+
+// Optional Feature types (for filter dropdown)
+router.get('/optfeatures/types', (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  try {
+    res.json({ types: vaultLocal.getOptFeatureTypes() });
+  } catch (err) { res.json({ types: [] }); }
+});
+
+// Optional Feature details
+router.get('/optfeatures/:key', (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  try {
+    const feat = vaultLocal.getOptFeatureDetails(req.params.key);
+    if (feat) return res.json(feat);
+    res.json({ error: 'Optional feature not found' });
+  } catch (err) { res.json({ error: 'Failed to fetch' }); }
+});
+
+// Backgrounds list
+router.get('/backgrounds', (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  try {
+    res.json({ results: vaultLocal.getBackgroundsList(req.query.search || '') });
+  } catch (err) { res.json({ results: [] }); }
+});
+
+// Background details
+router.get('/backgrounds/:key', (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  try {
+    const bg = vaultLocal.getBackgroundDetails(req.params.key);
+    if (bg) return res.json(bg);
+    res.json({ error: 'Background not found' });
+  } catch (err) { res.json({ error: 'Failed to fetch' }); }
+});
+
+// Monsters list
+router.get('/monsters', (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  try {
+    res.json({ results: vaultLocal.getMonstersList(req.query.search || '', req.query.cr || '', req.query.type || '', req.query.size || '') });
+  } catch (err) { res.json({ results: [] }); }
+});
+
+// Monster types (for filter dropdown)
+router.get('/monsters/types', (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  try {
+    res.json({ types: vaultLocal.getMonsterTypes() });
+  } catch (err) { res.json({ types: [] }); }
+});
+
+// Monster details
+router.get('/monsters/:key', (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  try {
+    const m = vaultLocal.getMonsterDetails(req.params.key);
+    if (m) return res.json(m);
+    res.json({ error: 'Monster not found' });
+  } catch (err) { res.json({ error: 'Failed to fetch' }); }
+});
+
+// Conditions list
+router.get('/conditions', (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  try {
+    res.json({ results: vaultLocal.getConditionsList(req.query.search || '', req.query.type || '') });
+  } catch (err) { res.json({ results: [] }); }
+});
+
+// Condition details
+router.get('/conditions/:key', (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  try {
+    const c = vaultLocal.getConditionDetails(req.params.key);
+    if (c) return res.json(c);
+    res.json({ error: 'Condition not found' });
+  } catch (err) { res.json({ error: 'Failed to fetch' }); }
+});
+
+// Rules list
+router.get('/rules', (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  try {
+    res.json({ results: vaultLocal.getRulesList(req.query.search || '') });
+  } catch (err) { res.json({ results: [] }); }
+});
+
+// Rule details
+router.get('/rules/:key', (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  try {
+    const r = vaultLocal.getRuleDetails(req.params.key);
+    if (r) return res.json(r);
+    res.json({ error: 'Rule not found' });
+  } catch (err) { res.json({ error: 'Failed to fetch' }); }
+});
+
 module.exports = router;

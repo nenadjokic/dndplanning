@@ -21,8 +21,8 @@
   </div>
 <% } else { %>
   <div class="session-grid">
-    <% for (const s of sessions) { %>
-      <a href="/sessions/<%= s.id %>" class="card session-card session-<%= s.status %> session-cat-<%= s.category || 'dnd' %>">
+    <% sessions.forEach((s, i) => { %>
+      <a href="/sessions/<%= s.id %>" class="card session-card session-<%= s.status %> session-cat-<%= s.category || 'dnd' %>" data-session-index="<%= i %>"<% if (i >= 9) { %> style="display:none"<% } %>>
         <div class="session-category"><%= s.category === 'gamenight' ? 'Game Night' : s.category === 'rpg' ? 'RPG' : s.category === 'casual' ? 'Casual' : 'D&D' %></div>
         <div class="session-status-badge"><%= s.status %></div>
         <h2><%= s.title %></h2>
@@ -43,8 +43,60 @@
           <% } %>
         </div>
       </a>
-    <% } %>
+    <% }); %>
   </div>
+  <% if (sessions.length > 9) { %>
+    <div style="text-align:center;margin:1.5rem 0">
+      <button id="loadMoreSessions" class="btn btn-secondary" onclick="loadMoreSessions()">Show More Sessions (<span id="remainingCount"><%= sessions.length - 9 %></span> remaining)</button>
+    </div>
+    <script>
+      (function(){
+        var shown = 9, total = <%= sessions.length %>;
+        window.loadMoreSessions = function() {
+          var cards = document.querySelectorAll('[data-session-index]');
+          var end = Math.min(shown + 9, total);
+          for (var i = shown; i < end; i++) cards[i].style.display = '';
+          shown = end;
+          var remaining = total - shown;
+          if (remaining <= 0) document.getElementById('loadMoreSessions').style.display = 'none';
+          else document.getElementById('remainingCount').textContent = remaining;
+        };
+      })();
+    </script>
+  <% } %>
+<% } %>
+
+<% if (boardPosts && boardPosts.length > 0) { %>
+<div class="page-header" style="margin-top:2rem">
+  <h2>Bulletin Board</h2>
+  <a href="/board" class="btn btn-secondary">View All</a>
+</div>
+<div class="bb-mini-feed">
+  <% for (const p of boardPosts) { %>
+    <a href="/board/topic/<%= p.id %>" class="bb-mini-card card">
+      <div class="bb-mini-avatar">
+        <% if (p.avatar) { %>
+          <img src="/avatars/<%= p.avatar %>" alt="<%= p.username %>">
+        <% } else { %>
+          <div class="avatar-placeholder"><%= p.username.charAt(0).toUpperCase() %></div>
+        <% } %>
+      </div>
+      <div class="bb-mini-content">
+        <div class="bb-mini-header">
+          <strong><%= p.username %></strong>
+          <% if (p.category_name) { %>
+            <span class="bb-category-badge"><%= p.category_icon || '' %> <%= p.category_name %></span>
+          <% } %>
+          <span class="bb-mini-time"><%= formatDate(p.created_at, { showTime: false }) %></span>
+        </div>
+        <p class="bb-mini-text"><%= p.content ? p.content.substring(0, 120) + (p.content.length > 120 ? '...' : '') : '' %></p>
+        <% if (p.reply_count > 0) { %>
+          <span class="bb-mini-replies"><%= p.reply_count %> repl<%= p.reply_count === 1 ? 'y' : 'ies' %></span>
+        <% } %>
+      </div>
+    </a>
+  <% } %>
+</div>
 <% } %>
 
 <%- include('../partials/foot') %>

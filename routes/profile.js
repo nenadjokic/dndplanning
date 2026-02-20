@@ -68,7 +68,7 @@ router.get('/', requireLogin, (req, res) => {
 
 // Save profile info
 router.post('/', requireLogin, (req, res) => {
-  const { birthday, about, character_info, social_discord, social_steam, social_twitter, social_twitch, social_youtube } = req.body;
+  const { birthday, about, character_info, social_discord, social_steam, social_twitter, social_twitch, social_youtube, social_instagram, social_reddit, social_tiktok, social_dndbeyond } = req.body;
 
   // Build socials JSON
   const socials = {};
@@ -77,6 +77,10 @@ router.post('/', requireLogin, (req, res) => {
   if (social_twitter) socials.twitter = social_twitter;
   if (social_twitch) socials.twitch = social_twitch;
   if (social_youtube) socials.youtube = social_youtube;
+  if (social_instagram) socials.instagram = social_instagram;
+  if (social_reddit) socials.reddit = social_reddit;
+  if (social_tiktok) socials.tiktok = social_tiktok;
+  if (social_dndbeyond) socials.dndbeyond = social_dndbeyond;
 
   const socialsJson = Object.keys(socials).length > 0 ? JSON.stringify(socials) : null;
 

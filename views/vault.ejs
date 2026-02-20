@@ -11,6 +11,12 @@
     <button type="button" class="vault-tab" data-tab="classes">Classes</button>
     <button type="button" class="vault-tab" data-tab="spells">Spells</button>
     <button type="button" class="vault-tab" data-tab="items">Items</button>
+    <button type="button" class="vault-tab" data-tab="feats">Feats</button>
+    <button type="button" class="vault-tab" data-tab="optfeatures">Options</button>
+    <button type="button" class="vault-tab" data-tab="backgrounds">Backgrounds</button>
+    <button type="button" class="vault-tab" data-tab="monsters">Bestiary</button>
+    <button type="button" class="vault-tab" data-tab="conditions">Conditions</button>
+    <button type="button" class="vault-tab" data-tab="rules">Rules</button>
   </div>
 
   <!-- Races Tab -->
@@ -129,6 +135,123 @@
       </select>
     </div>
     <div class="vault-results" id="items-results">
+      <div class="vault-loading">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Feats Tab -->
+  <div class="vault-panel" id="vault-feats">
+    <div class="vault-filters">
+      <input type="text" class="vault-search" id="feats-search" placeholder="Search feats...">
+    </div>
+    <div class="vault-results" id="feats-results">
+      <div class="vault-loading">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Optional Features Tab -->
+  <div class="vault-panel" id="vault-optfeatures">
+    <div class="vault-filters">
+      <input type="text" class="vault-search" id="optfeatures-search" placeholder="Search optional features...">
+      <select id="optfeatures-type" class="vault-filter-select">
+        <option value="">All Types</option>
+      </select>
+    </div>
+    <div class="vault-results" id="optfeatures-results">
+      <div class="vault-loading">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Backgrounds Tab -->
+  <div class="vault-panel" id="vault-backgrounds">
+    <div class="vault-filters">
+      <input type="text" class="vault-search" id="backgrounds-search" placeholder="Search backgrounds...">
+    </div>
+    <div class="vault-results" id="backgrounds-results">
+      <div class="vault-loading">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Bestiary Tab -->
+  <div class="vault-panel" id="vault-monsters">
+    <div class="vault-filters">
+      <input type="text" class="vault-search" id="monsters-search" placeholder="Search monsters...">
+      <select id="monsters-cr" class="vault-filter-select">
+        <option value="">All CRs</option>
+        <option value="0">CR 0</option>
+        <option value="1/8">CR 1/8</option>
+        <option value="1/4">CR 1/4</option>
+        <option value="1/2">CR 1/2</option>
+        <option value="1">CR 1</option>
+        <option value="2">CR 2</option>
+        <option value="3">CR 3</option>
+        <option value="4">CR 4</option>
+        <option value="5">CR 5</option>
+        <option value="6">CR 6</option>
+        <option value="7">CR 7</option>
+        <option value="8">CR 8</option>
+        <option value="9">CR 9</option>
+        <option value="10">CR 10</option>
+        <option value="11">CR 11</option>
+        <option value="12">CR 12</option>
+        <option value="13">CR 13</option>
+        <option value="14">CR 14</option>
+        <option value="15">CR 15</option>
+        <option value="16">CR 16</option>
+        <option value="17">CR 17</option>
+        <option value="18">CR 18</option>
+        <option value="19">CR 19</option>
+        <option value="20">CR 20</option>
+        <option value="21">CR 21</option>
+        <option value="22">CR 22</option>
+        <option value="23">CR 23</option>
+        <option value="24">CR 24</option>
+        <option value="25">CR 25</option>
+        <option value="26">CR 26</option>
+        <option value="27">CR 27</option>
+        <option value="28">CR 28</option>
+        <option value="29">CR 29</option>
+        <option value="30">CR 30</option>
+      </select>
+      <select id="monsters-type" class="vault-filter-select">
+        <option value="">All Types</option>
+      </select>
+      <select id="monsters-size" class="vault-filter-select">
+        <option value="">All Sizes</option>
+        <option value="T">Tiny</option>
+        <option value="S">Small</option>
+        <option value="M">Medium</option>
+        <option value="L">Large</option>
+        <option value="H">Huge</option>
+        <option value="G">Gargantuan</option>
+      </select>
+    </div>
+    <div class="vault-results" id="monsters-results">
+      <div class="vault-loading">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Conditions Tab -->
+  <div class="vault-panel" id="vault-conditions">
+    <div class="vault-filters">
+      <input type="text" class="vault-search" id="conditions-search" placeholder="Search conditions...">
+      <select id="conditions-type" class="vault-filter-select">
+        <option value="">All Types</option>
+        <option value="condition">Conditions</option>
+        <option value="disease">Diseases</option>
+      </select>
+    </div>
+    <div class="vault-results" id="conditions-results">
+      <div class="vault-loading">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Rules Tab -->
+  <div class="vault-panel" id="vault-rules">
+    <div class="vault-filters">
+      <input type="text" class="vault-search" id="rules-search" placeholder="Search rules & actions...">
+    </div>
+    <div class="vault-results" id="rules-results">
       <div class="vault-loading">Loading...</div>
     </div>
   </div>

@@ -1,0 +1,101 @@
+<%- include('partials/head', { pageTitle: 'Bulletin Board' }) %>
+
+<div class="page-header">
+  <h1>Bulletin Board</h1>
+  <a href="/" class="btn btn-outline">Back to Quest Board</a>
+</div>
+
+<% if (user.role === 'admin') { %>
+<div class="card" style="margin-bottom: 1rem;">
+  <details>
+    <summary style="cursor: pointer; color: var(--gold); font-weight: bold;">+ New Category (Admin)</summary>
+    <form action="/board/category" method="POST" style="margin-top: 0.75rem;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="form-group">
+        <label>Icon (emoji)</label>
+        <div class="emoji-grid" id="emoji-picker">
+          <% const emojis = ['📋','🍺','⚔️','🐉','🎲','📜','🗺️','💰','🛡️','🏰','🔮','💀','🌿','🎭','📢','🎵','🔥','⭐','💎','🧙']; %>
+          <% emojis.forEach(function(e, i) { %>
+            <label class="emoji-option<%= i === 0 ? ' selected' : '' %>">
+              <input type="radio" name="icon" value="<%= e %>" <%= i === 0 ? 'checked' : '' %> style="display:none;">
+              <span><%= e %></span>
+            </label>
+          <% }); %>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Category Name</label>
+        <input type="text" name="name" required placeholder="e.g., Quest Planning" maxlength="50">
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" name="description" placeholder="What topics belong here?" maxlength="200">
+      </div>
+      <button type="submit" class="btn btn-primary btn-small">Create Category</button>
+    </form>
+  </details>
+</div>
+<% } %>
+
+<div class="board-categories">
+  <% if (categories.length === 0) { %>
+    <div class="card">
+      <p class="empty-state-text">No categories yet. An admin needs to create one.</p>
+    </div>
+  <% } %>
+
+  <% for (const cat of categories) { %>
+    <a href="/board/category/<%= cat.id %>" class="board-category-row">
+      <div class="board-cat-icon"><%= cat.icon || '📋' %></div>
+      <div class="board-cat-info">
+        <div class="board-cat-name"><%= cat.name %></div>
+        <% if (cat.description) { %>
+          <div class="board-cat-desc"><%= cat.description %></div>
+        <% } %>
+      </div>
+      <div class="board-cat-stat">
+        <span class="board-cat-stat-num"><%= cat.topic_count || 0 %></span>
+        <span class="board-cat-stat-label">Topics</span>
+      </div>
+      <div class="board-cat-stat">
+        <span class="board-cat-stat-num"><%= cat.reply_count || 0 %></span>
+        <span class="board-cat-stat-label">Replies</span>
+      </div>
+      <div class="board-cat-last-activity">
+        <% if (cat.last_activity && cat.lastPoster) { %>
+          <div class="board-cat-last-user">
+            <% if (cat.lastPoster.avatar) { %>
+              <img src="/avatars/<%= cat.lastPoster.avatar %>" alt="" class="avatar-tiny">
+            <% } else { %>
+              <span class="avatar-letter avatar-letter-sm"><%= cat.lastPoster.username.charAt(0).toUpperCase() %></span>
+            <% } %>
+            <span><%= cat.lastPoster.username %></span>
+          </div>
+          <div class="board-cat-last-time text-muted"><%= formatDate(cat.last_activity, { month: 'short', day: 'numeric' }) %></div>
+        <% } else { %>
+          <span class="text-muted" style="font-size: 0.8rem;">No posts yet</span>
+        <% } %>
+      </div>
+      <% if (user.role === 'admin') { %>
+        <div class="board-cat-admin" onclick="event.preventDefault(); event.stopPropagation();">
+          <form action="/board/category/<%= cat.id %>/delete" method="POST" style="display:inline;">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete category &quot;<%= cat.name %>&quot;? Posts will be moved to Tavern Talk.')" title="Delete category">&times;</button>
+          </form>
+        </div>
+      <% } %>
+    </a>
+  <% } %>
+</div>
+
+<script>
+// Emoji picker
+document.querySelectorAll('.emoji-option').forEach(function(opt) {
+  opt.addEventListener('click', function() {
+    document.querySelectorAll('.emoji-option').forEach(function(o) { o.classList.remove('selected'); });
+    opt.classList.add('selected');
+  });
+});
+</script>
+
+<%- include('partials/foot') %>

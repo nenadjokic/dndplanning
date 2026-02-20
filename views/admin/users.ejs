@@ -336,7 +336,8 @@ function loadDndDataStatus() {
             <strong>Last Updated:</strong> ${date.toLocaleString()}
           </p>
           <p style="font-size: 0.85rem; color: var(--text-secondary);">
-            ${data.spell_count || 0} spells • ${data.class_count || 0} classes • ${data.race_count || 0} races • ${data.item_count || 0} items
+            ${data.spell_count || 0} spells • ${data.class_count || 0} classes • ${data.race_count || 0} races • ${data.item_count || 0} items<br>
+            ${data.feat_count || 0} feats • ${data.optfeature_count || 0} options • ${data.background_count || 0} backgrounds • ${data.monster_count || 0} monsters • ${data.condition_count || 0} conditions • ${data.rule_count || 0} rules
           </p>
         `;
       } else {
@@ -363,7 +364,7 @@ function updateDndData() {
 
   var eventSource = new EventSource('/admin/dnd-data/import-stream');
   var progress = 0;
-  var totalSteps = 4; // spells, classes, races, items
+  var totalSteps = 10; // spells, classes, races, items, feats, optfeatures, backgrounds, monsters, conditions, rules
   var completedSteps = 0;
 
   eventSource.onmessage = function(e) {

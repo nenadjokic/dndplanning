@@ -767,7 +767,7 @@ function run3DRoll() {
     var effectiveRadius = dieRadius * 0.55;
 
     // Roll axis: perpendicular to direction of travel (die rolls forward)
-    var rollAxisVec = new THREE.Vector3(-dirZ, 0, dirX).normalize();
+    var rollAxisVec = new THREE.Vector3(dirZ, 0, -dirX).normalize();
 
     // Random initial orientation
     var initQuat = new THREE.Quaternion();
@@ -868,10 +868,10 @@ function run3DRoll() {
         r.z += r.dirZ * moveDist;
 
         // Wall bounces
-        if (r.x > halfX - r.dieRadius) { r.x = halfX - r.dieRadius; r.dirX = -Math.abs(r.dirX); r.rollAxis.set(-r.dirZ, 0, r.dirX).normalize(); }
-        if (r.x < -halfX + r.dieRadius) { r.x = -halfX + r.dieRadius; r.dirX = Math.abs(r.dirX); r.rollAxis.set(-r.dirZ, 0, r.dirX).normalize(); }
-        if (r.z > halfZ - r.dieRadius) { r.z = halfZ - r.dieRadius; r.dirZ = -Math.abs(r.dirZ); r.rollAxis.set(-r.dirZ, 0, r.dirX).normalize(); }
-        if (r.z < -halfZ + r.dieRadius) { r.z = -halfZ + r.dieRadius; r.dirZ = Math.abs(r.dirZ); r.rollAxis.set(-r.dirZ, 0, r.dirX).normalize(); }
+        if (r.x > halfX - r.dieRadius) { r.x = halfX - r.dieRadius; r.dirX = -Math.abs(r.dirX); r.rollAxis.set(r.dirZ, 0, -r.dirX).normalize(); }
+        if (r.x < -halfX + r.dieRadius) { r.x = -halfX + r.dieRadius; r.dirX = Math.abs(r.dirX); r.rollAxis.set(r.dirZ, 0, -r.dirX).normalize(); }
+        if (r.z > halfZ - r.dieRadius) { r.z = halfZ - r.dieRadius; r.dirZ = -Math.abs(r.dirZ); r.rollAxis.set(r.dirZ, 0, -r.dirX).normalize(); }
+        if (r.z < -halfZ + r.dieRadius) { r.z = -halfZ + r.dieRadius; r.dirZ = Math.abs(r.dirZ); r.rollAxis.set(r.dirZ, 0, -r.dirX).normalize(); }
 
         // Rolling rotation — angle proportional to distance traveled
         r.totalAngle += moveDist / r.effectiveRadius;
@@ -949,7 +949,7 @@ function run3DRoll() {
                 ri.speed = si;
                 ri.dirX = new_vi_x / si;
                 ri.dirZ = new_vi_z / si;
-                ri.rollAxis.set(-ri.dirZ, 0, ri.dirX).normalize();
+                ri.rollAxis.set(ri.dirZ, 0, -ri.dirX).normalize();
               }
 
               // Update speed & direction for die j
@@ -958,7 +958,7 @@ function run3DRoll() {
                 rj.speed = sj;
                 rj.dirX = new_vj_x / sj;
                 rj.dirZ = new_vj_z / sj;
-                rj.rollAxis.set(-rj.dirZ, 0, rj.dirX).normalize();
+                rj.rollAxis.set(rj.dirZ, 0, -rj.dirX).normalize();
               }
 
               // Wake up stopped dice if hit hard enough
@@ -967,14 +967,14 @@ function run3DRoll() {
                 ri.speed = Math.abs(vj_n) * restitution * 0.5;
                 ri.dirX = -nx;
                 ri.dirZ = -nz;
-                ri.rollAxis.set(-ri.dirZ, 0, ri.dirX).normalize();
+                ri.rollAxis.set(ri.dirZ, 0, -ri.dirX).normalize();
               }
               if (rj.stopped && vi_n * restitution > 0.3) {
                 rj.stopped = false;
                 rj.speed = Math.abs(vi_n) * restitution * 0.5;
                 rj.dirX = nx;
                 rj.dirZ = nz;
-                rj.rollAxis.set(-rj.dirZ, 0, rj.dirX).normalize();
+                rj.rollAxis.set(rj.dirZ, 0, -rj.dirX).normalize();
               }
             }
           }
