@@ -97,21 +97,89 @@ db.exec(`
   INSERT OR IGNORE INTO map_config (id) VALUES (1);
 `);
 
-// Multi-map system
+// Multi-map system — migrate legacy maps table if it has old schema
+const mapsInfo = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='maps'").get();
+if (mapsInfo && mapsInfo.sql && mapsInfo.sql.includes('session_id')) {
+  // Old schema from installer — recreate with correct schema
+  const existingData = db.prepare('SELECT * FROM maps').all();
+  db.pragma('foreign_keys = OFF');
+  db.exec('DROP TABLE maps');
+  db.exec(`
+    CREATE TABLE maps (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      image_path TEXT,
+      party_x REAL DEFAULT 50,
+      party_y REAL DEFAULT 50,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+  db.pragma('foreign_keys = ON');
+} else {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS maps (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      image_path TEXT,
+      party_x REAL DEFAULT 50,
+      party_y REAL DEFAULT 50,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+}
+
+// Add missing columns to map_locations (idempotent)
+for (const sql of [
+  "ALTER TABLE map_locations ADD COLUMN map_id INTEGER REFERENCES maps(id)",
+  "ALTER TABLE map_locations ADD COLUMN created_by INTEGER REFERENCES users(id)"
+]) {
+  try { db.exec(sql); } catch (e) { /* already exists */ }
+}
+
+// Fix legacy icon default 'marker' → 'pin'
+try { db.prepare("UPDATE map_locations SET icon = 'pin' WHERE icon = 'marker'").run(); } catch (e) { /* ignore */ }
+
+// Map hierarchy columns (idempotent)
+for (const sql of [
+  "ALTER TABLE maps ADD COLUMN parent_id INTEGER REFERENCES maps(id)",
+  "ALTER TABLE maps ADD COLUMN map_type TEXT NOT NULL DEFAULT 'overworld'",
+  "ALTER TABLE maps ADD COLUMN pin_x REAL DEFAULT 50",
+  "ALTER TABLE maps ADD COLUMN pin_y REAL DEFAULT 50",
+  "ALTER TABLE maps ADD COLUMN description TEXT"
+]) {
+  try { db.exec(sql); } catch (e) { /* already exists */ }
+}
+
+// Character tokens on maps
 db.exec(`
-  CREATE TABLE IF NOT EXISTS maps (
+  CREATE TABLE IF NOT EXISTS map_tokens (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    image_path TEXT,
-    party_x REAL DEFAULT 50,
-    party_y REAL DEFAULT 50,
-    created_by INTEGER REFERENCES users(id),
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    map_id INTEGER NOT NULL REFERENCES maps(id),
+    character_id INTEGER NOT NULL REFERENCES characters(id),
+    x REAL NOT NULL DEFAULT 50,
+    y REAL NOT NULL DEFAULT 50,
+    placed_by INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(map_id, character_id)
   );
 `);
 
-// Add map_id column to map_locations (idempotent)
-try { db.exec("ALTER TABLE map_locations ADD COLUMN map_id INTEGER REFERENCES maps(id)"); } catch (e) { /* already exists */ }
+// Token scale column (idempotent)
+try { db.exec("ALTER TABLE map_tokens ADD COLUMN scale REAL NOT NULL DEFAULT 1.0"); } catch (e) { /* already exists */ }
+
+// Token conditions table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS token_conditions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    token_id INTEGER NOT NULL REFERENCES map_tokens(id) ON DELETE CASCADE,
+    condition_name TEXT NOT NULL,
+    applied_by INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(token_id, condition_name)
+  );
+`);
 
 // Migrate existing data from map_config to maps table
 const existingMaps = db.prepare('SELECT COUNT(*) as count FROM maps').get();

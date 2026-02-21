@@ -1,6 +1,6 @@
-# Quest Planner v2.0.6 — D&D Session Scheduler
+# Quest Planner v2.0.7 — D&D Session Scheduler
 
-> **Latest release:** v2.0.6 (2026-02-20)
+> **Latest release:** v2.0.7 (2026-02-21)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -526,7 +526,7 @@ All users can access **Settings** (pencil icon in the nav bar) to:
 - Click a map name or thumbnail to view the interactive Leaflet.js map
 - **DM/Admin**: click anywhere on the map to add a location (name, description, icon type)
 - **DM/Admin**: drag the gold party marker to update the party's current position
-- **DM/Admin**: upload a custom map image (JPG, PNG, GIF, WebP, max 5MB)
+- **DM/Admin**: upload a custom map image (JPG, PNG, GIF, WebP, max 30MB)
 - Default: a parchment placeholder is shown until a map image is uploaded
 - Location pins are color-coded: red (pin), blue (city), purple (dungeon), green (tavern)
 - When creating a session, DMs can optionally link it to a map location (shows map name alongside location name)
@@ -804,6 +804,26 @@ Then restart the server.
 
 ## Changelog
 
+### v2.0.7 (2026-02-21) 🗺️ Resizable Tokens, Token Conditions & Upload Boost
+
+**Resizable Tokens:**
+- **🔍 Per-Token Scaling** — Click any token to resize with a slider (0.5x–3x); labels stay readable at any size
+- **📐 Scale All Panel** — DM toolbar button to resize all tokens on the map at once with a global slider
+- **💾 Persistent Scale** — Token sizes saved per-map in the database
+
+**Token Conditions:**
+- **⚡ D&D 5e Conditions** — DM can apply conditions (Blinded, Charmed, Poisoned, Stunned, etc.) to tokens
+- **🎨 Color-Coded Badges** — 15 standard conditions with unique colors and emoji icons, stacked on the token
+- **✨ Animated Effects** — Bouncy entrance animation + continuous pulse + avatar border glow
+- **🔎 Searchable Picker** — Quick search through all conditions with applied-state tracking
+- **🗑️ Auto-Cleanup** — Conditions auto-clear when token is removed (CASCADE delete)
+
+**Other Improvements:**
+- **📸 30MB Upload Limit** — Map and board image uploads increased from 5MB to 30MB
+- **🔧 Complete Migration Script** — All 17 tables and 38 columns now covered in `migrate-v2-complete.js` for seamless upgrades from any version
+
+---
+
 ### v2.0.6 (2026-02-20) 📚 Vault Expansion, Board Redesign & Session Sorting
 
 **Vault Expansion (6 New Categories):**
@@ -879,7 +899,7 @@ docker compose build && docker compose up -d
 **⚔️ Phase 4 - Advanced Features:**
 - **📋 Reorganized Hamburger Menu** — Grouped navigation with collapsible sections (Tools, DM Zone, Admin); localStorage remembers your preferences; 9 top-level items down from 16
 - **🎯 Inline Character Creation** — Always-visible compact form (Name + Class + Race in one row); 60% fewer clicks; race autocomplete; collapsible "More Details" section
-- **📸 Bulletin Board Image Upload** — Drag & drop images, paste from clipboard (Ctrl+V), or browse files; live preview before posting; 5MB limit; supports .jpg/.png/.gif/.webp
+- **📸 Bulletin Board Image Upload** — Drag & drop images, paste from clipboard (Ctrl+V), or browse files; live preview before posting; 30MB limit; supports .jpg/.png/.gif/.webp
 
 **✨ Phase 2 Bonus (from previous session):**
 - **📅 Premium DateTime Picker** — Custom medieval-themed picker; respects 12h/24h format and week start preference; smart defaults (Next Sunday 18:00)
@@ -1368,7 +1388,7 @@ If you enjoy Quest Planner, consider supporting development:
 - **World Map** — interactive Leaflet.js map at `/map` with L.CRS.Simple coordinate system
 - **Map locations** — DM/admin can click to add locations with name, description, and icon type (pin, city, dungeon, tavern)
 - **Party marker** — draggable gold pulsing marker showing party position; auto-saves on drag
-- **Custom map upload** — admin can upload a world map image (max 5MB); default parchment SVG placeholder
+- **Custom map upload** — admin can upload a world map image (max 30MB); default parchment SVG placeholder
 - **Session locations** — optional location dropdown on session creation form; location name shown in session detail
 - **Party Inventory (Loot Tracker)** — shared inventory at `/loot` with add, assign, edit, delete
 - **Loot categories** — weapon, armor, potion, quest item, gold, general item with color-coded badges

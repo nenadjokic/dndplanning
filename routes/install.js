@@ -205,23 +205,28 @@ router.post('/', requireNotInstalled, async (req, res) => {
 
       CREATE TABLE IF NOT EXISTS maps (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
-        image_url TEXT,
-        width INTEGER DEFAULT 1000,
-        height INTEGER DEFAULT 1000,
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        image_path TEXT,
+        party_x REAL DEFAULT 50,
+        party_y REAL DEFAULT 50,
+        created_by INTEGER REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        parent_id INTEGER REFERENCES maps(id),
+        map_type TEXT NOT NULL DEFAULT 'overworld',
+        pin_x REAL DEFAULT 50,
+        pin_y REAL DEFAULT 50
       );
 
       CREATE TABLE IF NOT EXISTS map_locations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        map_id INTEGER NOT NULL REFERENCES maps(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
-        x REAL NOT NULL,
-        y REAL NOT NULL,
-        icon TEXT DEFAULT 'marker',
         description TEXT,
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        x REAL NOT NULL DEFAULT 50,
+        y REAL NOT NULL DEFAULT 50,
+        icon TEXT NOT NULL DEFAULT 'pin',
+        created_by INTEGER REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        map_id INTEGER REFERENCES maps(id)
       );
 
       CREATE TABLE IF NOT EXISTS loot_items (

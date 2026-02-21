@@ -79,9 +79,14 @@ router.post('/users/:id/delete', requireLogin, requireAdmin, (req, res) => {
     safeDelete('DELETE FROM loot_items WHERE created_by = ?', targetId);
     // Delete DM tools by this user
     safeDelete('DELETE FROM dm_tools WHERE created_by = ?', targetId);
+    // Delete map tokens placed by this user or for their characters
+    safeDelete('DELETE FROM map_tokens WHERE placed_by = ?', targetId);
+    safeDelete('DELETE FROM map_tokens WHERE character_id IN (SELECT id FROM characters WHERE user_id = ?)', targetId);
     // Delete map locations created by this user
     safeDelete('DELETE FROM map_locations WHERE created_by = ?', targetId);
-    // Delete maps created by this user
+    // Delete maps created by this user (handle children first)
+    safeDelete('DELETE FROM map_tokens WHERE map_id IN (SELECT id FROM maps WHERE created_by = ?)', targetId);
+    safeDelete('UPDATE maps SET parent_id = NULL WHERE parent_id IN (SELECT id FROM maps WHERE created_by = ?)', targetId);
     safeDelete('DELETE FROM maps WHERE created_by = ?', targetId);
     // Delete votes by this user
     db.prepare('DELETE FROM votes WHERE user_id = ?').run(targetId);

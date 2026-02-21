@@ -398,6 +398,176 @@ try {
         read_at TEXT NOT NULL DEFAULT (datetime('now')),
         UNIQUE(user_id, notification_type, notification_id)
       )`
+    },
+    {
+      name: 'map_config',
+      sql: `CREATE TABLE map_config (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        image_path TEXT,
+        party_x REAL DEFAULT 50,
+        party_y REAL DEFAULT 50
+      )`
+    },
+    {
+      name: 'map_locations',
+      sql: `CREATE TABLE map_locations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        x REAL NOT NULL DEFAULT 50,
+        y REAL NOT NULL DEFAULT 50,
+        icon TEXT NOT NULL DEFAULT 'pin',
+        map_id INTEGER REFERENCES maps(id),
+        created_by INTEGER REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`
+    },
+    {
+      name: 'maps',
+      sql: `CREATE TABLE maps (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        image_path TEXT,
+        party_x REAL DEFAULT 50,
+        party_y REAL DEFAULT 50,
+        parent_id INTEGER REFERENCES maps(id),
+        map_type TEXT NOT NULL DEFAULT 'overworld',
+        pin_x REAL DEFAULT 50,
+        pin_y REAL DEFAULT 50,
+        description TEXT,
+        created_by INTEGER REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`
+    },
+    {
+      name: 'map_tokens',
+      sql: `CREATE TABLE map_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        map_id INTEGER NOT NULL REFERENCES maps(id),
+        character_id INTEGER NOT NULL REFERENCES characters(id),
+        x REAL NOT NULL DEFAULT 50,
+        y REAL NOT NULL DEFAULT 50,
+        scale REAL NOT NULL DEFAULT 1.0,
+        placed_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(map_id, character_id)
+      )`
+    },
+    {
+      name: 'token_conditions',
+      sql: `CREATE TABLE token_conditions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        token_id INTEGER NOT NULL REFERENCES map_tokens(id) ON DELETE CASCADE,
+        condition_name TEXT NOT NULL,
+        applied_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(token_id, condition_name)
+      )`
+    },
+    {
+      name: 'board_categories',
+      sql: `CREATE TABLE board_categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        icon TEXT DEFAULT '📋',
+        sort_order INTEGER DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`
+    },
+    {
+      name: 'loot_items',
+      sql: `CREATE TABLE loot_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        quantity INTEGER NOT NULL DEFAULT 1,
+        category TEXT NOT NULL DEFAULT 'item',
+        held_by INTEGER REFERENCES users(id),
+        session_id INTEGER REFERENCES sessions(id),
+        created_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`
+    },
+    {
+      name: 'dm_tools',
+      sql: `CREATE TABLE dm_tools (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        url TEXT NOT NULL,
+        icon TEXT NOT NULL DEFAULT 'link',
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        thumbnail TEXT,
+        created_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`
+    },
+    {
+      name: 'push_subscriptions',
+      sql: `CREATE TABLE push_subscriptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        endpoint TEXT NOT NULL UNIQUE,
+        keys_p256dh TEXT NOT NULL,
+        keys_auth TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`
+    },
+    {
+      name: 'vapid_config',
+      sql: `CREATE TABLE vapid_config (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        public_key TEXT NOT NULL,
+        private_key TEXT NOT NULL
+      )`
+    },
+    {
+      name: 'characters',
+      sql: `CREATE TABLE characters (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        name TEXT NOT NULL,
+        description TEXT,
+        avatar TEXT,
+        class TEXT,
+        race TEXT,
+        sheet_data TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`
+    },
+    {
+      name: 'notification_config',
+      sql: `CREATE TABLE notification_config (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        active_provider TEXT NOT NULL DEFAULT 'none',
+        discord_bot_token TEXT,
+        discord_channel_id TEXT,
+        telegram_bot_token TEXT,
+        telegram_chat_id TEXT,
+        viber_auth_token TEXT,
+        viber_admin_id TEXT,
+        public_url TEXT
+      )`
+    },
+    {
+      name: 'google_oauth_config',
+      sql: `CREATE TABLE google_oauth_config (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        enabled INTEGER NOT NULL DEFAULT 0,
+        client_id TEXT,
+        client_secret TEXT
+      )`
+    },
+    {
+      name: 'user_notification_prefs',
+      sql: `CREATE TABLE user_notification_prefs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        notif_type TEXT NOT NULL,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        UNIQUE(user_id, notif_type)
+      )`
     }
   ];
 
@@ -422,8 +592,43 @@ try {
 
   const missingColumns = [
     { table: 'users', column: 'socials', sql: 'ALTER TABLE users ADD COLUMN socials TEXT' },
+    { table: 'users', column: 'time_format', sql: "ALTER TABLE users ADD COLUMN time_format TEXT NOT NULL DEFAULT '24h'" },
+    { table: 'users', column: 'avatar', sql: 'ALTER TABLE users ADD COLUMN avatar TEXT' },
+    { table: 'users', column: 'calendar_token', sql: 'ALTER TABLE users ADD COLUMN calendar_token TEXT' },
+    { table: 'users', column: 'theme', sql: "ALTER TABLE users ADD COLUMN theme TEXT NOT NULL DEFAULT 'dark'" },
+    { table: 'users', column: 'week_start', sql: "ALTER TABLE users ADD COLUMN week_start TEXT NOT NULL DEFAULT 'monday'" },
+    { table: 'users', column: 'birthday', sql: 'ALTER TABLE users ADD COLUMN birthday TEXT' },
+    { table: 'users', column: 'about', sql: 'ALTER TABLE users ADD COLUMN about TEXT' },
+    { table: 'users', column: 'character_info', sql: 'ALTER TABLE users ADD COLUMN character_info TEXT' },
+    { table: 'users', column: 'character_avatar', sql: 'ALTER TABLE users ADD COLUMN character_avatar TEXT' },
+    { table: 'users', column: 'last_seen_version', sql: 'ALTER TABLE users ADD COLUMN last_seen_version TEXT' },
+    { table: 'users', column: 'last_heartbeat', sql: 'ALTER TABLE users ADD COLUMN last_heartbeat TEXT' },
+    { table: 'users', column: 'google_id', sql: 'ALTER TABLE users ADD COLUMN google_id TEXT' },
+    { table: 'users', column: 'google_email', sql: 'ALTER TABLE users ADD COLUMN google_email TEXT' },
     { table: 'posts', column: 'image_url', sql: 'ALTER TABLE posts ADD COLUMN image_url TEXT' },
-    { table: 'replies', column: 'image_url', sql: 'ALTER TABLE replies ADD COLUMN image_url TEXT' }
+    { table: 'posts', column: 'category_id', sql: 'ALTER TABLE posts ADD COLUMN category_id INTEGER REFERENCES board_categories(id)' },
+    { table: 'replies', column: 'image_url', sql: 'ALTER TABLE replies ADD COLUMN image_url TEXT' },
+    { table: 'sessions', column: 'category', sql: "ALTER TABLE sessions ADD COLUMN category TEXT NOT NULL DEFAULT 'dnd'" },
+    { table: 'sessions', column: 'summary', sql: 'ALTER TABLE sessions ADD COLUMN summary TEXT' },
+    { table: 'sessions', column: 'location_id', sql: 'ALTER TABLE sessions ADD COLUMN location_id INTEGER REFERENCES map_locations(id)' },
+    { table: 'maps', column: 'parent_id', sql: 'ALTER TABLE maps ADD COLUMN parent_id INTEGER REFERENCES maps(id)' },
+    { table: 'maps', column: 'map_type', sql: "ALTER TABLE maps ADD COLUMN map_type TEXT NOT NULL DEFAULT 'overworld'" },
+    { table: 'maps', column: 'pin_x', sql: 'ALTER TABLE maps ADD COLUMN pin_x REAL DEFAULT 50' },
+    { table: 'maps', column: 'pin_y', sql: 'ALTER TABLE maps ADD COLUMN pin_y REAL DEFAULT 50' },
+    { table: 'maps', column: 'description', sql: 'ALTER TABLE maps ADD COLUMN description TEXT' },
+    { table: 'map_locations', column: 'map_id', sql: 'ALTER TABLE map_locations ADD COLUMN map_id INTEGER REFERENCES maps(id)' },
+    { table: 'map_locations', column: 'created_by', sql: 'ALTER TABLE map_locations ADD COLUMN created_by INTEGER REFERENCES users(id)' },
+    { table: 'dm_tools', column: 'thumbnail', sql: 'ALTER TABLE dm_tools ADD COLUMN thumbnail TEXT' },
+    { table: 'dice_rolls', column: 'hidden', sql: 'ALTER TABLE dice_rolls ADD COLUMN hidden INTEGER DEFAULT 0' },
+    { table: 'characters', column: 'class', sql: 'ALTER TABLE characters ADD COLUMN class TEXT' },
+    { table: 'characters', column: 'race', sql: 'ALTER TABLE characters ADD COLUMN race TEXT' },
+    { table: 'characters', column: 'sheet_data', sql: 'ALTER TABLE characters ADD COLUMN sheet_data TEXT' },
+    { table: 'dnd_data_meta', column: 'feat_count', sql: 'ALTER TABLE dnd_data_meta ADD COLUMN feat_count INTEGER DEFAULT 0' },
+    { table: 'dnd_data_meta', column: 'optfeature_count', sql: 'ALTER TABLE dnd_data_meta ADD COLUMN optfeature_count INTEGER DEFAULT 0' },
+    { table: 'dnd_data_meta', column: 'background_count', sql: 'ALTER TABLE dnd_data_meta ADD COLUMN background_count INTEGER DEFAULT 0' },
+    { table: 'dnd_data_meta', column: 'monster_count', sql: 'ALTER TABLE dnd_data_meta ADD COLUMN monster_count INTEGER DEFAULT 0' },
+    { table: 'dnd_data_meta', column: 'condition_count', sql: 'ALTER TABLE dnd_data_meta ADD COLUMN condition_count INTEGER DEFAULT 0' },
+    { table: 'dnd_data_meta', column: 'rule_count', sql: 'ALTER TABLE dnd_data_meta ADD COLUMN rule_count INTEGER DEFAULT 0' }
   ];
 
   for (const col of missingColumns) {
@@ -437,6 +642,16 @@ try {
         console.log(`✓ ${col.table}.${col.column} already exists`);
       }
     }
+  }
+
+  // Token scale column
+  if (tableExists('map_tokens') && !columnExists('map_tokens', 'scale')) {
+    console.log('➕ Adding map_tokens.scale...');
+    db.exec("ALTER TABLE map_tokens ADD COLUMN scale REAL NOT NULL DEFAULT 1.0");
+    changesMade++;
+    console.log('✅ map_tokens.scale added');
+  } else if (tableExists('map_tokens')) {
+    console.log('✓ map_tokens.scale already exists');
   }
 
   // Special handling for votes.created_at (SQLite doesn't allow DEFAULT datetime() in ALTER)

@@ -29,23 +29,24 @@
   <% if (typeof showWhatsNew !== 'undefined' && showWhatsNew) { %>
     <div class="welcome-overlay" id="whatsnew-overlay">
       <div class="welcome-modal whatsnew-modal">
-        <h2>What's New in v<%= appVersion %> 📚</h2>
+        <h2>What's New in v<%= appVersion %> 🗺️</h2>
         <div class="whatsnew-content">
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Vault Expansion</h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Resizable Tokens</h3>
           <ul class="whatsnew-list">
-            <li><strong>📖 6 New Categories</strong> &mdash; Feats, Optional Features, Backgrounds, Bestiary (2,200+ monsters), Conditions &amp; Diseases, Rules Glossary</li>
-            <li><strong>🐉 Full Monster Stat Blocks</strong> &mdash; AC, HP, Speed, Abilities, Traits, Actions, Legendary Actions with D&amp;D Beyond-style cards</li>
+            <li><strong>🔍 Per-Token Scaling</strong> &mdash; Click any token to resize it with a slider (0.5x&ndash;3x); labels stay readable at any size</li>
+            <li><strong>📐 Scale All Panel</strong> &mdash; DM toolbar button to resize all tokens on the map at once with a global slider</li>
           </ul>
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Bulletin Board Redesign</h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Token Conditions</h3>
           <ul class="whatsnew-list">
-            <li><strong>📋 Category System</strong> &mdash; phpBB-style categories with topic lists, breadcrumbs, and admin management</li>
-            <li><strong>📝 Markdown Support</strong> &mdash; Write posts and replies with full Markdown formatting</li>
-            <li><strong>🏠 Dashboard Feed</strong> &mdash; Latest board posts shown on dashboard with category badges</li>
+            <li><strong>⚡ D&amp;D 5e Conditions</strong> &mdash; DM can apply conditions (Blinded, Poisoned, Stunned, etc.) to tokens from the Vault</li>
+            <li><strong>🎨 Color-Coded Badges</strong> &mdash; Each condition has a unique color and emoji icon, stacked on the token</li>
+            <li><strong>✨ Animated Effects</strong> &mdash; Bouncy entrance animation + continuous pulse + avatar border glow</li>
+            <li><strong>🔎 Searchable Picker</strong> &mdash; Quick search through all 15 standard conditions with applied-state tracking</li>
           </ul>
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Session &amp; Dice Improvements</h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Other Improvements</h3>
           <ul class="whatsnew-list">
-            <li><strong>📊 Smart Session Sorting</strong> &mdash; Cancelled sessions now appear last; "Load More" pagination (9 at a time)</li>
-            <li><strong>🎲 Fixed Dice Rotation</strong> &mdash; Dice now roll in the correct direction for realistic animation</li>
+            <li><strong>📸 30MB Upload Limit</strong> &mdash; Map and board image uploads increased from 5MB to 30MB</li>
+            <li><strong>🔧 Complete Migration Script</strong> &mdash; All tables and columns now covered for seamless upgrades</li>
           </ul>
         </div>
         <div class="whatsnew-links">

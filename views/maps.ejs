@@ -20,6 +20,14 @@
           <label for="map_name">Map Name</label>
           <input type="text" name="name" id="map_name" required placeholder="e.g. World Map, Dungeon Level 1, Town of Phandalin">
         </div>
+        <div class="form-group">
+          <label for="map_type">Map Type</label>
+          <select name="map_type" id="map_type">
+            <% for (const [key, val] of Object.entries(MARKER_TYPES)) { %>
+              <option value="<%= key %>"><%= val.icon %> <%= val.label %></option>
+            <% } %>
+          </select>
+        </div>
         <div style="display: flex; gap: 0.5rem;">
           <button type="submit" class="btn btn-primary btn-small">Create</button>
           <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('create-map-form').style.display='none'">Cancel</button>
@@ -29,51 +37,55 @@
   </div>
 <% } %>
 
-<% if (maps.length === 0) { %>
+<% if (tree.length === 0) { %>
   <div class="card">
     <p class="empty-state-text">No maps yet.<% if (isDM) { %> Create one above to get started.<% } %></p>
   </div>
 <% } else { %>
   <div class="card">
-    <div class="admin-table-wrapper">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th style="width: 60px;"></th>
-            <th>Name</th>
-            <th>Created</th>
-            <% if (isDM) { %><th style="width: 60px;">Actions</th><% } %>
-          </tr>
-        </thead>
-        <tbody>
-          <% for (const m of maps) { %>
-            <tr>
-              <td>
-                <% if (m.image_path) { %>
-                  <a href="/map/<%= m.id %>"><img src="/maps/<%= m.image_path %>" alt="" style="width: 50px; height: 35px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border);"></a>
-                <% } else { %>
-                  <a href="/map/<%= m.id %>">
-                    <div style="width: 50px; height: 35px; background: var(--bg-input); border-radius: 4px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-                    </div>
-                  </a>
-                <% } %>
-              </td>
-              <td><a href="/map/<%= m.id %>" style="color: var(--gold); font-weight: 600;"><%= m.name %></a></td>
-              <td class="text-muted"><%= new Date(m.created_at).toLocaleDateString() %></td>
-              <% if (isDM) { %>
-                <td>
-                  <form action="/map/<%= m.id %>/delete" method="POST" class="inline-form">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                    <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this map and all its locations?')">&times;</button>
-                  </form>
-                </td>
+    <% function renderMapNode(node, level) { %>
+      <div class="maps-tree-item<%= level > 0 ? ' maps-tree-child' : '' %>" style="<%= level > 0 ? 'margin-left: ' + (level * 1.5) + 'rem;' : '' %>">
+        <div class="maps-tree-row">
+          <div class="maps-tree-thumb">
+            <% if (node.image_path) { %>
+              <a href="/map/<%= node.id %>"><img src="/maps/<%= node.image_path %>" alt=""></a>
+            <% } else { %>
+              <a href="/map/<%= node.id %>">
+                <div class="maps-tree-placeholder">
+                  <span><%= MARKER_TYPES[node.map_type] ? MARKER_TYPES[node.map_type].icon : '🌍' %></span>
+                </div>
+              </a>
+            <% } %>
+          </div>
+          <div class="maps-tree-info">
+            <a href="/map/<%= node.id %>" class="maps-tree-name"><%= node.name %></a>
+            <div class="maps-tree-meta">
+              <span class="map-type-badge map-type-<%= node.map_type %>"><%= MARKER_TYPES[node.map_type] ? MARKER_TYPES[node.map_type].icon : '🌍' %> <%= MARKER_TYPES[node.map_type] ? MARKER_TYPES[node.map_type].label : node.map_type %></span>
+              <% if (node.children && node.children.length > 0) { %>
+                <span class="text-muted" style="font-size: 0.8rem;"><%= node.children.length %> sub-map<%= node.children.length !== 1 ? 's' : '' %></span>
               <% } %>
-            </tr>
+            </div>
+          </div>
+          <% if (isDM) { %>
+            <div class="maps-tree-actions">
+              <form action="/map/<%= node.id %>/delete" method="POST" class="inline-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this map<%= node.children && node.children.length > 0 ? ' and all sub-maps' : '' %>?')">&times;</button>
+              </form>
+            </div>
           <% } %>
-        </tbody>
-      </table>
-    </div>
+        </div>
+      </div>
+      <% if (node.children && node.children.length > 0) { %>
+        <% for (const child of node.children) { %>
+          <% renderMapNode(child, level + 1); %>
+        <% } %>
+      <% } %>
+    <% } %>
+
+    <% for (const root of tree) { %>
+      <% renderMapNode(root, 0); %>
+    <% } %>
   </div>
 <% } %>
 

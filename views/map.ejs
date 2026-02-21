@@ -3,15 +3,45 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+<% if (chain.length > 1) { %>
+<nav class="map-breadcrumb">
+  <a href="/map">Maps</a>
+  <% for (let i = 0; i < chain.length; i++) { %>
+    <span class="map-breadcrumb-sep">&rsaquo;</span>
+    <% if (i < chain.length - 1) { %>
+      <a href="/map/<%= chain[i].id %>"><%= MARKER_TYPES[chain[i].map_type] ? MARKER_TYPES[chain[i].map_type].icon : '' %> <%= chain[i].name %></a>
+    <% } else { %>
+      <span class="map-breadcrumb-current"><%= MARKER_TYPES[chain[i].map_type] ? MARKER_TYPES[chain[i].map_type].icon : '' %> <%= chain[i].name %></span>
+    <% } %>
+  <% } %>
+</nav>
+<% } %>
+
 <div class="page-header">
-  <h1><%= map.name %></h1>
+  <h1>
+    <span class="map-type-badge map-type-<%= map.map_type %>" style="font-size: 0.9rem; vertical-align: middle;"><%= MARKER_TYPES[map.map_type] ? MARKER_TYPES[map.map_type].icon : '🌍' %> <%= MARKER_TYPES[map.map_type] ? MARKER_TYPES[map.map_type].label : map.map_type %></span>
+    <%= map.name %>
+  </h1>
   <div>
     <button type="button" class="btn btn-outline btn-small" id="map-fullscreen-btn" title="Fullscreen">
       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
       Fullscreen
     </button>
+    <button type="button" class="btn btn-outline btn-small" id="token-picker-btn" title="Place Token">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+      Tokens
+    </button>
+    <% if (isDM) { %>
+    <button type="button" class="btn btn-outline btn-small" id="token-scale-btn" title="Scale Tokens">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+      Scale
+    </button>
+    <% } %>
     <% if (isDM) { %>
       <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('upload-form').style.display = document.getElementById('upload-form').style.display === 'none' ? 'block' : 'none'">Upload Map</button>
+    <% } %>
+    <% if (map.parent_id) { %>
+      <a href="/map/<%= map.parent_id %>" class="btn btn-outline btn-small">Back to Parent</a>
     <% } %>
     <a href="/map" class="btn btn-outline btn-small">All Maps</a>
   </div>
@@ -23,7 +53,7 @@
       <form action="/map/<%= map.id %>/upload" method="POST" enctype="multipart/form-data">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="form-group">
-          <label for="map_image">Map Image (JPG, PNG, GIF, WebP &mdash; max 5MB)</label>
+          <label for="map_image">Map Image (JPG, PNG, GIF, WebP &mdash; max 30MB)</label>
           <input type="file" name="map_image" id="map_image" accept="image/*">
         </div>
         <button type="submit" class="btn btn-primary btn-small">Upload</button>
@@ -36,38 +66,138 @@
   <button type="button" class="map-fullscreen-close" id="map-fullscreen-close" title="Exit fullscreen">&times;</button>
   <div class="map-container" id="map-container"></div>
   <% if (isDM) { %>
-    <p class="form-hint map-hint" style="margin-top: 0.5rem;">Click anywhere on the map to add a location. Drag the gold party marker to move it.</p>
+    <p class="form-hint map-hint" style="margin-top: 0.5rem;">Click anywhere on the map to add a location<%= canAddChild ? ' or sub-map' : '' %>.<% if (showPartyMarker) { %> Drag the gold party marker to move it.<% } %></p>
   <% } %>
 </div>
 
+<!-- Add Location / Sub-Map Modal (DM only) -->
 <% if (isDM) { %>
 <div id="map-add-modal" class="map-add-form" style="display:none;">
+  <div class="card" style="max-width: 420px; margin: 0 auto;">
+    <div class="map-add-tabs">
+      <button type="button" class="map-add-tab active" data-tab="location">Add Location</button>
+      <% if (canAddChild) { %>
+        <button type="button" class="map-add-tab" data-tab="submap">Add Sub-Map</button>
+      <% } %>
+    </div>
+
+    <!-- Location tab -->
+    <div id="tab-location" class="map-add-tab-content">
+      <form action="/map/<%= map.id %>/locations" method="POST">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="x" id="add-loc-x">
+        <input type="hidden" name="y" id="add-loc-y">
+        <div class="form-group">
+          <label for="add-loc-name">Name</label>
+          <input type="text" name="name" id="add-loc-name" required placeholder="Location name">
+        </div>
+        <div class="form-group">
+          <label for="add-loc-desc">Description</label>
+          <textarea name="description" id="add-loc-desc" rows="2" placeholder="Optional description"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="add-loc-icon">Type</label>
+          <select name="icon" id="add-loc-icon">
+            <% for (const [key, val] of Object.entries(MARKER_TYPES)) { %>
+              <option value="<%= key %>"><%= val.icon %> <%= val.label %></option>
+            <% } %>
+          </select>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="submit" class="btn btn-primary btn-small">Add</button>
+          <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('map-add-modal').style.display='none'">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Sub-Map tab -->
+    <% if (canAddChild) { %>
+    <div id="tab-submap" class="map-add-tab-content" style="display:none;">
+      <form action="/map/<%= map.id %>/children" method="POST">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="pin_x" id="add-submap-x">
+        <input type="hidden" name="pin_y" id="add-submap-y">
+        <div class="form-group">
+          <label for="add-submap-name">Name</label>
+          <input type="text" name="name" id="add-submap-name" required placeholder="Sub-map name">
+        </div>
+        <div class="form-group">
+          <label for="add-submap-desc">Description</label>
+          <textarea name="description" id="add-submap-desc" rows="2" placeholder="Optional description"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="add-submap-type">Type</label>
+          <select name="map_type" id="add-submap-type">
+            <% for (const [key, val] of Object.entries(MARKER_TYPES)) { %>
+              <option value="<%= key %>"><%= val.icon %> <%= val.label %></option>
+            <% } %>
+          </select>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="submit" class="btn btn-primary btn-small">Create Sub-Map</button>
+          <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('map-add-modal').style.display='none'">Cancel</button>
+        </div>
+      </form>
+    </div>
+    <% } %>
+  </div>
+</div>
+<% } %>
+
+<!-- Token Picker Modal -->
+<div id="token-picker-modal" class="token-picker-modal" style="display:none;">
+  <div class="card" style="max-width: 460px; margin: 0 auto;">
+    <h3>Place Character Token</h3>
+    <p class="form-hint">Select a character to place on this map.</p>
+    <div id="token-picker-list" class="token-picker-list">
+      <p class="text-muted">Loading characters...</p>
+    </div>
+    <div style="margin-top: 1rem;">
+      <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('token-picker-modal').style.display='none'">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Token Scale Panel (DM only) -->
+<% if (isDM) { %>
+<div id="token-scale-panel" class="token-scale-panel" style="display:none;">
+  <div class="token-scale-panel-header">
+    <span>Token Scale</span>
+    <button type="button" class="token-scale-panel-close" id="token-scale-close">&times;</button>
+  </div>
+  <div class="token-scale-panel-body">
+    <input type="range" id="token-scale-slider" min="0.5" max="3.0" step="0.1" value="1.0">
+    <span id="token-scale-value">1.0x</span>
+  </div>
+  <button type="button" class="btn btn-primary btn-small" id="token-scale-apply" style="width:100%;">Apply to All</button>
+</div>
+<% } %>
+
+<% if (isDM) { %>
+<div id="map-edit-modal" class="map-add-form" style="display:none;">
   <div class="card" style="max-width: 400px; margin: 0 auto;">
-    <h3>Add Location</h3>
-    <form action="/map/<%= map.id %>/locations" method="POST">
+    <h3>Edit Location</h3>
+    <form id="edit-loc-form" method="POST">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <input type="hidden" name="x" id="add-loc-x">
-      <input type="hidden" name="y" id="add-loc-y">
       <div class="form-group">
-        <label for="add-loc-name">Name</label>
-        <input type="text" name="name" id="add-loc-name" required placeholder="Location name">
+        <label for="edit-loc-name">Name</label>
+        <input type="text" name="name" id="edit-loc-name" required>
       </div>
       <div class="form-group">
-        <label for="add-loc-desc">Description</label>
-        <textarea name="description" id="add-loc-desc" rows="2" placeholder="Optional description"></textarea>
+        <label for="edit-loc-desc">Description</label>
+        <textarea name="description" id="edit-loc-desc" rows="2"></textarea>
       </div>
       <div class="form-group">
-        <label for="add-loc-icon">Icon</label>
-        <select name="icon" id="add-loc-icon">
-          <option value="pin">Pin</option>
-          <option value="city">City</option>
-          <option value="dungeon">Dungeon</option>
-          <option value="tavern">Tavern</option>
+        <label for="edit-loc-icon">Type</label>
+        <select name="icon" id="edit-loc-icon">
+          <% for (const [key, val] of Object.entries(MARKER_TYPES)) { %>
+            <option value="<%= key %>"><%= val.icon %> <%= val.label %></option>
+          <% } %>
         </select>
       </div>
       <div style="display: flex; gap: 0.5rem;">
-        <button type="submit" class="btn btn-primary btn-small">Add</button>
-        <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('map-add-modal').style.display='none'">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-small">Save</button>
+        <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('map-edit-modal').style.display='none'">Cancel</button>
       </div>
     </form>
   </div>
@@ -98,11 +228,19 @@
             </td>
             <td><strong><%= loc.name %></strong></td>
             <td class="text-muted"><%= loc.description || '—' %></td>
-            <td><span class="map-marker-badge map-marker-<%= loc.icon %>"><%= loc.icon %></span></td>
+            <td><span class="map-marker-badge map-marker-<%= loc.icon %>"><%= MARKER_TYPES[loc.icon] ? MARKER_TYPES[loc.icon].icon + ' ' + MARKER_TYPES[loc.icon].label : loc.icon %></span></td>
             <% if (isDM) { %>
               <td>
                 <div style="display: flex; gap: 0.25rem;">
                   <button type="button" class="btn btn-small btn-outline" data-table-edit-loc="<%= loc.id %>">Edit</button>
+                  <% if (canAddChild) { %>
+                    <form action="/map/<%= map.id %>/locations/<%= loc.id %>/convert" method="POST" class="inline-form">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <button type="submit" class="btn btn-small btn-outline" onclick="return confirm('Convert this location to a sub-map?')" title="Convert to sub-map">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                      </button>
+                    </form>
+                  <% } %>
                   <form action="/map/<%= map.id %>/locations/<%= loc.id %>/delete" method="POST" class="inline-form">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this location?')">&times;</button>
@@ -118,34 +256,45 @@
 </div>
 <% } %>
 
-<% if (isDM) { %>
-<div id="map-edit-modal" class="map-add-form" style="display:none;">
-  <div class="card" style="max-width: 400px; margin: 0 auto;">
-    <h3>Edit Location</h3>
-    <form id="edit-loc-form" method="POST">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <div class="form-group">
-        <label for="edit-loc-name">Name</label>
-        <input type="text" name="name" id="edit-loc-name" required>
-      </div>
-      <div class="form-group">
-        <label for="edit-loc-desc">Description</label>
-        <textarea name="description" id="edit-loc-desc" rows="2"></textarea>
-      </div>
-      <div class="form-group">
-        <label for="edit-loc-icon">Icon</label>
-        <select name="icon" id="edit-loc-icon">
-          <option value="pin">Pin</option>
-          <option value="city">City</option>
-          <option value="dungeon">Dungeon</option>
-          <option value="tavern">Tavern</option>
-        </select>
-      </div>
-      <div style="display: flex; gap: 0.5rem;">
-        <button type="submit" class="btn btn-primary btn-small">Save</button>
-        <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('map-edit-modal').style.display='none'">Cancel</button>
-      </div>
-    </form>
+<% if (children.length > 0) { %>
+<div class="card" style="margin-top: 1rem;">
+  <h2>Sub-Maps</h2>
+  <div class="admin-table-wrapper">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th style="width:2rem;"></th>
+          <th>Name</th>
+          <th>Description</th>
+          <th>Type</th>
+          <% if (isDM) { %><th>Actions</th><% } %>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const child of children) { %>
+          <tr>
+            <td>
+              <button type="button" class="btn-map-pin" data-center-child="<%= child.id %>" title="Center map on this sub-map">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+              </button>
+            </td>
+            <td><a href="/map/<%= child.id %>" style="color: var(--gold); font-weight: 600;"><%= child.name %></a></td>
+            <td class="text-muted"><%= child.description || '—' %></td>
+            <td><span class="map-marker-badge map-marker-<%= child.map_type %>"><%= MARKER_TYPES[child.map_type] ? MARKER_TYPES[child.map_type].icon + ' ' + MARKER_TYPES[child.map_type].label : child.map_type %></span></td>
+            <% if (isDM) { %>
+              <td>
+                <div style="display: flex; gap: 0.25rem;">
+                  <form action="/map/<%= child.id %>/delete" method="POST" class="inline-form">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this sub-map and all its children?')">&times;</button>
+                  </form>
+                </div>
+              </td>
+            <% } %>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
   </div>
 </div>
 <% } %>
@@ -154,8 +303,15 @@
 (function() {
   var locations = <%- JSON.stringify(locations) %>;
   var mapData = <%- JSON.stringify(map) %>;
+  var childMaps = <%- JSON.stringify(children) %>;
+  var tokensData = <%- JSON.stringify(tokens) %>;
   var isDM = <%= isDM ? 'true' : 'false' %>;
+  var showPartyMarker = <%= showPartyMarker ? 'true' : 'false' %>;
+  var currentUserId = <%= currentUserId %>;
   var mapImagePath = mapData.image_path ? '/maps/' + mapData.image_path : null;
+  var csrfToken = '<%= csrfToken %>';
+
+  // MARKER_ICONS already defined above
 
   var imgW = 1000, imgH = 700;
 
@@ -177,14 +333,6 @@
       + '<rect fill="#c4b594" x="20" y="20" width="960" height="660" rx="8"/>'
       + '<text x="500" y="320" font-family="serif" font-size="48" fill="#8b7355" text-anchor="middle">Your World Awaits</text>'
       + '<text x="500" y="380" font-family="serif" font-size="20" fill="#a89878" text-anchor="middle">Upload a map image to get started</text>'
-      + '<g transform="translate(480,440)" fill="none" stroke="#a89878" stroke-width="2">'
-      + '<circle cx="20" cy="20" r="18"/>'
-      + '<line x1="20" y1="2" x2="20" y2="10"/>'
-      + '<line x1="20" y1="30" x2="20" y2="38"/>'
-      + '<line x1="2" y1="20" x2="10" y2="20"/>'
-      + '<line x1="30" y1="20" x2="38" y2="20"/>'
-      + '<text x="20" y="8" font-size="8" text-anchor="middle" fill="#a89878">N</text>'
-      + '</g>'
       + '</svg>';
     var svgUrl = 'data:image/svg+xml;base64,' + btoa(svgPlaceholder);
     L.imageOverlay(svgUrl, bounds).addTo(leafletMap);
@@ -192,15 +340,17 @@
 
   leafletMap.fitBounds(bounds);
 
-  var iconColors = { pin: '#c0392b', city: '#2980b9', dungeon: '#8e44ad', tavern: '#27ae60', party: '#d4a843' };
+  var MARKER_ICONS = <%- JSON.stringify(MARKER_TYPES) %>;
+  var iconColors = { pin: '#c0392b', overworld: '#27ae60', city: '#2980b9', location: '#e67e22', tavern: '#27ae60', dungeon: '#8e44ad', secret: '#9b59b6' };
 
   function makeIcon(type) {
+    var emoji = (MARKER_ICONS[type] && MARKER_ICONS[type].icon) || '📌';
     var color = iconColors[type] || iconColors.pin;
     return L.divIcon({
       className: 'map-marker-icon',
-      html: '<div class="map-marker-dot" style="background:' + color + ';"></div>',
-      iconSize: [14, 14],
-      iconAnchor: [7, 7]
+      html: '<div class="map-loc-pin" style="border-color:' + color + ';">' + emoji + '</div>',
+      iconSize: [26, 26],
+      iconAnchor: [13, 13]
     });
   }
 
@@ -218,6 +368,7 @@
     return d.innerHTML;
   }
 
+  // ---- Location markers ----
   var locById = {};
   locations.forEach(function(loc) { locById[loc.id] = loc; });
 
@@ -247,28 +398,411 @@
     });
   });
 
-  var partyX = mapData.party_x || 50;
-  var partyY = mapData.party_y || 50;
-  var partyLL = pctToLatLng(partyX, partyY);
-  var partyIcon = L.divIcon({
-    className: 'map-marker-icon',
-    html: '<div class="map-party-marker"></div>',
-    iconSize: [18, 18],
-    iconAnchor: [9, 9]
-  });
-  var partyMarker = L.marker(partyLL, { icon: partyIcon, draggable: isDM }).addTo(leafletMap);
-  partyMarker.bindPopup('<strong>Party Location</strong>');
+  // ---- Child map pins ----
+  childMaps.forEach(function(child) {
+    var ll = pctToLatLng(child.pin_x || 50, child.pin_y || 50);
+    var typeInfo = MARKER_ICONS[child.map_type] || { icon: '📍', label: child.map_type };
+    var childIcon = L.divIcon({
+      className: 'map-child-pin',
+      html: '<div class="map-child-pin-icon">' + typeInfo.icon + '</div>',
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
+    });
+    var childMarker = L.marker(ll, { icon: childIcon, draggable: isDM }).addTo(leafletMap);
+    var childPopup = '<div style="text-align:center;">'
+      + '<strong>' + escHtml(child.name) + '</strong><br>'
+      + '<span class="map-type-badge map-type-' + child.map_type + '" style="font-size:0.7rem;">' + typeInfo.icon + ' ' + typeInfo.label + '</span><br>'
+      + '<a href="/map/' + child.id + '" class="btn btn-primary btn-small" style="margin-top:0.5rem;font-size:0.75rem;">Enter Map</a>'
+      + '</div>';
+    childMarker.bindPopup(childPopup);
 
-  if (isDM) {
-    partyMarker.on('dragend', function() {
-      var pct = latLngToPct(partyMarker.getLatLng());
-      fetch('/map/<%= map.id %>/party', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ x: pct.x, y: pct.y })
+    if (isDM) {
+      childMarker.on('dragend', function() {
+        var pct = latLngToPct(childMarker.getLatLng());
+        fetch('/map/<%= map.id %>/children/' + child.id + '/pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({ x: pct.x, y: pct.y })
+        });
+      });
+    }
+  });
+
+  // ---- Party marker (top-level only) ----
+  if (showPartyMarker) {
+    var partyX = mapData.party_x || 50;
+    var partyY = mapData.party_y || 50;
+    var partyLL = pctToLatLng(partyX, partyY);
+    var partyIcon = L.divIcon({
+      className: 'map-marker-icon',
+      html: '<div class="map-party-marker"></div>',
+      iconSize: [18, 18],
+      iconAnchor: [9, 9]
+    });
+    var partyMarker = L.marker(partyLL, { icon: partyIcon, draggable: isDM }).addTo(leafletMap);
+    partyMarker.bindPopup('<strong>Party Location</strong>');
+
+    if (isDM) {
+      partyMarker.on('dragend', function() {
+        var pct = latLngToPct(partyMarker.getLatLng());
+        fetch('/map/<%= map.id %>/party', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({ x: pct.x, y: pct.y })
+        });
+      });
+    }
+  }
+
+  // ---- Condition colors & icons ----
+  var CONDITION_COLORS = {
+    'Blinded': '#555', 'Charmed': '#ff69b4', 'Deafened': '#888', 'Exhaustion': '#8B4513',
+    'Frightened': '#9B59B6', 'Grappled': '#e67e22', 'Incapacitated': '#95a5a6',
+    'Invisible': '#ecf0f1', 'Paralyzed': '#f1c40f', 'Petrified': '#7f8c8d',
+    'Poisoned': '#27ae60', 'Prone': '#d35400', 'Restrained': '#8B6914',
+    'Stunned': '#f39c12', 'Unconscious': '#2c3e50'
+  };
+  var CONDITION_ICONS = {
+    'Blinded': '🕶️', 'Charmed': '💕', 'Deafened': '🔇', 'Exhaustion': '😫',
+    'Frightened': '😱', 'Grappled': '🤼', 'Incapacitated': '💫',
+    'Invisible': '👻', 'Paralyzed': '⚡', 'Petrified': '🪨',
+    'Poisoned': '☠️', 'Prone': '⬇️', 'Restrained': '⛓️',
+    'Stunned': '💥', 'Unconscious': '💤'
+  };
+
+  function hashColor(str) {
+    var hash = 0;
+    for (var i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    var h = Math.abs(hash) % 360;
+    return 'hsl(' + h + ', 60%, 45%)';
+  }
+
+  function getCondColor(name) { return CONDITION_COLORS[name] || hashColor(name); }
+  function getCondIcon(name) { return CONDITION_ICONS[name] || '⚠️'; }
+
+  function triggerCondEntrance(marker) {
+    // Find the marker's DOM element and add entrance class to badges
+    setTimeout(function() {
+      var el = marker.getElement();
+      if (!el) return;
+      el.querySelectorAll('.token-condition-badge').forEach(function(badge) {
+        badge.classList.add('cond-enter');
+        badge.addEventListener('animationend', function handler(e) {
+          if (e.animationName === 'conditionEntrance') {
+            badge.classList.remove('cond-enter');
+            badge.removeEventListener('animationend', handler);
+          }
+        });
+      });
+    }, 50);
+  }
+
+  // ---- Character tokens ----
+  var tokenMarkers = {};
+
+  function makeTokenIcon(token) {
+    var scale = token.scale || 1.0;
+    var avatarSize = Math.round(28 * scale);
+    var avatarHtml;
+    if (token.char_avatar) {
+      avatarHtml = '<img src="' + escHtml(token.char_avatar) + '" alt="" class="map-token-avatar" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px;">';
+    } else {
+      avatarHtml = '<div class="map-token-avatar map-token-no-avatar" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px;font-size:' + (0.75 * scale) + 'rem;">' + escHtml(token.char_name.charAt(0).toUpperCase()) + '</div>';
+    }
+
+    // Condition badges — deduplicate by condition_name
+    var condHtml = '';
+    var conditions = token.conditions || [];
+    var seen = {};
+    conditions = conditions.filter(function(c) {
+      if (seen[c.condition_name]) return false;
+      seen[c.condition_name] = true;
+      return true;
+    });
+    token.conditions = conditions;
+    if (conditions.length > 0) {
+      var hasCondClass = ' has-conditions';
+      var maxShow = 4;
+      condHtml = '<div class="token-conditions">';
+      for (var i = 0; i < Math.min(conditions.length, maxShow); i++) {
+        var c = conditions[i];
+        var color = getCondColor(c.condition_name);
+        condHtml += '<div class="token-condition-badge" style="background:' + color + ';" title="' + escHtml(c.condition_name) + '">' + getCondIcon(c.condition_name) + '</div>';
+      }
+      if (conditions.length > maxShow) {
+        condHtml += '<div class="token-condition-badge token-condition-overflow">+' + (conditions.length - maxShow) + '</div>';
+      }
+      condHtml += '</div>';
+      // Add glow via style on avatar
+      var glowColor = getCondColor(conditions[0].condition_name);
+      if (token.char_avatar) {
+        avatarHtml = '<img src="' + escHtml(token.char_avatar) + '" alt="" class="map-token-avatar has-conditions" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px;--condition-color:' + glowColor + ';">';
+      } else {
+        avatarHtml = '<div class="map-token-avatar map-token-no-avatar has-conditions" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px;font-size:' + (0.75 * scale) + 'rem;--condition-color:' + glowColor + ';">' + escHtml(token.char_name.charAt(0).toUpperCase()) + '</div>';
+      }
+    }
+
+    var iconW = Math.max(40, Math.round(28 * scale) + 12);
+    var iconH = Math.round(avatarSize + 22);
+
+    return L.divIcon({
+      className: 'map-token',
+      html: '<div class="map-token-wrapper">' + avatarHtml + condHtml + '<div class="map-token-label">' + escHtml(token.char_name) + '</div></div>',
+      iconSize: [iconW, iconH],
+      iconAnchor: [iconW / 2, iconH / 2]
+    });
+  }
+
+  function canMoveToken(token) {
+    return token.char_owner === currentUserId || isDM;
+  }
+
+  function buildTokenPopup(token) {
+    var popupHtml = '<div style="text-align:center;">'
+      + '<strong>' + escHtml(token.char_name) + '</strong><br>'
+      + '<span class="text-muted" style="font-size:0.75rem;">Player: ' + escHtml(token.owner_name) + '</span>';
+
+    // Conditions list
+    var conditions = token.conditions || [];
+    if (conditions.length > 0 || isDM) {
+      popupHtml += '<div class="token-popup-conditions" style="margin-top:0.4rem;">';
+      if (conditions.length > 0) {
+        popupHtml += '<div style="display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin-bottom:0.3rem;">';
+        conditions.forEach(function(c) {
+          var color = getCondColor(c.condition_name);
+          popupHtml += '<span class="token-popup-cond-badge" style="background:' + color + ';">' + getCondIcon(c.condition_name) + ' ' + escHtml(c.condition_name);
+          if (isDM) {
+            popupHtml += ' <span class="token-popup-cond-remove" data-remove-cond="' + c.id + '" data-token-id="' + token.id + '">&times;</span>';
+          }
+          popupHtml += '</span>';
+        });
+        popupHtml += '</div>';
+      }
+      if (isDM) {
+        popupHtml += '<button type="button" class="btn btn-small btn-outline" data-add-condition="' + token.id + '" style="font-size:0.7rem;padding:0.15rem 0.4rem;">+ Condition</button>';
+      }
+      popupHtml += '</div>';
+    }
+
+    // Resize slider (DM only)
+    if (isDM) {
+      popupHtml += '<div style="margin-top:0.4rem;"><label style="font-size:0.7rem;color:var(--text-secondary);">Size: <span id="resize-val-' + token.id + '">' + (token.scale || 1.0).toFixed(1) + 'x</span></label>'
+        + '<input type="range" min="0.5" max="3.0" step="0.1" value="' + (token.scale || 1.0) + '" data-resize-token="' + token.id + '" style="width:100%;margin:0.2rem 0;">'
+        + '</div>';
+    }
+
+    if (canMoveToken(token)) {
+      popupHtml += '<br><button type="button" class="btn btn-small btn-danger" data-remove-token="' + token.id + '" style="font-size:0.75rem;">Remove</button>';
+    }
+    popupHtml += '</div>';
+    return popupHtml;
+  }
+
+  function bindTokenPopup(marker, token) {
+    marker.bindPopup(buildTokenPopup(token), { maxWidth: 250 });
+
+    marker.on('popupopen', function() {
+      // Remove token button
+      var removeBtn = document.querySelector('[data-remove-token="' + token.id + '"]');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', function() {
+          fetch('/map/<%= map.id %>/tokens/' + token.id + '/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }
+          }).then(function(r) { return r.json(); }).then(function(d) {
+            if (d.success) {
+              leafletMap.removeLayer(marker);
+              delete tokenMarkers[token.id];
+            }
+          });
+        });
+      }
+
+      // Resize slider
+      var resizeSlider = document.querySelector('[data-resize-token="' + token.id + '"]');
+      if (resizeSlider) {
+        resizeSlider.addEventListener('input', function() {
+          var val = parseFloat(this.value);
+          document.getElementById('resize-val-' + token.id).textContent = val.toFixed(1) + 'x';
+        });
+        resizeSlider.addEventListener('change', function() {
+          var val = parseFloat(this.value);
+          token.scale = val;
+          marker.setIcon(makeTokenIcon(token));
+          fetch('/map/<%= map.id %>/tokens/' + token.id + '/resize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            body: JSON.stringify({ scale: val })
+          });
+        });
+      }
+
+      // Add condition button
+      var addCondBtn = document.querySelector('[data-add-condition="' + token.id + '"]');
+      if (addCondBtn) {
+        addCondBtn.addEventListener('click', function() {
+          openConditionPicker(token, marker);
+        });
+      }
+
+      // Remove condition buttons
+      document.querySelectorAll('[data-remove-cond]').forEach(function(btn) {
+        if (parseInt(btn.getAttribute('data-token-id')) === token.id) {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var condId = btn.getAttribute('data-remove-cond');
+            fetch('/map/<%= map.id %>/tokens/' + token.id + '/conditions/' + condId + '/delete', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }
+            }).then(function(r) { return r.json(); }).then(function(d) {
+              if (d.success) {
+                token.conditions = token.conditions.filter(function(c) { return c.id !== parseInt(condId); });
+                marker.setIcon(makeTokenIcon(token));
+                marker.setPopupContent(buildTokenPopup(token));
+              }
+            });
+          });
+        }
       });
     });
+  }
 
+  tokensData.forEach(function(token) {
+    var ll = pctToLatLng(token.x, token.y);
+    var draggable = canMoveToken(token);
+    var marker = L.marker(ll, { icon: makeTokenIcon(token), draggable: draggable }).addTo(leafletMap);
+    tokenMarkers[token.id] = marker;
+
+    bindTokenPopup(marker, token);
+
+    if (draggable) {
+      marker.on('dragend', function() {
+        var pct = latLngToPct(marker.getLatLng());
+        fetch('/map/<%= map.id %>/tokens/' + token.id + '/move', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({ x: pct.x, y: pct.y })
+        });
+      });
+    }
+  });
+
+  // ---- Token Picker ----
+  document.getElementById('token-picker-btn').addEventListener('click', function() {
+    var modal = document.getElementById('token-picker-modal');
+    var list = document.getElementById('token-picker-list');
+    modal.style.display = 'block';
+    list.innerHTML = '<p class="text-muted">Loading characters...</p>';
+
+    fetch('/map/<%= map.id %>/characters')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.characters || data.characters.length === 0) {
+          list.innerHTML = '<p class="text-muted">No characters found. Create characters in your profile first.</p>';
+          return;
+        }
+
+        // Group by user
+        var byUser = {};
+        data.characters.forEach(function(c) {
+          if (!byUser[c.username]) byUser[c.username] = [];
+          byUser[c.username].push(c);
+        });
+
+        // Check which characters are already on map
+        var onMap = {};
+        tokensData.forEach(function(t) { onMap[t.character_id] = true; });
+
+        var html = '';
+        for (var username in byUser) {
+          html += '<div class="token-picker-group"><div class="token-picker-group-label">' + escHtml(username) + '</div>';
+          byUser[username].forEach(function(c) {
+            var alreadyPlaced = onMap[c.id];
+            var canPlace = (c.user_id === currentUserId || isDM) && !alreadyPlaced;
+            var avatarHtml = c.avatar
+              ? '<img src="' + escHtml(c.avatar) + '" alt="" class="token-picker-avatar">'
+              : '<div class="token-picker-avatar token-picker-no-avatar">' + escHtml(c.name.charAt(0).toUpperCase()) + '</div>';
+            html += '<button type="button" class="token-picker-item' + (!canPlace ? ' disabled' : '') + '" ' + (canPlace ? 'data-place-char="' + c.id + '" data-char-name="' + escHtml(c.name) + '" data-char-avatar="' + escHtml(c.avatar || '') + '" data-char-owner="' + c.user_id + '" data-char-username="' + escHtml(c.username) + '"' : 'disabled') + '>'
+              + avatarHtml
+              + '<span class="token-picker-name">' + escHtml(c.name) + '</span>'
+              + (alreadyPlaced ? '<span class="token-picker-placed">On Map</span>' : '')
+              + '</button>';
+          });
+          html += '</div>';
+        }
+        list.innerHTML = html;
+
+        // Bind click handlers
+        list.querySelectorAll('[data-place-char]').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var charId = parseInt(btn.getAttribute('data-place-char'));
+            var charName = btn.getAttribute('data-char-name');
+            var charAvatar = btn.getAttribute('data-char-avatar');
+            var charOwner = parseInt(btn.getAttribute('data-char-owner'));
+            var charUsername = btn.getAttribute('data-char-username');
+
+            // Place at map center
+            var center = leafletMap.getCenter();
+            var pct = latLngToPct(center);
+
+            fetch('/map/<%= map.id %>/tokens', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+              body: JSON.stringify({ character_id: charId, x: pct.x, y: pct.y })
+            }).then(function(r) { return r.json(); }).then(function(d) {
+              if (d.success) {
+                var newToken = {
+                  id: d.tokenId,
+                  character_id: charId,
+                  char_name: charName,
+                  char_avatar: charAvatar,
+                  char_owner: charOwner,
+                  owner_name: charUsername,
+                  x: pct.x,
+                  y: pct.y
+                };
+                tokensData.push(newToken);
+                addTokenMarker(newToken);
+                onMap[charId] = true;
+                btn.classList.add('disabled');
+                btn.disabled = true;
+                var placedSpan = document.createElement('span');
+                placedSpan.className = 'token-picker-placed';
+                placedSpan.textContent = 'On Map';
+                btn.appendChild(placedSpan);
+              } else if (d.error) {
+                alert(d.error);
+              }
+            });
+          });
+        });
+      });
+  });
+
+  function addTokenMarker(token) {
+    token.conditions = token.conditions || [];
+    token.scale = token.scale || 1.0;
+    var ll = pctToLatLng(token.x, token.y);
+    var draggable = canMoveToken(token);
+    var marker = L.marker(ll, { icon: makeTokenIcon(token), draggable: draggable }).addTo(leafletMap);
+    tokenMarkers[token.id] = marker;
+
+    bindTokenPopup(marker, token);
+
+    if (draggable) {
+      marker.on('dragend', function() {
+        var pct = latLngToPct(marker.getLatLng());
+        fetch('/map/<%= map.id %>/tokens/' + token.id + '/move', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({ x: pct.x, y: pct.y })
+        });
+      });
+    }
+  }
+
+  // ---- DM: Click to add location/submap ----
+  if (isDM) {
     leafletMap.on('click', function(e) {
       var pct = latLngToPct(e.latlng);
       if (pct.x < 0 || pct.x > 100 || pct.y < 0 || pct.y > 100) return;
@@ -276,10 +810,25 @@
       document.getElementById('add-loc-y').value = pct.y.toFixed(2);
       document.getElementById('add-loc-name').value = '';
       document.getElementById('add-loc-desc').value = '';
+      var submapX = document.getElementById('add-submap-x');
+      var submapY = document.getElementById('add-submap-y');
+      if (submapX) submapX.value = pct.x.toFixed(2);
+      if (submapY) submapY.value = pct.y.toFixed(2);
       document.getElementById('map-add-modal').style.display = 'block';
+    });
+
+    // Tab switching
+    document.querySelectorAll('.map-add-tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.map-add-tab').forEach(function(t) { t.classList.remove('active'); });
+        document.querySelectorAll('.map-add-tab-content').forEach(function(c) { c.style.display = 'none'; });
+        tab.classList.add('active');
+        document.getElementById('tab-' + tab.getAttribute('data-tab')).style.display = 'block';
+      });
     });
   }
 
+  // ---- Fullscreen ----
   var wrapper = document.getElementById('map-wrapper');
   var fsBtn = document.getElementById('map-fullscreen-btn');
   var fsCloseBtn = document.getElementById('map-fullscreen-close');
@@ -303,11 +852,133 @@
   });
 
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && isFullscreen) {
-      toggleFullscreen();
+    if (e.key === 'Escape') {
+      if (isFullscreen) toggleFullscreen();
+      document.getElementById('map-add-modal') && (document.getElementById('map-add-modal').style.display = 'none');
+      document.getElementById('token-picker-modal').style.display = 'none';
     }
   });
 
+  // ---- Condition Picker ----
+  var conditionPickerOverlay = null;
+
+  function openConditionPicker(token, marker) {
+    // Close existing
+    if (conditionPickerOverlay) conditionPickerOverlay.remove();
+
+    conditionPickerOverlay = document.createElement('div');
+    conditionPickerOverlay.className = 'condition-picker-overlay';
+    conditionPickerOverlay.innerHTML = '<div class="condition-picker-card card">'
+      + '<h3 style="margin-bottom:0.5rem;">Add Condition</h3>'
+      + '<input type="text" class="condition-picker-search" placeholder="Search conditions..." style="width:100%;margin-bottom:0.5rem;">'
+      + '<div class="condition-picker-list"><p class="text-muted">Loading...</p></div>'
+      + '<button type="button" class="btn btn-outline btn-small" style="margin-top:0.5rem;" id="condition-picker-close">Cancel</button>'
+      + '</div>';
+    document.body.appendChild(conditionPickerOverlay);
+
+    conditionPickerOverlay.querySelector('#condition-picker-close').addEventListener('click', function() {
+      conditionPickerOverlay.remove();
+      conditionPickerOverlay = null;
+    });
+    conditionPickerOverlay.addEventListener('click', function(e) {
+      if (e.target === conditionPickerOverlay) {
+        conditionPickerOverlay.remove();
+        conditionPickerOverlay = null;
+      }
+    });
+
+    fetch('/map/<%= map.id %>/conditions-list')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var list = conditionPickerOverlay.querySelector('.condition-picker-list');
+        var search = conditionPickerOverlay.querySelector('.condition-picker-search');
+        var allConds = data.conditions || [];
+        var existingNames = (token.conditions || []).map(function(c) { return c.condition_name; });
+
+        function renderList(filter) {
+          var html = '';
+          allConds.forEach(function(c) {
+            var name = c.name;
+            if (filter && name.toLowerCase().indexOf(filter.toLowerCase()) === -1) return;
+            var already = existingNames.indexOf(name) !== -1;
+            var color = getCondColor(name);
+            html += '<button type="button" class="condition-picker-item' + (already ? ' disabled' : '') + '" '
+              + (already ? 'disabled' : 'data-cond-name="' + escHtml(name) + '"') + '>'
+              + '<span class="condition-picker-icon" style="background:' + color + ';">' + getCondIcon(name) + '</span>'
+              + '<span>' + escHtml(name) + '</span>'
+              + (already ? '<span class="token-picker-placed">Applied</span>' : '')
+              + '</button>';
+          });
+          if (!html) html = '<p class="text-muted">No conditions found.</p>';
+          list.innerHTML = html;
+
+          list.querySelectorAll('[data-cond-name]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+              var condName = btn.getAttribute('data-cond-name');
+              fetch('/map/<%= map.id %>/tokens/' + token.id + '/conditions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                body: JSON.stringify({ condition_name: condName })
+              }).then(function(r) { return r.json(); }).then(function(d) {
+                if (d.success) {
+                  token.conditions.push({ id: d.conditionId, condition_name: d.condition_name, token_id: token.id });
+                  existingNames.push(condName);
+                  marker.setIcon(makeTokenIcon(token));
+                  renderList(search.value);
+                  marker.setPopupContent(buildTokenPopup(token));
+                  // Trigger entrance animation on new badges
+                  triggerCondEntrance(marker);
+                }
+              });
+            });
+          });
+        }
+
+        renderList('');
+        search.addEventListener('input', function() { renderList(this.value); });
+        search.focus();
+      });
+  }
+
+  // ---- Scale Panel (DM only) ----
+  if (isDM) {
+    var scaleBtn = document.getElementById('token-scale-btn');
+    var scalePanel = document.getElementById('token-scale-panel');
+    var scaleSlider = document.getElementById('token-scale-slider');
+    var scaleValue = document.getElementById('token-scale-value');
+    var scaleApply = document.getElementById('token-scale-apply');
+    var scaleClose = document.getElementById('token-scale-close');
+
+    scaleBtn.addEventListener('click', function() {
+      scalePanel.style.display = scalePanel.style.display === 'none' ? 'block' : 'none';
+    });
+    scaleClose.addEventListener('click', function() { scalePanel.style.display = 'none'; });
+
+    scaleSlider.addEventListener('input', function() {
+      scaleValue.textContent = parseFloat(this.value).toFixed(1) + 'x';
+    });
+
+    scaleApply.addEventListener('click', function() {
+      var val = parseFloat(scaleSlider.value);
+      fetch('/map/<%= map.id %>/tokens/resize-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ scale: val })
+      }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.success) {
+          // Update all token markers
+          tokensData.forEach(function(t) {
+            t.scale = val;
+            if (tokenMarkers[t.id]) {
+              tokenMarkers[t.id].setIcon(makeTokenIcon(t));
+            }
+          });
+        }
+      });
+    });
+  }
+
+  // ---- Table interactions ----
   document.addEventListener('click', function(e) {
     var btn = e.target.closest('[data-table-edit-loc]');
     if (btn) {
@@ -322,6 +993,17 @@
       var loc = locById[locId];
       if (loc) {
         var ll = pctToLatLng(loc.x, loc.y);
+        leafletMap.setView(ll, 1, { animate: true });
+        document.getElementById('map-wrapper').scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+
+    var childBtn = e.target.closest('[data-center-child]');
+    if (childBtn) {
+      var childId = parseInt(childBtn.getAttribute('data-center-child'), 10);
+      var child = childMaps.find(function(c) { return c.id === childId; });
+      if (child) {
+        var ll = pctToLatLng(child.pin_x || 50, child.pin_y || 50);
         leafletMap.setView(ll, 1, { animate: true });
         document.getElementById('map-wrapper').scrollIntoView({ behavior: 'smooth' });
       }

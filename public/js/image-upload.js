@@ -123,10 +123,10 @@
       return;
     }
 
-    // Max 5MB
-    if (file.size > 5 * 1024 * 1024) {
+    // Max 30MB
+    if (file.size > 30 * 1024 * 1024) {
       if (window.Toast) {
-        window.Toast.error('Image too large (max 5MB)');
+        window.Toast.error('Image too large (max 30MB)');
       }
       return;
     }
