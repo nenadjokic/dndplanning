@@ -328,18 +328,22 @@
           <label style="font-size: 0.8rem;">Name *</label>
           <input type="text" name="name" id="npc-form-name" required placeholder="NPC name" style="padding: 0.3rem 0.5rem; font-size: 0.85rem;">
         </div>
-        <div style="display:flex; gap:0.5rem;">
+        <div style="display:flex; gap:0.5rem; align-items:flex-start;">
           <div class="form-group" style="flex:1; margin-bottom: 0.4rem;">
             <label style="font-size: 0.8rem;">Categories</label>
             <div id="npc-form-cats" style="display:flex; flex-wrap:wrap; gap:0.25rem; max-height:80px; overflow-y:auto;"></div>
           </div>
-          <div class="form-group" style="width: 80px; margin-bottom: 0.4rem;">
+          <div class="form-group" style="width: 90px; margin-bottom: 0.4rem;">
             <label style="font-size: 0.8rem;">Max HP</label>
-            <input type="number" name="max_hp" id="npc-form-hp" min="0" value="0" style="padding: 0.3rem; font-size: 0.85rem;">
+            <input type="number" name="max_hp" id="npc-form-hp" min="0" value="0" style="width: 100%; padding: 0.3rem 0.4rem; font-size: 0.85rem; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); font-family: 'Crimson Text', serif;">
           </div>
         </div>
         <div class="form-group" style="margin-bottom: 0.4rem;">
           <label style="font-size: 0.8rem;">Avatar</label>
+          <div id="npc-avatar-auto-section" style="display:none; margin-bottom: 0.35rem;">
+            <button type="button" id="npc-fetch-avatar-btn" class="btn btn-outline btn-small" style="font-size: 0.75rem; width: 100%;">Fetch avatar from D&amp;D 5e SRD</button>
+            <div id="npc-fetch-avatar-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.2rem;"></div>
+          </div>
           <input type="file" name="avatar" id="npc-form-avatar" accept="image/*" style="font-size: 0.8rem;">
           <div id="npc-form-avatar-preview" style="margin-top:0.25rem;"></div>
         </div>
@@ -2364,6 +2368,8 @@
       customBtn.classList.add('active', 'btn-primary');
       customBtn.classList.remove('btn-outline');
       document.getElementById('npc-vault-search').style.display = 'none';
+      document.getElementById('npc-avatar-auto-section').style.display = 'none';
+      document.getElementById('npc-fetch-avatar-status').textContent = '';
     });
 
     // NPC Source selector — uses local Vault API
@@ -2382,6 +2388,8 @@
         npcCurrentSource = btn.getAttribute('data-source');
         document.getElementById('npc-form-source-type').value = npcCurrentSource;
         document.getElementById('npc-form-source-key').value = '';
+        document.getElementById('npc-avatar-auto-section').style.display = (npcCurrentSource === 'bestiary') ? 'block' : 'none';
+        document.getElementById('npc-fetch-avatar-status').textContent = '';
         if (npcCurrentSource === 'custom') {
           document.getElementById('npc-vault-search').style.display = 'none';
         } else {
@@ -2440,6 +2448,7 @@
               document.getElementById('npc-form-source-key').value = itemKey;
               if (itemNotes) document.getElementById('npc-form-notes').value = itemNotes;
               document.getElementById('npc-form-avatar-preview').innerHTML = '';
+              document.getElementById('npc-fetch-avatar-status').textContent = '';
               // Highlight selected item
               results.querySelectorAll('.npc-vault-item').forEach(function(r) { r.style.background = ''; });
               el.style.background = 'rgba(212,175,55,0.15)';
@@ -2458,16 +2467,6 @@
                     if (detail.alignment) detailNotes.push(detail.alignment);
                     if (detailNotes.length) document.getElementById('npc-form-notes').value = detailNotes.join(' | ');
                   }).catch(function() {});
-                // Try Open5e v2 API for avatar image
-                fetch('https://api.open5e.com/v2/creatures/?name=' + encodeURIComponent(itemName) + '&format=json')
-                  .then(function(r) { return r.json(); })
-                  .then(function(o5e) {
-                    var results = o5e.results || [];
-                    var match = results.find(function(r) { return r.name && r.name.toLowerCase() === itemName.toLowerCase(); });
-                    if (match && match.image) {
-                      document.getElementById('npc-form-avatar-preview').innerHTML = '<img src="' + match.image + '" style="max-width:60px;max-height:60px;border-radius:50%;border:2px solid var(--gold);margin-top:0.25rem;" title="Open5e image"><input type="hidden" name="avatar_url" value="' + match.image + '">';
-                    }
-                  }).catch(function() {});
               }
             });
           });
@@ -2478,6 +2477,40 @@
     document.getElementById('npc-vault-search-btn').addEventListener('click', npcVaultSearch);
     document.getElementById('npc-vault-query').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') { e.preventDefault(); npcVaultSearch(); }
+    });
+
+    // Fetch avatar from D&D 5e API button
+    document.getElementById('npc-fetch-avatar-btn').addEventListener('click', function() {
+      var npcName = document.getElementById('npc-form-name').value.trim();
+      if (!npcName) {
+        document.getElementById('npc-fetch-avatar-status').textContent = 'Select a creature first';
+        return;
+      }
+      var statusEl = document.getElementById('npc-fetch-avatar-status');
+      statusEl.textContent = 'Searching for avatar...';
+      statusEl.style.color = 'var(--text-secondary)';
+      this.disabled = true;
+      var btn = this;
+      // Convert name to dnd5eapi key format: lowercase, spaces to hyphens, remove special chars
+      var apiKey = npcName.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+      fetch('https://www.dnd5eapi.co/api/monsters/' + encodeURIComponent(apiKey))
+        .then(function(r) { return r.json(); })
+        .then(function(monster) {
+          if (monster.image) {
+            var imageUrl = 'https://www.dnd5eapi.co' + monster.image;
+            document.getElementById('npc-form-avatar-preview').innerHTML = '<img src="' + imageUrl + '" style="max-width:60px;max-height:60px;border-radius:50%;border:2px solid var(--gold);margin-top:0.25rem;" title="D&amp;D 5e SRD image"><input type="hidden" name="avatar_url" value="' + imageUrl + '">';
+            statusEl.textContent = 'Avatar found!';
+            statusEl.style.color = 'var(--gold)';
+          } else {
+            statusEl.textContent = 'No image available for this creature';
+            statusEl.style.color = 'var(--text-secondary)';
+          }
+          btn.disabled = false;
+        }).catch(function() {
+          statusEl.textContent = 'Creature not found in SRD';
+          statusEl.style.color = 'var(--text-secondary)';
+          btn.disabled = false;
+        });
     });
 
     // NPC Form submit

@@ -810,6 +810,15 @@ Then restart the server.
 
 ## Changelog
 
+### v2.0.10 (2026-02-22) 🗺️ NPC Library UI Fix
+
+**Bug Fixes:**
+- **🎨 Max HP Themed Input** — Max HP field in NPC Library popup now matches the dark theme (was plain white textbox)
+- **🖼️ Bestiary Avatar Fetch** — Added "Fetch avatar from D&D 5e SRD" button when creating NPCs from Bestiary (uses dnd5eapi.co which has actual monster images; Open5e had zero images)
+- **📐 NPC Form Layout** — Improved alignment of Categories/Max HP row in NPC creation form
+
+---
+
 ### v2.0.9 (2026-02-22) 🗺️ NPC Sidebar, Alignment & Map Links
 
 **NPC Sidebar & Drag-to-Place:**
