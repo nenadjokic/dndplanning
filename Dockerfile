@@ -37,7 +37,6 @@ RUN mkdir -p /app/data/avatars && \
 USER node
 
 # Volume for data persistence (SQLite database, avatars, uploads)
-# For Railway deployment: See Dockerfile.railway (VOLUME keyword not supported)
 VOLUME /app/data
 
 EXPOSE 3000

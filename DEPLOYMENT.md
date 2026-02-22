@@ -14,28 +14,7 @@ Complete guide for deploying Quest Planner to various platforms.
 
 ## One-Click Deployments
 
-### Railway (Recommended - Easiest)
-
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new/github?repo=https://github.com/nenadjokic/dndplanning)
-
-**Features:**
-- ✅ Free tier ($5 credit/month)
-- ✅ Automatic HTTPS
-- ✅ No credit card required
-- ✅ Deploy in 60 seconds
-
-**Steps:**
-1. Click "Deploy on Railway" button
-2. Login with GitHub
-3. Click "Deploy Now"
-4. Wait 1-2 minutes for deployment
-5. Click generated URL → `/install` to complete setup
-
-**Cost:** $0-5/month (free tier often sufficient for small groups)
-
----
-
-### Render
+### Render (Recommended - Easiest)
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/nenadjokic/dndplanning)
 
@@ -163,23 +142,6 @@ See [README.md](README.md#server-installation-manual) for detailed manual instal
 ---
 
 ## Platform-Specific Guides
-
-### Railway Detailed Setup
-
-1. **Fork the repository** (optional but recommended)
-2. **Go to [Railway](https://railway.com)**
-3. Click "New Project" → "Deploy from GitHub repo"
-4. Select `nenadjokic/dndplanning`
-5. Railway automatically detects Node.js and deploys
-6. **Environment variables** (auto-generated):
-   - `SESSION_SECRET` - Auto-generated
-   - `PORT` - Auto-set to 3000
-   - `NODE_ENV` - Set to production
-7. **Add persistent volume:**
-   - Go to "Variables" tab
-   - Click "Add Volume"
-   - Mount path: `/app/data`
-8. Access your deployment URL → `/install`
 
 ### Render Detailed Setup
 
@@ -327,10 +289,6 @@ After deployment, navigate to `/install`:
 
 ### Monitoring
 
-**Railway:**
-- Dashboard → Metrics tab
-- Logs available in real-time
-
 **Render:**
 - Logs tab in service dashboard
 - Metrics for CPU/memory usage
@@ -386,7 +344,7 @@ pm2 start quest-planner  # or docker-compose up -d
 
 ## Updating
 
-### Railway/Render
+### Render
 - Push to GitHub
 - Automatic deployment triggered
 

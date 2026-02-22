@@ -368,7 +368,7 @@ DB_PATH=./data/dndplanning.db
     let isCloudPlatform = false;
 
     // Detect if running on cloud platform (read-only filesystem)
-    const cloudPlatforms = ['RENDER', 'RAILWAY_ENVIRONMENT', 'FLY_APP_NAME', 'HEROKU_APP_NAME'];
+    const cloudPlatforms = ['RENDER', 'FLY_APP_NAME', 'HEROKU_APP_NAME'];
     isCloudPlatform = cloudPlatforms.some(envVar => process.env[envVar]);
 
     try {
@@ -503,7 +503,7 @@ DB_PATH=./data/dndplanning.db
               <li><strong>Admin Username:</strong> ${admin_username}</li>
               <li><strong>Database:</strong> Created with schema and tables</li>
               <li><strong>Configuration:</strong> ${envCreated ? '.env file generated' : 'Using platform environment variables'}</li>
-              ${isCloudPlatform ? '<li><strong>Platform:</strong> Cloud platform detected (Render/Railway/Fly.io)</li>' : ''}
+              ${isCloudPlatform ? '<li><strong>Platform:</strong> Cloud platform detected (Render/Fly.io)</li>' : ''}
             </ul>
           </div>
 
@@ -548,7 +548,6 @@ DB_PATH=./data/dndplanning.db
 
             <h4 style="color: #d4a843; margin-top: 1rem;">Option 4: Platform Restart</h4>
             <ul>
-              <li><strong>Railway:</strong> Auto-restarts (wait 30 seconds)</li>
               <li><strong>Render:</strong> Auto-restarts (wait 30 seconds)</li>
               <li><strong>Fly.io:</strong> Run <code>fly deploy</code></li>
             </ul>

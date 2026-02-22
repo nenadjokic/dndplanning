@@ -17,7 +17,7 @@ Deploy Quest Planner with one click - no command line needed:
 docker run -d -p 3000:3000 -v quest-planner-data:/app/data nenadjokic/quest-planner:latest
 ```
 
-📚 **[Full Deployment Guide →](DEPLOYMENT.md)** | Includes Railway, Render, Fly.io, Docker, VPS auto-install
+📚 **[Full Deployment Guide →](DEPLOYMENT.md)** | Includes Render, Fly.io, Docker, VPS auto-install
 
 ---
 
@@ -986,24 +986,20 @@ docker compose build && docker compose up -d
 - **📅 Premium DateTime Picker** — Custom medieval-themed picker; respects 12h/24h format and week start preference; smart defaults (Next Sunday 18:00)
 - **💾 Auto-Save Settings** — No more "Save" buttons; changes save automatically with visual checkmark feedback
 
-**🚂 Railway Deployment Fix:**
-- **🐳 Dual Dockerfile System** — Separate `Dockerfile.railway` for Railway compatibility (VOLUME keyword removed); original `Dockerfile` unchanged for Docker Hub users
-
 **Bug Fixes:**
 - Fixed floating label CSS conflict causing login form issues
 - Fixed EJS comment syntax in empty-state partial
-- Fixed Railway deployment (VOLUME keyword incompatibility)
 
 ---
 
 ### v1.0.18 (2026-02-12)
 
 **What's New:**
-- **🚀 One-Click Deploy** — Deploy to Railway or Render with a single click; no command line needed; 60-second setup
+- **🚀 One-Click Deploy** — Deploy to Render with a single click; no command line needed; 60-second setup
 - **🐳 Docker Hub Official Image** — Pull and run from Docker Hub: `docker pull nenadjokic/quest-planner:latest`
 - **📦 VPS Auto-Install Script** — One-command installation on Ubuntu/Debian VPS with automatic Node.js, PM2, and Nginx setup
 - **🌐 Web-Based Installer** — Browser-based installation wizard (similar to phpBB) for easy first-time setup; auto-creates database, admin user, and config
-- **📚 Comprehensive Deployment Guide** — Complete DEPLOYMENT.md with step-by-step instructions for all platforms (Railway, Render, Fly.io, Docker, VPS)
+- **📚 Comprehensive Deployment Guide** — Complete DEPLOYMENT.md with step-by-step instructions for all platforms (Render, Fly.io, Docker, VPS)
 - **🔗 Spell Linking in Public Profiles** — Character sheet spells are now clickable and show API details even on other players' profiles
 - **⚔️ Class API Popups** — Character class names are clickable throughout the app, showing D&D 5e class details from Open5e API
 - **🔗 Social Links on Profiles** — Users can add Discord, Steam, Twitter/X, Twitch, and YouTube links to their profiles
