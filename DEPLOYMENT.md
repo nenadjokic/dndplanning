@@ -16,7 +16,7 @@ Complete guide for deploying Quest Planner to various platforms.
 
 ### Railway (Recommended - Easiest)
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new?template=https://github.com/nenadjokic/dndplanning)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new/github?repo=nenadjokic/dndplanning)
 
 **Features:**
 - ✅ Free tier ($5 credit/month)
@@ -167,7 +167,7 @@ See [README.md](README.md#server-installation-manual) for detailed manual instal
 ### Railway Detailed Setup
 
 1. **Fork the repository** (optional but recommended)
-2. **Go to [Railway](https://railway.app)**
+2. **Go to [Railway](https://railway.com)**
 3. Click "New Project" → "Deploy from GitHub repo"
 4. Select `nenadjokic/dndplanning`
 5. Railway automatically detects Node.js and deploys
