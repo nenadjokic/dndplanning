@@ -16,7 +16,7 @@ Complete guide for deploying Quest Planner to various platforms.
 
 ### Railway (Recommended - Easiest)
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new/github?repo=nenadjokic/dndplanning)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new/github?repo=https://github.com/nenadjokic/dndplanning)
 
 **Features:**
 - ✅ Free tier ($5 credit/month)

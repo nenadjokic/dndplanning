@@ -9,7 +9,7 @@ Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. L
 
 Deploy Quest Planner with one click - no command line needed:
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new/github?repo=nenadjokic/dndplanning)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new/github?repo=https://github.com/nenadjokic/dndplanning)
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/nenadjokic/dndplanning)
 
 **Or use Docker:**
