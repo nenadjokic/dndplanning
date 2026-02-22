@@ -31,28 +31,26 @@
       <div class="welcome-modal whatsnew-modal">
         <h2>What's New in v<%= appVersion %> 🗺️</h2>
         <div class="whatsnew-content">
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">NPC Token System</h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">NPC Sidebar & Alignment</h3>
           <ul class="whatsnew-list">
-            <li><strong>👹 NPC Library</strong> &mdash; Create and manage NPCs with categories, HP, avatar, and notes</li>
-            <li><strong>📚 Import from Vault</strong> &mdash; Search Bestiary (2200+ monsters), Races, or Classes to auto-fill NPC stats and HP</li>
-            <li><strong>❤️ HP Tracker</strong> &mdash; Delta-based HP calculator (+15 / -33), color-coded HP bar (green/yellow/red)</li>
-            <li><strong>👁️ Hide/Reveal NPCs</strong> &mdash; Toggle NPC visibility for players in real-time</li>
+            <li><strong>📋 NPC Sidebar</strong> &mdash; Persistent sidebar with categories, search, and click-to-place NPCs on the map</li>
+            <li><strong>⚔️ Alignment System</strong> &mdash; Per-NPC hostile/friendly/neutral with colored borders (red/green/white)</li>
+            <li><strong>☑️ Multi-Category NPCs</strong> &mdash; NPCs can belong to multiple categories via checkboxes</li>
+            <li><strong>🖼️ Open5e Avatars</strong> &mdash; Auto-fetch monster images from Open5e when creating NPCs from Bestiary</li>
           </ul>
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Fog of War</h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Map Links & Tokens</h3>
           <ul class="whatsnew-list">
-            <li><strong>🌫️ FoW Canvas Overlay</strong> &mdash; Full-map fog that hides unexplored areas from players</li>
-            <li><strong>🖌️ Reveal/Hide Brush</strong> &mdash; Paint to reveal or re-hide areas with adjustable brush size</li>
-            <li><strong>📡 Draft &amp; Publish</strong> &mdash; DM paints changes, then publishes to players instantly via SSE</li>
-            <li><strong>🔒 NPCs Under Fog</strong> &mdash; NPC tokens hidden by fog are invisible to players</li>
+            <li><strong>🔗 Map Hyperlinks</strong> &mdash; Link any map to any other without parent-child restrictions</li>
+            <li><strong>➕➖ Global Scale Offset</strong> &mdash; +/- buttons to scale all tokens (player + NPC) relatively</li>
+            <li><strong>✅ Multi-Select</strong> &mdash; Ctrl+Click tokens to select and move as a group (DM only)</li>
+            <li><strong>🎯 Fog Brush Cursor</strong> &mdash; Visual circle cursor showing brush size and reveal/hide mode</li>
           </ul>
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Map Improvements</h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">NPC Tokens & Fog of War <span style="color:var(--text-secondary);font-size:0.8rem;">(v2.0.8)</span></h3>
           <ul class="whatsnew-list">
-            <li><strong>🔗 Drag &amp; Drop Reparenting</strong> &mdash; Drag standalone maps onto others to create sub-maps</li>
-            <li><strong>📌 Link Existing Maps</strong> &mdash; Link an existing map as a sub-map from any pin</li>
-            <li><strong>🖼️ Aspect Ratio Fix</strong> &mdash; Maps now preserve their natural image dimensions</li>
-            <li><strong>🔒 Hidden Maps</strong> &mdash; DMs can hide maps from players; admins see placeholders</li>
-            <li><strong>📡 Real-Time Tokens</strong> &mdash; Token moves, NPC changes, and placements sync instantly across all players</li>
-            <li><strong>🖥️ Fullscreen Toolbar</strong> &mdash; Tokens, NPCs, Scale, and Fog controls available in fullscreen mode</li>
+            <li><strong>👹 NPC Library</strong> &mdash; Create NPCs with categories, HP, avatars, and Bestiary import (2200+ monsters)</li>
+            <li><strong>🌫️ Fog of War</strong> &mdash; Full-map fog with reveal/hide brush, draft &amp; publish workflow</li>
+            <li><strong>📡 Real-Time Sync</strong> &mdash; Token moves, NPC changes, HP updates sync instantly via SSE</li>
+            <li><strong>🖥️ Fullscreen Toolbar</strong> &mdash; All map controls available in fullscreen mode</li>
           </ul>
         </div>
         <div class="whatsnew-links">

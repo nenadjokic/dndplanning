@@ -235,6 +235,38 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE(npc_map_token_id, condition_name)
   );
+
+  CREATE TABLE IF NOT EXISTS npc_token_categories (
+    npc_token_id INTEGER NOT NULL REFERENCES npc_tokens(id) ON DELETE CASCADE,
+    category_id INTEGER NOT NULL REFERENCES npc_categories(id) ON DELETE CASCADE,
+    PRIMARY KEY(npc_token_id, category_id)
+  );
+`);
+
+// Add alignment column to map_npc_tokens (idempotent)
+try { db.exec("ALTER TABLE map_npc_tokens ADD COLUMN alignment TEXT DEFAULT 'hostile'"); } catch (e) { /* already exists */ }
+
+// Migrate existing single-category to junction table (one-time)
+try {
+  const npcsWithCat = db.prepare("SELECT id, category_id FROM npc_tokens WHERE category_id IS NOT NULL").all();
+  for (const n of npcsWithCat) {
+    try {
+      db.prepare("INSERT OR IGNORE INTO npc_token_categories (npc_token_id, category_id) VALUES (?, ?)").run(n.id, n.category_id);
+    } catch (e) { /* ignore */ }
+  }
+} catch (e) { /* ignore */ }
+
+// Map links (non-hierarchical hyperlinks between maps)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS map_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_map_id INTEGER NOT NULL REFERENCES maps(id) ON DELETE CASCADE,
+    target_map_id INTEGER NOT NULL REFERENCES maps(id) ON DELETE CASCADE,
+    pin_x REAL DEFAULT 50,
+    pin_y REAL DEFAULT 50,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source_map_id, target_map_id)
+  );
 `);
 
 // Migrate existing data from map_config to maps table

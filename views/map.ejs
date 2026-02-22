@@ -99,6 +99,16 @@
   </div>
   <div class="map-container" id="map-container"></div>
   <% if (isDM) { %>
+  <!-- NPC Sidebar (drag-to-place) -->
+  <div id="npc-sidebar" class="npc-sidebar" style="display:none;">
+    <div class="npc-sidebar-header">
+      <span>NPCs</span>
+      <button type="button" class="npc-sidebar-close" id="npc-sidebar-close">&times;</button>
+    </div>
+    <input type="text" id="npc-sidebar-search" placeholder="Search..." class="npc-sidebar-search">
+    <div id="npc-sidebar-list" class="npc-sidebar-list"></div>
+    <button type="button" class="btn btn-outline btn-small" id="npc-sidebar-manage" style="width:100%;margin-top:0.25rem;font-size:0.7rem;">Manage Library</button>
+  </div>
     <p class="form-hint map-hint" style="margin-top: 0.5rem;">Click anywhere on the map to add a location<%= canAddChild ? ' or sub-map' : '' %>.<% if (showPartyMarker) { %> Drag the gold party marker to move it.<% } %></p>
   <% } %>
 </div>
@@ -209,14 +219,17 @@
 <% if (isDM) { %>
 <div id="token-scale-panel" class="token-scale-panel" style="display:none;">
   <div class="token-scale-panel-header">
-    <span>Token Scale</span>
+    <span>Scale All Tokens</span>
     <button type="button" class="token-scale-panel-close" id="token-scale-close">&times;</button>
   </div>
-  <div class="token-scale-panel-body">
-    <input type="range" id="token-scale-slider" min="0.5" max="3.0" step="0.1" value="1.0">
-    <span id="token-scale-value">1.0x</span>
+  <div class="token-scale-panel-body" style="flex-direction:column;gap:0.3rem;">
+    <div style="display:flex;align-items:center;justify-content:center;gap:0.5rem;">
+      <button type="button" class="btn btn-small btn-outline" id="token-scale-minus" style="font-size:1rem;padding:0.2rem 0.6rem;">−</button>
+      <span id="token-scale-offset" style="font-size:0.9rem;min-width:3rem;text-align:center;">0.0</span>
+      <button type="button" class="btn btn-small btn-outline" id="token-scale-plus" style="font-size:1rem;padding:0.2rem 0.6rem;">+</button>
+    </div>
+    <p class="form-hint" style="font-size:0.65rem;margin:0;text-align:center;">Adjusts all player + NPC tokens by ±0.1</p>
   </div>
-  <button type="button" class="btn btn-primary btn-small" id="token-scale-apply" style="width:100%;">Apply to All</button>
 </div>
 <% } %>
 
@@ -297,8 +310,6 @@
         <div style="display:flex; gap: 0.25rem; flex-wrap: wrap; margin-top: 0.25rem;">
           <button type="button" class="btn btn-small btn-primary npc-source-btn active" data-source="custom">Custom</button>
           <button type="button" class="btn btn-small btn-outline npc-source-btn" data-source="bestiary">Bestiary</button>
-          <button type="button" class="btn btn-small btn-outline npc-source-btn" data-source="species">Races</button>
-          <button type="button" class="btn btn-small btn-outline npc-source-btn" data-source="classes">Classes</button>
         </div>
         <!-- Search from Vault -->
         <div id="npc-vault-search" style="display:none; margin-top: 0.4rem;">
@@ -319,10 +330,8 @@
         </div>
         <div style="display:flex; gap:0.5rem;">
           <div class="form-group" style="flex:1; margin-bottom: 0.4rem;">
-            <label style="font-size: 0.8rem;">Category</label>
-            <select name="category_id" id="npc-form-cat" style="padding: 0.3rem; font-size: 0.85rem;">
-              <option value="">None</option>
-            </select>
+            <label style="font-size: 0.8rem;">Categories</label>
+            <div id="npc-form-cats" style="display:flex; flex-wrap:wrap; gap:0.25rem; max-height:80px; overflow-y:auto;"></div>
           </div>
           <div class="form-group" style="width: 80px; margin-bottom: 0.4rem;">
             <label style="font-size: 0.8rem;">Max HP</label>
@@ -477,6 +486,25 @@
             <% } %>
           </tr>
         <% } %>
+        <% if (typeof mapLinks !== 'undefined') { for (const link of mapLinks) { %>
+          <tr>
+            <td>
+              <button type="button" class="btn-map-pin" data-center-link="<%= link.id %>" data-link-x="<%= link.pin_x %>" data-link-y="<%= link.pin_y %>" title="Center map on this link">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+              </button>
+            </td>
+            <td><a href="/map/<%= link.target_map_id %>" style="color: var(--gold); font-weight: 600;"><%= link.name %></a> <span style="font-size:0.65rem;color:var(--text-secondary);">🔗</span></td>
+            <td class="text-muted"><%= link.description || '—' %></td>
+            <td><span class="map-marker-badge map-marker-<%= link.map_type %>"><%= MARKER_TYPES[link.map_type] ? MARKER_TYPES[link.map_type].icon + ' ' + MARKER_TYPES[link.map_type].label : link.map_type %></span></td>
+            <% if (isDM) { %>
+              <td>
+                <div style="display: flex; gap: 0.25rem;">
+                  <button type="button" class="btn btn-small btn-danger" onclick="unlinkMap(<%= link.id %>)">&times;</button>
+                </div>
+              </td>
+            <% } %>
+          </tr>
+        <% } } %>
       </tbody>
     </table>
   </div>
@@ -488,6 +516,7 @@
   var locations = <%- JSON.stringify(locations) %>;
   var mapData = <%- JSON.stringify(map) %>;
   var childMaps = <%- JSON.stringify(children) %>;
+  var mapLinksData = <%- JSON.stringify(typeof mapLinks !== 'undefined' ? mapLinks : []) %>;
   var tokensData = <%- JSON.stringify(tokens) %>;
   var npcTokensData = <%- JSON.stringify(typeof npcTokens !== 'undefined' ? npcTokens : []) %>;
   var isDM = <%= isDM ? 'true' : 'false' %>;
@@ -605,6 +634,38 @@
       childMarker.on('dragend', function() {
         var pct = latLngToPct(childMarker.getLatLng());
         fetch('/map/<%= map.id %>/children/' + child.id + '/pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({ x: pct.x, y: pct.y })
+        });
+      });
+    }
+  });
+
+  // ---- Map links (non-hierarchical hyperlinks) ----
+  mapLinksData.forEach(function(link) {
+    var ll = pctToLatLng(link.pin_x || 50, link.pin_y || 50);
+    var typeInfo = MARKER_ICONS[link.map_type] || { icon: '📍', label: link.map_type };
+    var linkIcon = L.divIcon({
+      className: 'map-child-pin map-link-pin',
+      html: '<div class="map-child-pin-icon" style="border-color:var(--gold);">' + typeInfo.icon + '</div>',
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
+    });
+    var linkMarker = L.marker(ll, { icon: linkIcon, draggable: isDM }).addTo(leafletMap);
+    var linkPopup = '<div style="text-align:center;">'
+      + '<strong>' + escHtml(link.name) + '</strong><br>'
+      + '<span class="map-type-badge map-type-' + link.map_type + '" style="font-size:0.7rem;">' + typeInfo.icon + ' ' + typeInfo.label + '</span>'
+      + '<br><span style="font-size:0.6rem;color:var(--text-secondary);">🔗 Linked Map</span><br>'
+      + '<a href="/map/' + link.target_map_id + '" class="btn btn-primary btn-small" style="margin-top:0.5rem;font-size:0.75rem;">Go to Map</a>'
+      + (isDM ? '<br><button class="btn btn-danger btn-small" style="margin-top:0.25rem;font-size:0.65rem;" onclick="unlinkMap(' + link.id + ')">Unlink</button>' : '')
+      + '</div>';
+    linkMarker.bindPopup(linkPopup);
+
+    if (isDM) {
+      linkMarker.on('dragend', function() {
+        var pct = latLngToPct(linkMarker.getLatLng());
+        fetch('/map/<%= map.id %>/links/' + link.id + '/pin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
           body: JSON.stringify({ x: pct.x, y: pct.y })
@@ -843,7 +904,7 @@
               if (d.success) {
                 token.conditions = token.conditions.filter(function(c) { return c.id !== parseInt(condId); });
                 marker.setIcon(makeTokenIcon(token));
-                marker.setPopupContent(buildTokenPopup(token));
+                marker.closePopup(); marker.unbindPopup(); marker.bindPopup(buildTokenPopup(token), { maxWidth: 220 }); marker.openPopup();
               }
             });
           });
@@ -984,6 +1045,7 @@
         });
       });
     }
+    if (isDM && typeof addMultiSelectToMarker === 'function') addMultiSelectToMarker(marker, 'player', token.id, token);
   }
 
   // ---- DM: Click to add location/submap ----
@@ -1034,6 +1096,17 @@
     });
 
     // Link existing map button
+    window.unlinkMap = function(linkId) {
+      if (!confirm('Remove this map link?')) return;
+      fetch('/map/<%= map.id %>/links/' + linkId + '/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }
+      }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.success) location.reload();
+        else alert(d.error || 'Failed to unlink');
+      });
+    };
+
     var linkBtn = document.getElementById('link-map-btn');
     if (linkBtn) {
       linkBtn.addEventListener('click', function() {
@@ -1102,6 +1175,13 @@
       if (isFullscreen) toggleFullscreen();
       document.getElementById('map-add-modal') && (document.getElementById('map-add-modal').style.display = 'none');
       document.getElementById('token-picker-modal').style.display = 'none';
+      if (isDM) {
+        var sidebar = document.getElementById('npc-sidebar');
+        if (sidebar) sidebar.style.display = 'none';
+        // Clear multi-select
+        selectedTokens.forEach(function(info) { deselectMarker(info); });
+        selectedTokens.clear();
+      }
     }
   });
 
@@ -1171,7 +1251,7 @@
                   existingNames.push(condName);
                   marker.setIcon(makeTokenIcon(token));
                   renderList(search.value);
-                  marker.setPopupContent(buildTokenPopup(token));
+                  marker.closePopup(); marker.unbindPopup(); marker.bindPopup(buildTokenPopup(token), { maxWidth: 220 }); marker.openPopup();
                   // Trigger entrance animation on new badges
                   triggerCondEntrance(marker);
                 }
@@ -1190,38 +1270,42 @@
   if (isDM) {
     var scaleBtn = document.getElementById('token-scale-btn');
     var scalePanel = document.getElementById('token-scale-panel');
-    var scaleSlider = document.getElementById('token-scale-slider');
-    var scaleValue = document.getElementById('token-scale-value');
-    var scaleApply = document.getElementById('token-scale-apply');
+    var scaleOffset = document.getElementById('token-scale-offset');
+    var scalePlus = document.getElementById('token-scale-plus');
+    var scaleMinus = document.getElementById('token-scale-minus');
     var scaleClose = document.getElementById('token-scale-close');
+    var cumulativeOffset = 0;
 
     scaleBtn.addEventListener('click', function() {
       scalePanel.style.display = scalePanel.style.display === 'none' ? 'block' : 'none';
     });
     scaleClose.addEventListener('click', function() { scalePanel.style.display = 'none'; });
 
-    scaleSlider.addEventListener('input', function() {
-      scaleValue.textContent = parseFloat(this.value).toFixed(1) + 'x';
-    });
-
-    scaleApply.addEventListener('click', function() {
-      var val = parseFloat(scaleSlider.value);
+    function applyScaleDelta(delta) {
       fetch('/map/<%= map.id %>/tokens/resize-all', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-        body: JSON.stringify({ scale: val })
+        body: JSON.stringify({ delta: delta })
       }).then(function(r) { return r.json(); }).then(function(d) {
         if (d.success) {
-          // Update all token markers
+          cumulativeOffset = Math.round((cumulativeOffset + delta) * 10) / 10;
+          scaleOffset.textContent = (cumulativeOffset >= 0 ? '+' : '') + cumulativeOffset.toFixed(1);
+          // Update all player token markers
           tokensData.forEach(function(t) {
-            t.scale = val;
-            if (tokenMarkers[t.id]) {
-              tokenMarkers[t.id].setIcon(makeTokenIcon(t));
-            }
+            t.scale = Math.max(0.3, Math.min(3.0, (t.scale || 1.0) + delta));
+            if (tokenMarkers[t.id]) tokenMarkers[t.id].setIcon(makeTokenIcon(t));
+          });
+          // Update all NPC token markers
+          npcTokensData.forEach(function(nt) {
+            nt.scale = Math.max(0.3, Math.min(3.0, (nt.scale || 1.0) + delta));
+            if (npcMarkers[nt.id]) npcMarkers[nt.id].setIcon(makeNpcTokenIcon(nt));
           });
         }
       });
-    });
+    }
+
+    scalePlus.addEventListener('click', function() { applyScaleDelta(0.1); });
+    scaleMinus.addEventListener('click', function() { applyScaleDelta(-0.1); });
   }
 
   // ---- Toggle Hidden ----
@@ -1420,7 +1504,39 @@
     fogBrushSizeSlider.addEventListener('input', function() {
       fogBrushSize = parseInt(this.value);
       fogBrushSizeVal.textContent = fogBrushSize;
+      updateBrushCursorSize();
     });
+
+    // Fog brush cursor overlay
+    var fogBrushCursor = document.createElement('div');
+    fogBrushCursor.id = 'fog-brush-cursor';
+    fogBrushCursor.style.cssText = 'position:absolute;border-radius:50%;pointer-events:none;z-index:1001;display:none;transform:translate(-50%,-50%);';
+    document.getElementById('map-wrapper').appendChild(fogBrushCursor);
+
+    function updateBrushCursorSize() {
+      // Convert brush size (% of image) to screen pixels
+      var mapContainerEl = document.getElementById('map-container');
+      var nw = leafletMap.latLngToContainerPoint([imgH, 0]);
+      var se = leafletMap.latLngToContainerPoint([0, imgW]);
+      var screenW = se.x - nw.x;
+      var screenH = se.y - nw.y;
+      var radiusPx = (fogBrushSize / 100) * Math.max(screenW, screenH);
+      var diam = Math.round(radiusPx * 2);
+      fogBrushCursor.style.width = diam + 'px';
+      fogBrushCursor.style.height = diam + 'px';
+    }
+
+    function updateBrushCursorColor() {
+      fogBrushCursor.style.background = fogBrushMode === 'reveal' ? 'rgba(46,204,113,0.25)' : 'rgba(231,76,60,0.25)';
+      fogBrushCursor.style.border = '2px solid ' + (fogBrushMode === 'reveal' ? 'rgba(46,204,113,0.6)' : 'rgba(231,76,60,0.6)');
+    }
+
+    function showBrushCursor() {
+      if (!fogEnabled || fogToolbar.style.display === 'none') return false;
+      return true;
+    }
+
+    leafletMap.on('zoomend', function() { updateBrushCursorSize(); });
 
     // Brush drawing on map
     var mapContainer = document.getElementById('map-container');
@@ -1475,6 +1591,20 @@
     });
     mapContainer.addEventListener('mousemove', function(e) {
       if (fogDrawing) fogBrushAt(e);
+      // Show brush cursor while fog toolbar is visible
+      if (showBrushCursor()) {
+        var wrapperRect = document.getElementById('map-wrapper').getBoundingClientRect();
+        fogBrushCursor.style.display = 'block';
+        fogBrushCursor.style.left = (e.clientX - wrapperRect.left) + 'px';
+        fogBrushCursor.style.top = (e.clientY - wrapperRect.top) + 'px';
+        updateBrushCursorColor();
+        updateBrushCursorSize();
+      } else {
+        fogBrushCursor.style.display = 'none';
+      }
+    });
+    mapContainer.addEventListener('mouseleave', function() {
+      fogBrushCursor.style.display = 'none';
     });
     document.addEventListener('mouseup', function() {
       if (fogDrawing) {
@@ -1554,11 +1684,14 @@
   function makeNpcTokenIcon(nt) {
     var scale = nt.scale || 1.0;
     var avatarSize = Math.round(28 * scale);
+    var alignment = nt.alignment || 'hostile';
+    var alignColors = { hostile: '#e74c3c', friendly: '#2ecc71', neutral: '#ecf0f1' };
+    var alignColor = alignColors[alignment] || alignColors.hostile;
     var avatarHtml;
     if (nt.npc_avatar) {
-      avatarHtml = '<img src="' + escHtml(nt.npc_avatar) + '" alt="" class="map-token-avatar map-npc-token-avatar" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px;">';
+      avatarHtml = '<img src="' + escHtml(nt.npc_avatar) + '" alt="" class="map-token-avatar map-npc-token-avatar" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px;border-color:' + alignColor + ' !important;box-shadow:0 0 6px ' + alignColor + '80 !important;">';
     } else {
-      avatarHtml = '<div class="map-token-avatar map-token-no-avatar map-npc-token-avatar" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px;font-size:' + (0.75 * scale) + 'rem;">' + escHtml(nt.npc_name.charAt(0).toUpperCase()) + '</div>';
+      avatarHtml = '<div class="map-token-avatar map-token-no-avatar map-npc-token-avatar" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px;font-size:' + (0.75 * scale) + 'rem;border-color:' + alignColor + ' !important;box-shadow:0 0 6px ' + alignColor + '80 !important;">' + escHtml(nt.npc_name.charAt(0).toUpperCase()) + '</div>';
     }
 
     // HP bar
@@ -1607,7 +1740,7 @@
       + '<strong style="color:#e74c3c;">' + escHtml(nt.npc_name) + '</strong>';
 
     if (nt.max_hp > 0 && (isDM || nt.hp_visible)) {
-      html += '<br><span class="text-muted" style="font-size:0.8rem;">HP: ' + (nt.current_hp || 0) + ' / ' + nt.max_hp + '</span>';
+      html += '<br><span id="npc-hp-label-' + nt.id + '" class="text-muted" style="font-size:0.8rem;">HP: ' + (nt.current_hp || 0) + ' / ' + nt.max_hp + '</span>';
     }
 
     if (isDM) {
@@ -1617,12 +1750,20 @@
           + ' <button type="button" class="btn btn-small btn-primary" data-npc-hp-apply="' + nt.id + '" style="font-size:0.7rem;padding:0.15rem 0.4rem;">Apply</button></div>';
       }
 
+      // Alignment selector
+      var curAlign = nt.alignment || 'hostile';
+      html += '<div style="margin-top:0.4rem;"><select data-npc-alignment="' + nt.id + '" style="font-size:0.7rem;padding:0.15rem 0.3rem;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);">'
+        + '<option value="hostile"' + (curAlign === 'hostile' ? ' selected' : '') + '>🔴 Hostile</option>'
+        + '<option value="friendly"' + (curAlign === 'friendly' ? ' selected' : '') + '>🟢 Friendly</option>'
+        + '<option value="neutral"' + (curAlign === 'neutral' ? ' selected' : '') + '>⚪ Neutral</option>'
+        + '</select></div>';
+
       // Toggle buttons
       html += '<div style="margin-top:0.4rem;display:flex;gap:0.25rem;justify-content:center;flex-wrap:wrap;">';
       if (nt.max_hp > 0) {
-        html += '<button type="button" class="btn btn-small btn-outline" data-npc-toggle-hp="' + nt.id + '" style="font-size:0.65rem;padding:0.1rem 0.3rem;">' + (nt.hp_visible ? '🔒 Hide HP' : '👁️ Show HP') + '</button>';
+        html += '<button type="button" class="btn btn-small btn-outline" id="npc-toggle-hp-btn-' + nt.id + '" data-npc-toggle-hp="' + nt.id + '" style="font-size:0.65rem;padding:0.1rem 0.3rem;">' + (nt.hp_visible ? '🔒 Hide HP' : '👁️ Show HP') + '</button>';
       }
-      html += '<button type="button" class="btn btn-small btn-outline" data-npc-toggle-hidden="' + nt.id + '" style="font-size:0.65rem;padding:0.1rem 0.3rem;">' + (nt.hidden ? '👁️ Reveal' : '🙈 Hide') + '</button>';
+      html += '<button type="button" class="btn btn-small btn-outline" id="npc-toggle-hidden-btn-' + nt.id + '" data-npc-toggle-hidden="' + nt.id + '" style="font-size:0.65rem;padding:0.1rem 0.3rem;">' + (nt.hidden ? '👁️ Reveal' : '🙈 Hide') + '</button>';
       html += '<button type="button" class="btn btn-small btn-outline" data-npc-add-condition="' + nt.id + '" style="font-size:0.65rem;padding:0.1rem 0.3rem;">+ Cond</button>';
       html += '</div>';
 
@@ -1660,9 +1801,32 @@
   }
 
   function bindNpcPopup(marker, nt) {
+    marker.unbindPopup();
     marker.bindPopup(buildNpcPopup(nt), { maxWidth: 280 });
 
-    marker.on('popupopen', function() {
+    marker.off('popupopen').on('popupopen', function() {
+      setupNpcPopupHandlers(marker, nt);
+    });
+  }
+
+  function setupNpcPopupHandlers(marker, nt) {
+      // Alignment selector
+      var alignSelect = document.querySelector('[data-npc-alignment="' + nt.id + '"]');
+      if (alignSelect) {
+        alignSelect.addEventListener('change', function() {
+          var val = this.value;
+          fetch('/map/<%= map.id %>/npc-tokens/' + nt.id + '/alignment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            body: JSON.stringify({ alignment: val })
+          }).then(function(r) { return r.json(); }).then(function(d) {
+            if (d.success) {
+              nt.alignment = d.alignment;
+              marker.setIcon(makeNpcTokenIcon(nt));
+            }
+          });
+        });
+      }
       // HP Apply
       var hpBtn = document.querySelector('[data-npc-hp-apply="' + nt.id + '"]');
       if (hpBtn) {
@@ -1682,9 +1846,24 @@
             if (d.success) {
               nt.current_hp = d.current_hp;
               marker.setIcon(makeNpcTokenIcon(nt));
-              marker.setPopupContent(buildNpcPopup(nt));
+              // Update HP text in-place without rebuilding popup
+              var hpLabel = document.getElementById('npc-hp-label-' + nt.id);
+              if (hpLabel) hpLabel.textContent = 'HP: ' + d.current_hp + ' / ' + (d.max_hp || nt.max_hp);
+              input.value = '';
             }
           });
+        });
+      }
+
+      // HP Apply on Enter key
+      var hpInput = document.getElementById('npc-hp-calc-' + nt.id);
+      if (hpInput) {
+        hpInput.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            var applyBtn = document.querySelector('[data-npc-hp-apply="' + nt.id + '"]');
+            if (applyBtn) applyBtn.click();
+          }
         });
       }
 
@@ -1699,7 +1878,9 @@
             if (d.success) {
               nt.hp_visible = d.hp_visible;
               marker.setIcon(makeNpcTokenIcon(nt));
-              marker.setPopupContent(buildNpcPopup(nt));
+              // Update button text in-place (DM always sees HP, this only toggles player visibility)
+              var btn = document.getElementById('npc-toggle-hp-btn-' + nt.id);
+              if (btn) btn.innerHTML = d.hp_visible ? '🔒 Hide HP' : '👁️ Show HP';
             }
           });
         });
@@ -1716,7 +1897,9 @@
             if (d.success) {
               nt.hidden = d.hidden;
               marker.setIcon(makeNpcTokenIcon(nt));
-              marker.setPopupContent(buildNpcPopup(nt));
+              // Update button text in-place
+              var btn = document.getElementById('npc-toggle-hidden-btn-' + nt.id);
+              if (btn) btn.innerHTML = d.hidden ? '👁️ Reveal' : '🙈 Hide';
             }
           });
         });
@@ -1743,7 +1926,9 @@
               if (d.success) {
                 nt.conditions = nt.conditions.filter(function(c) { return c.id !== parseInt(condId); });
                 marker.setIcon(makeNpcTokenIcon(nt));
-                marker.setPopupContent(buildNpcPopup(nt));
+                // Remove the badge from DOM in-place
+                var badge = btn.closest('.token-popup-cond-badge');
+                if (badge) badge.remove();
               }
             });
           });
@@ -1783,7 +1968,6 @@
           });
         });
       }
-    });
   }
 
   function openNpcConditionPicker(nt, marker) {
@@ -1831,7 +2015,8 @@
                 existingNames.push(condName);
                 marker.setIcon(makeNpcTokenIcon(nt));
                 renderList(search.value);
-                marker.setPopupContent(buildNpcPopup(nt));
+                // Rebuild popup to show new condition badge (popup is behind overlay)
+                bindNpcPopup(marker, nt);
               }
             });
           });
@@ -1865,111 +2050,167 @@
     }
   });
 
-  // ---- NPC Picker & Library (DM only) ----
+  // ---- NPC Sidebar & Library (DM only) ----
   if (isDM) {
     var npcPickerBtn = document.getElementById('npc-picker-btn');
-    var npcPickerModal = document.getElementById('npc-picker-modal');
-    var npcPickerSearch = document.getElementById('npc-picker-search');
-    var npcPickerList = document.getElementById('npc-picker-list');
+    var npcSidebar = document.getElementById('npc-sidebar');
+    var npcSidebarSearch = document.getElementById('npc-sidebar-search');
+    var npcSidebarList = document.getElementById('npc-sidebar-list');
+    var npcSidebarClose = document.getElementById('npc-sidebar-close');
+    var npcSidebarManage = document.getElementById('npc-sidebar-manage');
 
-    function loadNpcPicker() {
-      npcPickerList.innerHTML = '<p class="text-muted">Loading...</p>';
+    function placeNpcOnMap(npcId, npcName, npcAvatar, npcMaxHp, dropX, dropY) {
+      fetch('/map/<%= map.id %>/npc-tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ npc_token_id: npcId, x: dropX, y: dropY })
+      }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.success) {
+          var newNt = {
+            id: d.id, npc_name: npcName, npc_avatar: npcAvatar,
+            max_hp: npcMaxHp, current_hp: npcMaxHp,
+            hp_visible: 1, hidden: 0, scale: 1.0, alignment: 'hostile',
+            x: dropX, y: dropY, conditions: []
+          };
+          npcTokensData.push(newNt);
+          var ll = pctToLatLng(dropX, dropY);
+          var marker = L.marker(ll, { icon: makeNpcTokenIcon(newNt), draggable: true }).addTo(leafletMap);
+          npcMarkers[newNt.id] = marker;
+          bindNpcPopup(marker, newNt);
+          marker.on('dragend', function() {
+            var p = latLngToPct(marker.getLatLng());
+            fetch('/map/<%= map.id %>/npc-tokens/' + newNt.id + '/move', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+              body: JSON.stringify({ x: p.x, y: p.y })
+            });
+          });
+          if (typeof addMultiSelectToMarker === 'function') addMultiSelectToMarker(marker, 'npc', newNt.id, newNt);
+        } else {
+          alert(d.error || 'Failed');
+        }
+      });
+    }
+
+    function loadNpcSidebar() {
+      npcSidebarList.innerHTML = '<p class="text-muted" style="font-size:0.75rem;padding:0.5rem;">Loading...</p>';
       fetch('/map/npcs').then(function(r) { return r.json(); }).then(function(data) {
         var npcs = data.npcs || [];
         var cats = data.categories || [];
         if (npcs.length === 0) {
-          npcPickerList.innerHTML = '<p class="text-muted">No NPCs yet. Use "Manage Library" to create some.</p>';
+          npcSidebarList.innerHTML = '<p class="text-muted" style="font-size:0.75rem;padding:0.5rem;">No NPCs. Use Manage Library.</p>';
           return;
         }
-        function renderNpcPicker(filter) {
+        function renderSidebar(filter) {
           var html = '';
-          // Group by category
+          // Group by multi-category — NPC appears in each category it belongs to
           var byCat = { '': [] };
           cats.forEach(function(c) { byCat[c.id] = []; });
           npcs.forEach(function(n) {
             if (filter && n.name.toLowerCase().indexOf(filter.toLowerCase()) === -1) return;
-            var key = n.category_id || '';
-            if (!byCat[key]) byCat[key] = [];
-            byCat[key].push(n);
+            var catIds = n.category_ids || (n.category_id ? [n.category_id] : []);
+            if (catIds.length === 0) {
+              byCat[''].push(n);
+            } else {
+              catIds.forEach(function(cid) {
+                if (!byCat[cid]) byCat[cid] = [];
+                byCat[cid].push(n);
+              });
+            }
           });
           var catNames = {};
           cats.forEach(function(c) { catNames[c.id] = c.name; });
-          // Render uncategorized first, then categories
           var order = [''].concat(cats.map(function(c) { return c.id; }));
           order.forEach(function(catKey) {
             var group = byCat[catKey];
             if (!group || group.length === 0) return;
             var catLabel = catKey ? catNames[catKey] : 'Uncategorized';
-            html += '<div class="token-picker-group"><div class="token-picker-group-label">' + escHtml(catLabel) + '</div>';
+            html += '<div class="npc-sidebar-cat" data-cat-key="' + catKey + '">';
+            html += '<div class="npc-sidebar-cat-header" data-toggle-cat="' + catKey + '">' + escHtml(catLabel) + ' <span style="font-size:0.65rem;color:var(--text-secondary);">(' + group.length + ')</span></div>';
+            html += '<div class="npc-sidebar-cat-items">';
             group.forEach(function(n) {
               var avatarHtml = n.avatar
-                ? '<img src="' + escHtml(n.avatar) + '" alt="" class="token-picker-avatar" style="border-color:#c0392b;">'
-                : '<div class="token-picker-avatar token-picker-no-avatar" style="border-color:#c0392b;color:#e74c3c;">' + escHtml(n.name.charAt(0).toUpperCase()) + '</div>';
-              var hpText = n.max_hp > 0 ? ' (HP: ' + n.max_hp + ')' : '';
-              html += '<button type="button" class="token-picker-item" data-place-npc="' + n.id + '" data-npc-name="' + escHtml(n.name) + '" data-npc-avatar="' + escHtml(n.avatar || '') + '" data-npc-max-hp="' + n.max_hp + '" data-npc-current-hp="' + n.current_hp + '">'
+                ? '<img src="' + escHtml(n.avatar) + '" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid #c0392b;">'
+                : '<div style="width:28px;height:28px;border-radius:50%;background:var(--bg-darker);border:2px solid #c0392b;display:flex;align-items:center;justify-content:center;color:#e74c3c;font-size:0.65rem;font-weight:700;">' + escHtml(n.name.charAt(0).toUpperCase()) + '</div>';
+              html += '<div class="npc-sidebar-item" draggable="true" data-npc-id="' + n.id + '" data-npc-name="' + escHtml(n.name) + '" data-npc-avatar="' + escHtml(n.avatar || '') + '" data-npc-max-hp="' + (n.max_hp || 0) + '">'
                 + avatarHtml
-                + '<span class="token-picker-name">' + escHtml(n.name) + '<span class="text-muted" style="font-size:0.75rem;">' + hpText + '</span></span>'
-                + '</button>';
+                + '<span class="npc-sidebar-name">' + escHtml(n.name) + '</span>'
+                + '</div>';
             });
-            html += '</div>';
+            html += '</div></div>';
           });
-          if (!html) html = '<p class="text-muted">No NPCs match your search.</p>';
-          npcPickerList.innerHTML = html;
+          if (!html) html = '<p class="text-muted" style="font-size:0.75rem;padding:0.5rem;">No NPCs match search.</p>';
+          npcSidebarList.innerHTML = html;
 
-          // Bind placement
-          npcPickerList.querySelectorAll('[data-place-npc]').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-              var npcId = parseInt(btn.getAttribute('data-place-npc'));
+          // Category accordion toggle
+          npcSidebarList.querySelectorAll('[data-toggle-cat]').forEach(function(hdr) {
+            hdr.addEventListener('click', function() {
+              var items = hdr.nextElementSibling;
+              items.style.display = items.style.display === 'none' ? 'block' : 'none';
+              hdr.classList.toggle('collapsed');
+            });
+          });
+
+          // Drag-to-place handlers
+          npcSidebarList.querySelectorAll('.npc-sidebar-item').forEach(function(el) {
+            el.addEventListener('dragstart', function(e) {
+              e.dataTransfer.setData('text/plain', JSON.stringify({
+                npcId: parseInt(el.getAttribute('data-npc-id')),
+                npcName: el.getAttribute('data-npc-name'),
+                npcAvatar: el.getAttribute('data-npc-avatar'),
+                npcMaxHp: parseInt(el.getAttribute('data-npc-max-hp')) || 0
+              }));
+              e.dataTransfer.effectAllowed = 'copy';
+            });
+            // Click also places at map center
+            el.addEventListener('click', function() {
               var center = leafletMap.getCenter();
               var pct = latLngToPct(center);
-              fetch('/map/<%= map.id %>/npc-tokens', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-                body: JSON.stringify({ npc_token_id: npcId, x: pct.x, y: pct.y })
-              }).then(function(r) { return r.json(); }).then(function(d) {
-                if (d.success) {
-                  var newNt = {
-                    id: d.id,
-                    npc_name: btn.getAttribute('data-npc-name'),
-                    npc_avatar: btn.getAttribute('data-npc-avatar'),
-                    max_hp: parseInt(btn.getAttribute('data-npc-max-hp')) || 0,
-                    current_hp: parseInt(btn.getAttribute('data-npc-max-hp')) || 0,
-                    hp_visible: 1,
-                    hidden: 0,
-                    scale: 1.0,
-                    x: pct.x, y: pct.y,
-                    conditions: []
-                  };
-                  npcTokensData.push(newNt);
-                  var ll = pctToLatLng(pct.x, pct.y);
-                  var marker = L.marker(ll, { icon: makeNpcTokenIcon(newNt), draggable: true }).addTo(leafletMap);
-                  npcMarkers[newNt.id] = marker;
-                  bindNpcPopup(marker, newNt);
-                  marker.on('dragend', function() {
-                    var p = latLngToPct(marker.getLatLng());
-                    fetch('/map/<%= map.id %>/npc-tokens/' + newNt.id + '/move', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-                      body: JSON.stringify({ x: p.x, y: p.y })
-                    });
-                  });
-                  npcPickerModal.style.display = 'none';
-                } else {
-                  alert(d.error || 'Failed');
-                }
-              });
+              placeNpcOnMap(
+                parseInt(el.getAttribute('data-npc-id')),
+                el.getAttribute('data-npc-name'),
+                el.getAttribute('data-npc-avatar'),
+                parseInt(el.getAttribute('data-npc-max-hp')) || 0,
+                pct.x, pct.y
+              );
             });
           });
         }
-        renderNpcPicker('');
-        npcPickerSearch.value = '';
-        npcPickerSearch.oninput = function() { renderNpcPicker(this.value); };
+        renderSidebar('');
+        npcSidebarSearch.value = '';
+        npcSidebarSearch.oninput = function() { renderSidebar(this.value); };
       });
     }
 
+    // Drop handler on map container
+    var mapContainer = document.getElementById('map-container');
+    mapContainer.addEventListener('dragover', function(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+    mapContainer.addEventListener('drop', function(e) {
+      e.preventDefault();
+      try {
+        var data = JSON.parse(e.dataTransfer.getData('text/plain'));
+        if (!data.npcId) return;
+        var containerRect = mapContainer.getBoundingClientRect();
+        var mx = e.clientX - containerRect.left;
+        var my = e.clientY - containerRect.top;
+        var latlng = leafletMap.containerPointToLatLng([mx, my]);
+        var pct = latLngToPct(latlng);
+        if (pct.x < 0 || pct.x > 100 || pct.y < 0 || pct.y > 100) return;
+        placeNpcOnMap(data.npcId, data.npcName, data.npcAvatar, data.npcMaxHp, pct.x, pct.y);
+      } catch(err) {}
+    });
+
     npcPickerBtn.addEventListener('click', function() {
-      npcPickerModal.style.display = 'block';
-      loadNpcPicker();
+      var visible = npcSidebar.style.display !== 'none';
+      npcSidebar.style.display = visible ? 'none' : 'block';
+      if (!visible) loadNpcSidebar();
+    });
+    npcSidebarClose.addEventListener('click', function() {
+      npcSidebar.style.display = 'none';
+    });
+    npcSidebarManage.addEventListener('click', function() {
+      document.getElementById('npc-library-modal').style.display = 'flex';
+      loadNpcLibrary();
     });
 
     // NPC Library Management
@@ -1983,10 +2224,18 @@
         var npcs = data.npcs || [];
         var cats = data.categories || [];
 
-        // Update category dropdown in form
-        var catSelect = document.getElementById('npc-form-cat');
-        catSelect.innerHTML = '<option value="">None</option>';
-        cats.forEach(function(c) { catSelect.innerHTML += '<option value="' + c.id + '">' + escHtml(c.name) + '</option>'; });
+        // Update category checkboxes in form
+        var catCheckboxes = document.getElementById('npc-form-cats');
+        if (cats.length === 0) {
+          catCheckboxes.innerHTML = '<span class="text-muted" style="font-size:0.75rem;">No categories yet</span>';
+        } else {
+          var cbHtml = '';
+          cats.forEach(function(c) {
+            cbHtml += '<label style="display:flex;align-items:center;gap:0.2rem;font-size:0.8rem;cursor:pointer;">'
+              + '<input type="checkbox" class="npc-cat-checkbox" value="' + c.id + '" style="margin:0;"> ' + escHtml(c.name) + '</label>';
+          });
+          catCheckboxes.innerHTML = cbHtml;
+        }
 
         // Update cat management list
         var catList = document.getElementById('npc-cat-list');
@@ -2005,7 +2254,7 @@
               fetch('/map/npcs/categories/' + btn.getAttribute('data-delete-cat') + '/delete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }
-              }).then(function(r) { return r.json(); }).then(function(d) { if (d.success) loadNpcLibrary(); });
+              }).then(function(r) { return r.json(); }).then(function(d) { if (d.success) { loadNpcLibrary(); loadNpcSidebar(); } });
             });
           });
         }
@@ -2021,7 +2270,8 @@
             var avatarHtml = n.avatar
               ? '<img src="' + escHtml(n.avatar) + '" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid #c0392b;">'
               : '<div style="width:28px;height:28px;border-radius:50%;background:var(--bg-darker);border:2px solid #c0392b;display:flex;align-items:center;justify-content:center;color:#e74c3c;font-size:0.75rem;font-weight:700;">' + escHtml(n.name.charAt(0).toUpperCase()) + '</div>';
-            var catLabel = n.category_id && catNames[n.category_id] ? catNames[n.category_id] : '';
+            var catLabels = (n.category_ids || []).map(function(cid) { return catNames[cid] || ''; }).filter(Boolean);
+            var catLabel = catLabels.join(', ');
             html += '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0;border-bottom:1px solid var(--border);">'
               + avatarHtml
               + '<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:0.85rem;">' + escHtml(n.name) + '</div>'
@@ -2043,7 +2293,11 @@
               document.getElementById('npc-form-id').value = npc.id;
               document.getElementById('npc-form-name').value = npc.name;
               document.getElementById('npc-form-hp').value = npc.max_hp || 0;
-              document.getElementById('npc-form-cat').value = npc.category_id || '';
+              // Set multi-category checkboxes
+              var editCatIds = npc.category_ids || (npc.category_id ? [npc.category_id] : []);
+              document.querySelectorAll('.npc-cat-checkbox').forEach(function(cb) {
+                cb.checked = editCatIds.indexOf(parseInt(cb.value)) !== -1;
+              });
               document.getElementById('npc-form-notes').value = npc.notes || '';
             });
           });
@@ -2055,7 +2309,7 @@
               fetch('/map/npcs/' + btn.getAttribute('data-delete-npc') + '/delete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }
-              }).then(function(r) { return r.json(); }).then(function(d) { if (d.success) loadNpcLibrary(); });
+              }).then(function(r) { return r.json(); }).then(function(d) { if (d.success) { loadNpcLibrary(); loadNpcSidebar(); } });
             });
           });
         }
@@ -2083,7 +2337,7 @@
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
         body: JSON.stringify({ name: name })
       }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.success) { input.value = ''; loadNpcLibrary(); }
+        if (d.success) { input.value = ''; loadNpcLibrary(); loadNpcSidebar(); }
       });
     });
 
@@ -2094,7 +2348,7 @@
       document.getElementById('npc-form-id').value = '';
       document.getElementById('npc-form-name').value = '';
       document.getElementById('npc-form-hp').value = '0';
-      document.getElementById('npc-form-cat').value = '';
+      document.querySelectorAll('.npc-cat-checkbox').forEach(function(cb) { cb.checked = false; });
       document.getElementById('npc-form-notes').value = '';
       document.getElementById('npc-form-avatar').value = '';
       document.getElementById('npc-form-source-type').value = 'custom';
@@ -2115,9 +2369,7 @@
     // NPC Source selector — uses local Vault API
     var npcCurrentSource = 'custom';
     var npcVaultApiMap = {
-      bestiary: '/vault/monsters?search=',
-      species: '/vault/races?search=',
-      classes: '/vault/classes?search='
+      bestiary: '/vault/monsters?search='
     };
     document.querySelectorAll('.npc-source-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
@@ -2169,11 +2421,6 @@
               var type = item.type || '';
               var size = item.size || '';
               notes = (size ? size + ' ' : '') + (type ? type : '') + (cr ? ' (CR ' + cr + ')' : '');
-            } else if (npcCurrentSource === 'species') {
-              notes = item.speed ? 'Speed: ' + item.speed : '';
-              if (item.traits) notes = (Array.isArray(item.traits) ? item.traits.map(function(t) { return typeof t === 'string' ? t : t.name; }).join(', ') : item.traits);
-            } else if (npcCurrentSource === 'classes') {
-              notes = item.hit_die ? 'Hit Die: ' + item.hit_die : '';
             }
             html += '<div class="npc-vault-item" style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0.4rem;border-bottom:1px solid var(--border);cursor:pointer;" data-name="' + name.replace(/"/g, '&quot;') + '" data-key="' + key + '" data-hp="' + hp + '" data-notes="' + notes.replace(/"/g, '&quot;') + '">';
             html += '<div style="flex:1;min-width:0;"><div style="font-size:0.85rem;font-weight:600;">' + name + '</div>';
@@ -2205,12 +2452,21 @@
                       var hpNum = parseInt(detail.hp);
                       if (hpNum > 0) document.getElementById('npc-form-hp').value = hpNum;
                     }
-                    // Build richer notes from detail
                     var detailNotes = [];
                     if (detail.type) detailNotes.push(detail.type);
                     if (detail.cr) detailNotes.push('CR ' + detail.cr);
                     if (detail.alignment) detailNotes.push(detail.alignment);
                     if (detailNotes.length) document.getElementById('npc-form-notes').value = detailNotes.join(' | ');
+                  }).catch(function() {});
+                // Try Open5e v2 API for avatar image
+                fetch('https://api.open5e.com/v2/creatures/?name=' + encodeURIComponent(itemName) + '&format=json')
+                  .then(function(r) { return r.json(); })
+                  .then(function(o5e) {
+                    var results = o5e.results || [];
+                    var match = results.find(function(r) { return r.name && r.name.toLowerCase() === itemName.toLowerCase(); });
+                    if (match && match.image) {
+                      document.getElementById('npc-form-avatar-preview').innerHTML = '<img src="' + match.image + '" style="max-width:60px;max-height:60px;border-radius:50%;border:2px solid var(--gold);margin-top:0.25rem;" title="Open5e image"><input type="hidden" name="avatar_url" value="' + match.image + '">';
+                    }
                   }).catch(function() {});
               }
             });
@@ -2230,6 +2486,10 @@
       var formData = new FormData(this);
       formData.append('source_type', document.getElementById('npc-form-source-type').value);
       formData.append('source_key', document.getElementById('npc-form-source-key').value);
+      // Collect checked category IDs
+      document.querySelectorAll('.npc-cat-checkbox:checked').forEach(function(cb) {
+        formData.append('category_ids', cb.value);
+      });
       var npcId = document.getElementById('npc-form-id').value;
       var url = npcId ? '/map/npcs/' + npcId + '/edit' : '/map/npcs';
       fetch(url, {
@@ -2240,6 +2500,7 @@
         if (d.success) {
           document.getElementById('npc-form-section').style.display = 'none';
           loadNpcLibrary();
+          loadNpcSidebar();
         } else {
           alert(d.error || 'Failed');
         }
@@ -2276,6 +2537,15 @@
         leafletMap.setView(ll, 1, { animate: true });
         document.getElementById('map-wrapper').scrollIntoView({ behavior: 'smooth' });
       }
+    }
+
+    var linkBtn = e.target.closest('[data-center-link]');
+    if (linkBtn) {
+      var lx = parseFloat(linkBtn.getAttribute('data-link-x')) || 50;
+      var ly = parseFloat(linkBtn.getAttribute('data-link-y')) || 50;
+      var ll = pctToLatLng(lx, ly);
+      leafletMap.setView(ll, 1, { animate: true });
+      document.getElementById('map-wrapper').scrollIntoView({ behavior: 'smooth' });
     }
   });
 
@@ -2374,7 +2644,10 @@
               npcTokensData[dataIdx] = nt;
             }
             existing.setIcon(makeNpcTokenIcon(nt));
-            bindNpcPopup(existing, nt);
+            // If popup is open, skip rebind to preserve user interaction
+            if (!existing.getPopup() || !existing.getPopup().isOpen()) {
+              bindNpcPopup(existing, nt);
+            }
           } else {
             // New NPC token — add it
             npcTokensData.push(nt);
@@ -2407,6 +2680,100 @@
           }
         }
       }).catch(function() {});
+  }
+
+  // ---- Multi-Select Tokens (DM only, Feature 6) ----
+  var selectedTokens = new Map(); // key: type+id, value: { type, id, marker, tokenData }
+
+  function getSelectionKey(type, id) { return type + '-' + id; }
+
+  function selectMarker(info) {
+    var el = info.marker.getElement();
+    if (el) el.classList.add('token-multi-selected');
+  }
+
+  function deselectMarker(info) {
+    var el = info.marker.getElement();
+    if (el) el.classList.remove('token-multi-selected');
+  }
+
+  if (isDM) {
+    // Ctrl+Click on map = deselect all
+    leafletMap.on('click', function(e) {
+      if (!e.originalEvent.ctrlKey && !e.originalEvent.metaKey) {
+        selectedTokens.forEach(function(info) { deselectMarker(info); });
+        selectedTokens.clear();
+      }
+    });
+
+    // Wrap token marker creation to add Ctrl+Click and group drag
+    function addMultiSelectToMarker(marker, type, id, tokenData) {
+      marker.on('click', function(e) {
+        if (e.originalEvent.ctrlKey || e.originalEvent.metaKey) {
+          L.DomEvent.stopPropagation(e);
+          var key = getSelectionKey(type, id);
+          if (selectedTokens.has(key)) {
+            deselectMarker(selectedTokens.get(key));
+            selectedTokens.delete(key);
+          } else {
+            var info = { type: type, id: id, marker: marker, tokenData: tokenData };
+            selectedTokens.set(key, info);
+            selectMarker(info);
+          }
+        }
+      });
+
+      marker.on('dragstart', function() {
+        // Store initial positions of all selected tokens
+        selectedTokens.forEach(function(info) {
+          info._startLatLng = info.marker.getLatLng();
+        });
+      });
+
+      marker.on('drag', function(e) {
+        var key = getSelectionKey(type, id);
+        if (!selectedTokens.has(key)) return;
+        if (selectedTokens.size <= 1) return;
+        var newLatLng = marker.getLatLng();
+        var startInfo = selectedTokens.get(key);
+        if (!startInfo._startLatLng) return;
+        var deltaLat = newLatLng.lat - startInfo._startLatLng.lat;
+        var deltaLng = newLatLng.lng - startInfo._startLatLng.lng;
+        selectedTokens.forEach(function(info, infoKey) {
+          if (infoKey === key) return;
+          if (!info._startLatLng) return;
+          var newLat = info._startLatLng.lat + deltaLat;
+          var newLng = info._startLatLng.lng + deltaLng;
+          info.marker.setLatLng([newLat, newLng]);
+        });
+      });
+
+      marker.on('dragend', function() {
+        var key = getSelectionKey(type, id);
+        if (!selectedTokens.has(key) || selectedTokens.size <= 1) return;
+        // Save positions for all selected tokens
+        selectedTokens.forEach(function(info) {
+          var pct = latLngToPct(info.marker.getLatLng());
+          var url = info.type === 'npc'
+            ? '/map/<%= map.id %>/npc-tokens/' + info.id + '/move'
+            : '/map/<%= map.id %>/tokens/' + info.id + '/move';
+          fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            body: JSON.stringify({ x: pct.x, y: pct.y })
+          });
+        });
+      });
+    }
+
+    // Attach multi-select to existing player tokens
+    tokensData.forEach(function(t) {
+      if (tokenMarkers[t.id]) addMultiSelectToMarker(tokenMarkers[t.id], 'player', t.id, t);
+    });
+    // Attach multi-select to existing NPC tokens
+    npcTokensData.forEach(function(nt) {
+      if (npcMarkers[nt.id]) addMultiSelectToMarker(npcMarkers[nt.id], 'npc', nt.id, nt);
+    });
   }
 
   } // end initMap

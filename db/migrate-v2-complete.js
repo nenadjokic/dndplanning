@@ -436,7 +436,12 @@ try {
         pin_y REAL DEFAULT 50,
         description TEXT,
         created_by INTEGER REFERENCES users(id),
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        hidden_by INTEGER REFERENCES users(id),
+        fog_enabled INTEGER DEFAULT 0,
+        fog_data TEXT,
+        fog_draft TEXT,
+        fog_explored TEXT
       )`
     },
     {
@@ -448,6 +453,7 @@ try {
         x REAL NOT NULL DEFAULT 50,
         y REAL NOT NULL DEFAULT 50,
         scale REAL NOT NULL DEFAULT 1.0,
+        vision_radius REAL DEFAULT 0,
         placed_by INTEGER NOT NULL REFERENCES users(id),
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         UNIQUE(map_id, character_id)
@@ -609,6 +615,7 @@ try {
         hp_visible INTEGER DEFAULT 1,
         hidden INTEGER DEFAULT 0,
         vision_radius REAL DEFAULT 0,
+        alignment TEXT DEFAULT 'hostile',
         placed_by INTEGER NOT NULL REFERENCES users(id),
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )`
@@ -622,6 +629,26 @@ try {
         applied_by INTEGER NOT NULL REFERENCES users(id),
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         UNIQUE(npc_map_token_id, condition_name)
+      )`
+    },
+    {
+      name: 'npc_token_categories',
+      sql: `CREATE TABLE npc_token_categories (
+        npc_token_id INTEGER NOT NULL REFERENCES npc_tokens(id) ON DELETE CASCADE,
+        category_id INTEGER NOT NULL REFERENCES npc_categories(id) ON DELETE CASCADE,
+        PRIMARY KEY(npc_token_id, category_id)
+      )`
+    },
+    {
+      name: 'map_links',
+      sql: `CREATE TABLE map_links (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source_map_id INTEGER NOT NULL REFERENCES maps(id) ON DELETE CASCADE,
+        target_map_id INTEGER NOT NULL REFERENCES maps(id) ON DELETE CASCADE,
+        pin_x REAL DEFAULT 50,
+        pin_y REAL DEFAULT 50,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(source_map_id, target_map_id)
       )`
     }
   ];
@@ -689,7 +716,8 @@ try {
     { table: 'maps', column: 'fog_data', sql: 'ALTER TABLE maps ADD COLUMN fog_data TEXT' },
     { table: 'maps', column: 'fog_draft', sql: 'ALTER TABLE maps ADD COLUMN fog_draft TEXT' },
     { table: 'maps', column: 'fog_explored', sql: 'ALTER TABLE maps ADD COLUMN fog_explored TEXT' },
-    { table: 'map_tokens', column: 'vision_radius', sql: 'ALTER TABLE map_tokens ADD COLUMN vision_radius REAL DEFAULT 0' }
+    { table: 'map_tokens', column: 'vision_radius', sql: 'ALTER TABLE map_tokens ADD COLUMN vision_radius REAL DEFAULT 0' },
+    { table: 'map_npc_tokens', column: 'alignment', sql: "ALTER TABLE map_npc_tokens ADD COLUMN alignment TEXT DEFAULT 'hostile'" }
   ];
 
   for (const col of missingColumns) {
@@ -702,6 +730,24 @@ try {
       } else {
         console.log(`✓ ${col.table}.${col.column} already exists`);
       }
+    }
+  }
+
+  // Migrate single-category NPC data to junction table
+  if (tableExists('npc_token_categories') && tableExists('npc_tokens') && columnExists('npc_tokens', 'category_id')) {
+    const npcsWithCat = db.prepare("SELECT id, category_id FROM npc_tokens WHERE category_id IS NOT NULL").all();
+    let migratedCats = 0;
+    for (const n of npcsWithCat) {
+      try {
+        db.prepare("INSERT OR IGNORE INTO npc_token_categories (npc_token_id, category_id) VALUES (?, ?)").run(n.id, n.category_id);
+        migratedCats++;
+      } catch (e) { /* ignore */ }
+    }
+    if (migratedCats > 0) {
+      console.log(`✅ Migrated ${migratedCats} NPC category assignments to junction table`);
+      changesMade++;
+    } else {
+      console.log('✓ NPC category junction data already migrated');
     }
   }
 

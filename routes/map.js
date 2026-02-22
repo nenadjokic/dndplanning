@@ -134,6 +134,12 @@ router.get('/npcs', requireLogin, requireDM, (req, res) => {
   const npcs = db.prepare('SELECT * FROM npc_tokens ORDER BY name').all();
   for (const n of npcs) {
     if (n.avatar && !n.avatar.startsWith('/')) n.avatar = '/avatars/' + n.avatar;
+    // Fetch multi-category assignments
+    try {
+      n.category_ids = db.prepare('SELECT category_id FROM npc_token_categories WHERE npc_token_id = ?').all(n.id).map(r => r.category_id);
+    } catch (e) {
+      n.category_ids = n.category_id ? [n.category_id] : [];
+    }
   }
   res.json({ categories, npcs });
 });
@@ -151,6 +157,7 @@ router.post('/npcs/categories/:catId/delete', requireLogin, requireDM, express.j
   const cat = db.prepare('SELECT id FROM npc_categories WHERE id = ?').get(req.params.catId);
   if (!cat) return res.status(404).json({ error: 'Category not found' });
   db.prepare('UPDATE npc_tokens SET category_id = NULL WHERE category_id = ?').run(cat.id);
+  try { db.prepare('DELETE FROM npc_token_categories WHERE category_id = ?').run(cat.id); } catch (e) {}
   db.prepare('DELETE FROM npc_categories WHERE id = ?').run(cat.id);
   res.json({ success: true });
 });
@@ -176,7 +183,16 @@ router.post('/npcs', requireLogin, requireDM, async (req, res) => {
         INSERT INTO npc_tokens (name, avatar, source_type, source_key, category_id, max_hp, current_hp, notes, created_by)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(name, avatarFile, sourceType, sourceKey, categoryId, maxHp, maxHp, notes, req.user.id);
-      const npc = db.prepare('SELECT * FROM npc_tokens WHERE id = ?').get(result.lastInsertRowid);
+      const npcId = result.lastInsertRowid;
+      // Multi-category support
+      const categoryIds = req.body.category_ids ? (Array.isArray(req.body.category_ids) ? req.body.category_ids : [req.body.category_ids]) : (categoryId ? [categoryId] : []);
+      for (const cid of categoryIds) {
+        const cidNum = parseInt(cid);
+        if (cidNum) {
+          try { db.prepare('INSERT OR IGNORE INTO npc_token_categories (npc_token_id, category_id) VALUES (?, ?)').run(npcId, cidNum); } catch (e) {}
+        }
+      }
+      const npc = db.prepare('SELECT * FROM npc_tokens WHERE id = ?').get(npcId);
       if (npc.avatar && !npc.avatar.startsWith('/')) npc.avatar = '/avatars/' + npc.avatar;
       res.json({ success: true, npc });
     } catch (e) {
@@ -201,6 +217,17 @@ router.post('/npcs/:npcId/edit', requireLogin, requireDM, (req, res) => {
     if (maxHp > 0) {
       db.prepare('UPDATE npc_tokens SET current_hp = MIN(current_hp, ?) WHERE id = ?').run(maxHp, npc.id);
     }
+    // Multi-category support
+    const categoryIds = req.body.category_ids ? (Array.isArray(req.body.category_ids) ? req.body.category_ids : [req.body.category_ids]) : (categoryId ? [categoryId] : []);
+    try {
+      db.prepare('DELETE FROM npc_token_categories WHERE npc_token_id = ?').run(npc.id);
+      for (const cid of categoryIds) {
+        const cidNum = parseInt(cid);
+        if (cidNum) {
+          db.prepare('INSERT OR IGNORE INTO npc_token_categories (npc_token_id, category_id) VALUES (?, ?)').run(npc.id, cidNum);
+        }
+      }
+    } catch (e) {}
     const updated = db.prepare('SELECT * FROM npc_tokens WHERE id = ?').get(npc.id);
     if (updated.avatar && !updated.avatar.startsWith('/')) updated.avatar = '/avatars/' + updated.avatar;
     res.json({ success: true, npc: updated });
@@ -216,6 +243,7 @@ router.post('/npcs/:npcId/delete', requireLogin, requireDM, express.json(), (req
     db.prepare('DELETE FROM npc_token_conditions WHERE npc_map_token_id = ?').run(p.id);
   }
   db.prepare('DELETE FROM map_npc_tokens WHERE npc_token_id = ?').run(npc.id);
+  try { db.prepare('DELETE FROM npc_token_categories WHERE npc_token_id = ?').run(npc.id); } catch (e) {}
   db.prepare('DELETE FROM npc_tokens WHERE id = ?').run(npc.id);
   if (npc.avatar) {
     const avatarPath = path.join(npcAvatarDir, npc.avatar);
@@ -290,7 +318,7 @@ router.get('/:id', requireLogin, (req, res) => {
   // NPC tokens on this map
   const npcTokens = db.prepare(`
     SELECT mnt.id, mnt.map_id, mnt.npc_token_id, mnt.x, mnt.y, mnt.scale, mnt.current_hp,
-           mnt.hp_visible, mnt.hidden, mnt.vision_radius,
+           mnt.hp_visible, mnt.hidden, mnt.vision_radius, mnt.alignment,
            n.name AS npc_name, n.avatar AS npc_avatar, n.max_hp, n.source_type
     FROM map_npc_tokens mnt
     JOIN npc_tokens n ON n.id = mnt.npc_token_id
@@ -322,7 +350,20 @@ router.get('/:id', requireLogin, (req, res) => {
     nt.conditions = npcCondByToken[nt.id] || [];
   }
 
-  res.render('map', { map, locations, isDM, isAdmin, chain, children, tokens, npcTokens, showPartyMarker, canAddChild, MARKER_TYPES, currentUserId: req.user.id });
+  // Map links (non-hierarchical hyperlinks)
+  let mapLinks = [];
+  try {
+    mapLinks = db.prepare(`
+      SELECT ml.id, ml.target_map_id, ml.pin_x, ml.pin_y,
+             m.name, m.description, m.map_type, m.image_path
+      FROM map_links ml
+      JOIN maps m ON m.id = ml.target_map_id
+      WHERE ml.source_map_id = ?
+      ORDER BY m.name
+    `).all(map.id);
+  } catch (e) { /* table may not exist yet */ }
+
+  res.render('map', { map, locations, isDM, isAdmin, chain, children, tokens, npcTokens, showPartyMarker, canAddChild, MARKER_TYPES, currentUserId: req.user.id, mapLinks });
 });
 
 // Upload map image
@@ -514,7 +555,7 @@ router.get('/:id/token-state', requireLogin, (req, res) => {
   }
   // NPC tokens
   let npcTokens = db.prepare(`
-    SELECT mnt.id, mnt.npc_token_id, mnt.x, mnt.y, mnt.scale, mnt.current_hp, mnt.hp_visible, mnt.hidden,
+    SELECT mnt.id, mnt.npc_token_id, mnt.x, mnt.y, mnt.scale, mnt.current_hp, mnt.hp_visible, mnt.hidden, mnt.alignment,
            n.name AS npc_name, n.avatar AS npc_avatar, n.max_hp, n.source_type
     FROM map_npc_tokens mnt
     JOIN npc_tokens n ON n.id = mnt.npc_token_id
@@ -605,13 +646,18 @@ router.post('/:id/tokens/:tokenId/resize', requireLogin, requireDM, express.json
   res.json({ success: true, scale });
 });
 
-// Resize all tokens on map
+// Resize all tokens on map (delta-based offset)
 router.post('/:id/tokens/resize-all', requireLogin, requireDM, express.json(), (req, res) => {
   const map = db.prepare('SELECT id FROM maps WHERE id = ?').get(req.params.id);
   if (!map) return res.status(404).json({ error: 'Map not found' });
-  const scale = Math.max(0.5, Math.min(3.0, parseFloat(req.body.scale) || 1.0));
-  db.prepare('UPDATE map_tokens SET scale = ? WHERE map_id = ?').run(scale, map.id);
-  res.json({ success: true, scale });
+  const delta = parseFloat(req.body.delta);
+  if (isNaN(delta)) return res.status(400).json({ error: 'Delta required' });
+  // Apply delta to all player tokens, clamped to 0.3-3.0
+  db.prepare('UPDATE map_tokens SET scale = MIN(3.0, MAX(0.3, scale + ?)) WHERE map_id = ?').run(delta, map.id);
+  // Apply delta to all NPC tokens too
+  db.prepare('UPDATE map_npc_tokens SET scale = MIN(3.0, MAX(0.3, scale + ?)) WHERE map_id = ?').run(delta, map.id);
+  sse.broadcast('map-update', { mapId: map.id, action: 'resize-all' });
+  res.json({ success: true });
 });
 
 // Add condition to token
@@ -776,8 +822,8 @@ router.post('/:id/npc-tokens', requireLogin, requireDM, express.json(), (req, re
   if (!npc) return res.status(404).json({ error: 'NPC not found' });
   const px = Math.max(0, Math.min(100, parseFloat(req.body.x) || 50));
   const py = Math.max(0, Math.min(100, parseFloat(req.body.y) || 50));
-  const result = db.prepare('INSERT INTO map_npc_tokens (map_id, npc_token_id, x, y, current_hp, hp_visible, placed_by) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .run(map.id, npc.id, px, py, npc.current_hp, npc.hp_visible, req.user.id);
+  const result = db.prepare('INSERT INTO map_npc_tokens (map_id, npc_token_id, x, y, current_hp, hp_visible, alignment, placed_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(map.id, npc.id, px, py, npc.current_hp, npc.hp_visible, 'hostile', req.user.id);
   sse.broadcast('map-update', { mapId: map.id, action: 'npc-place', ntId: result.lastInsertRowid });
   res.json({ success: true, id: result.lastInsertRowid });
 });
@@ -851,6 +897,17 @@ router.post('/:id/npc-tokens/:ntId/toggle-hidden', requireLogin, requireDM, expr
   res.json({ success: true, hidden: newVal });
 });
 
+// Set NPC alignment (hostile/friendly/neutral)
+router.post('/:id/npc-tokens/:ntId/alignment', requireLogin, requireDM, express.json(), (req, res) => {
+  const nt = db.prepare('SELECT id FROM map_npc_tokens WHERE id = ? AND map_id = ?').get(req.params.ntId, req.params.id);
+  if (!nt) return res.status(404).json({ error: 'NPC token not found' });
+  const valid = ['hostile', 'friendly', 'neutral'];
+  const alignment = valid.includes(req.body.alignment) ? req.body.alignment : 'hostile';
+  db.prepare('UPDATE map_npc_tokens SET alignment = ? WHERE id = ?').run(alignment, nt.id);
+  sse.broadcast('map-update', { mapId: parseInt(req.params.id), action: 'npc-update', ntId: nt.id });
+  res.json({ success: true, alignment });
+});
+
 // Add condition to NPC map token
 router.post('/:id/npc-tokens/:ntId/conditions', requireLogin, requireDM, express.json(), (req, res) => {
   const nt = db.prepare('SELECT id FROM map_npc_tokens WHERE id = ? AND map_id = ?').get(req.params.ntId, req.params.id);
@@ -898,14 +955,12 @@ router.post('/:id/npc-tokens/:ntId/vision', requireLogin, requireDM, express.jso
   res.json({ success: true, vision_radius: radius });
 });
 
-// Get standalone maps (no parent, no children) for linking
+// Get linkable maps (all maps except current) for linking
 router.get('/:id/standalone-maps', requireLogin, requireDM, (req, res) => {
   const currentId = parseInt(req.params.id);
   const maps = db.prepare(`
     SELECT m.id, m.name, m.map_type FROM maps m
-    WHERE m.parent_id IS NULL
-      AND m.id != ?
-      AND m.id NOT IN (SELECT DISTINCT parent_id FROM maps WHERE parent_id IS NOT NULL)
+    WHERE m.id != ?
     ORDER BY m.name
   `).all(currentId);
   res.json({ maps });
@@ -913,22 +968,40 @@ router.get('/:id/standalone-maps', requireLogin, requireDM, (req, res) => {
 
 // Link existing map as sub-map
 router.post('/:id/link-existing', requireLogin, requireDM, express.json(), (req, res) => {
-  const parent = db.prepare('SELECT id FROM maps WHERE id = ?').get(req.params.id);
-  if (!parent) return res.status(404).json({ error: 'Parent map not found' });
-  const parentDepth = getMapDepth(parent.id);
-  if (parentDepth >= 2) return res.status(400).json({ error: 'Maximum depth reached' });
+  const source = db.prepare('SELECT id FROM maps WHERE id = ?').get(req.params.id);
+  if (!source) return res.status(404).json({ error: 'Source map not found' });
 
   const targetId = parseInt(req.body.map_id);
   if (!targetId) return res.status(400).json({ error: 'Map ID required' });
+  if (targetId === source.id) return res.status(400).json({ error: 'Cannot link to self' });
   const target = db.prepare('SELECT * FROM maps WHERE id = ?').get(targetId);
   if (!target) return res.status(404).json({ error: 'Target map not found' });
-  if (target.parent_id) return res.status(400).json({ error: 'Map already has a parent' });
-  const hasChildren = db.prepare('SELECT id FROM maps WHERE parent_id = ?').get(targetId);
-  if (hasChildren) return res.status(400).json({ error: 'Map has children, cannot link' });
 
   const px = Math.max(0, Math.min(100, parseFloat(req.body.pin_x) || 50));
   const py = Math.max(0, Math.min(100, parseFloat(req.body.pin_y) || 50));
-  db.prepare('UPDATE maps SET parent_id = ?, pin_x = ?, pin_y = ? WHERE id = ?').run(parent.id, px, py, targetId);
+  try {
+    db.prepare('INSERT OR REPLACE INTO map_links (source_map_id, target_map_id, pin_x, pin_y) VALUES (?, ?, ?, ?)').run(source.id, targetId, px, py);
+  } catch (e) {
+    return res.status(400).json({ error: 'Link already exists' });
+  }
+  res.json({ success: true });
+});
+
+// Move a map link pin
+router.post('/:id/links/:linkId/pin', requireLogin, requireDM, express.json(), (req, res) => {
+  const link = db.prepare('SELECT * FROM map_links WHERE id = ? AND source_map_id = ?').get(req.params.linkId, req.params.id);
+  if (!link) return res.status(404).json({ error: 'Link not found' });
+  const px = Math.max(0, Math.min(100, parseFloat(req.body.x) || 50));
+  const py = Math.max(0, Math.min(100, parseFloat(req.body.y) || 50));
+  db.prepare('UPDATE map_links SET pin_x = ?, pin_y = ? WHERE id = ?').run(px, py, link.id);
+  res.json({ success: true });
+});
+
+// Delete a map link
+router.post('/:id/links/:linkId/delete', requireLogin, requireDM, express.json(), (req, res) => {
+  const link = db.prepare('SELECT * FROM map_links WHERE id = ? AND source_map_id = ?').get(req.params.linkId, req.params.id);
+  if (!link) return res.status(404).json({ error: 'Link not found' });
+  db.prepare('DELETE FROM map_links WHERE id = ?').run(link.id);
   res.json({ success: true });
 });
 
@@ -986,7 +1059,16 @@ router.post('/:id/delete', requireLogin, requireDM, (req, res) => {
       db.prepare('DELETE FROM npc_token_conditions WHERE npc_map_token_id = ?').run(nt.id);
     }
     db.prepare('DELETE FROM map_npc_tokens WHERE map_id = ?').run(mapId);
+    // Clean up token conditions
+    const playerTokenIds = db.prepare('SELECT id FROM map_tokens WHERE map_id = ?').all(mapId);
+    for (const pt of playerTokenIds) {
+      db.prepare('DELETE FROM token_conditions WHERE token_id = ?').run(pt.id);
+    }
     db.prepare('DELETE FROM map_tokens WHERE map_id = ?').run(mapId);
+    // Clean up map links
+    try {
+      db.prepare('DELETE FROM map_links WHERE source_map_id = ? OR target_map_id = ?').run(mapId, mapId);
+    } catch (e) { /* table may not exist */ }
     const m = db.prepare('SELECT image_path FROM maps WHERE id = ?').get(mapId);
     db.prepare('DELETE FROM maps WHERE id = ?').run(mapId);
     if (m && m.image_path) {

@@ -1,6 +1,6 @@
-# Quest Planner v2.0.8 — D&D Session Scheduler
+# Quest Planner v2.0.9 — D&D Session Scheduler
 
-> **Latest release:** v2.0.8 (2026-02-22)
+> **Latest release:** v2.0.9 (2026-02-22)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -809,6 +809,41 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v2.0.9 (2026-02-22) 🗺️ NPC Sidebar, Alignment & Map Links
+
+**NPC Sidebar & Drag-to-Place:**
+- **📋 NPC Sidebar** — Persistent sidebar overlay replaces the NPC picker modal; browse NPCs by category with search filter
+- **🖱️ Click-to-Place** — Click any NPC in the sidebar to place it on the map at center position
+- **🔄 Auto-Refresh** — Sidebar auto-updates after creating, editing, or deleting NPCs in the library
+
+**NPC Alignment System:**
+- **⚔️ Hostile/Friendly/Neutral** — Per-NPC alignment selector with colored borders (red/green/white) visible to all players
+- **🎨 Real-Time Borders** — Alignment changes broadcast instantly via SSE
+
+**Multi-Category NPCs:**
+- **☑️ Checkbox Categories** — NPCs can belong to multiple categories via checkboxes instead of a single dropdown
+- **📂 Junction Table** — New `npc_token_categories` table for many-to-many NPC-category relationships
+
+**Map Links (Hyperlinks):**
+- **🔗 Non-Hierarchical Links** — Link any map to any other map without parent-child restrictions
+- **📌 Link Pins** — Draggable link pins on the map with click-to-navigate
+- **🗂️ All Maps Available** — Link Existing tab shows all maps, not just standalone ones
+
+**Scale & Token Improvements:**
+- **➕➖ Global Scale Offset** — +/- buttons apply relative scale offset to ALL tokens (player + NPC) without resetting individual sizes
+- **🎯 Fog Brush Cursor** — Semi-transparent colored circle shows brush size and mode (green=reveal, red=hide)
+- **✅ Multi-Select Tokens** — Ctrl+Click to select multiple tokens; drag one to move all in formation (DM only)
+
+**Open5e Integration:**
+- **🖼️ Auto-Fetch Avatars** — Creating NPCs from Bestiary auto-downloads monster images from Open5e API
+
+**Bug Fixes:**
+- **❤️ HP Real-Time Updates** — HP changes, Hide HP, Hide/Reveal, and conditions now update in real-time without closing the popup
+- **🔒 DM Always Sees HP** — Hide HP toggle only affects player visibility; DM always sees HP values
+- **🧹 Removed Races/Classes** — NPC source picker simplified to Custom + Bestiary only
+
+---
 
 ### v2.0.8 (2026-02-22) 🗺️ NPC Tokens, Fog of War & Real-Time Maps
 
