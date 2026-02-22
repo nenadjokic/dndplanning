@@ -552,6 +552,7 @@ router.get('/:id/token-state', requireLogin, (req, res) => {
   `).all(map.id);
   for (const t of tokens) {
     if (t.char_avatar && !t.char_avatar.startsWith('/')) t.char_avatar = '/avatars/' + t.char_avatar;
+    t.conditions = db.prepare('SELECT id, condition_name FROM token_conditions WHERE token_id = ?').all(t.id);
   }
   // NPC tokens
   let npcTokens = db.prepare(`
@@ -668,6 +669,7 @@ router.post('/:id/tokens/:tokenId/conditions', requireLogin, requireDM, express.
   if (!name) return res.status(400).json({ error: 'Condition name required' });
   try {
     const result = db.prepare('INSERT INTO token_conditions (token_id, condition_name, applied_by) VALUES (?, ?, ?)').run(token.id, name, req.user.id);
+    sse.broadcast('map-update', { mapId: parseInt(req.params.id), action: 'token-update' });
     res.json({ success: true, conditionId: result.lastInsertRowid, condition_name: name });
   } catch (e) {
     if (e.message.includes('UNIQUE')) return res.status(409).json({ error: 'Condition already applied' });
@@ -684,6 +686,7 @@ router.post('/:id/tokens/:tokenId/conditions/:condId/delete', requireLogin, requ
   `).get(req.params.condId, req.params.tokenId, req.params.id);
   if (!cond) return res.status(404).json({ error: 'Condition not found' });
   db.prepare('DELETE FROM token_conditions WHERE id = ?').run(cond.id);
+  sse.broadcast('map-update', { mapId: parseInt(req.params.id), action: 'token-update' });
   res.json({ success: true });
 });
 

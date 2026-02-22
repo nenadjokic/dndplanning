@@ -1,6 +1,6 @@
-# Quest Planner v2.0.10 — D&D Session Scheduler
+# Quest Planner v2.0.11 — D&D Session Scheduler
 
-> **Latest release:** v2.0.10 (2026-02-22)
+> **Latest release:** v2.0.11 (2026-02-23)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -808,6 +808,15 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v2.0.11 (2026-02-23) 🗺️ Live Conditions, FoW Touch & Zoom Fix
+
+**Bug Fixes:**
+- **📡 Conditions Live Sync** — Player token conditions (add/remove) now broadcast via SSE; other players see changes instantly without refresh
+- **📱 FoW Touch Drawing** — Fog of War brush now works on touch devices (tablets/phones); touch events prevent map scroll while painting
+- **🔍 FoW Zoom Sync** — Fog canvas now follows the map smoothly during pinch-zoom on mobile and scroll-zoom on desktop (no more fog staying fixed during zoom)
+
+---
 
 ### v2.0.10 (2026-02-22) 🗺️ NPC Library UI Fix
 

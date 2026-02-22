@@ -1386,6 +1386,7 @@
       this._map = map;
       this._el = document.createElement('canvas');
       this._el.className = 'fog-overlay-canvas';
+      L.DomUtil.addClass(this._el, 'leaflet-zoom-animated');
       this._el.style.position = 'absolute';
       this._el.style.transformOrigin = '0 0';
       // Fixed canvas size — never changes during zoom
@@ -1396,13 +1397,48 @@
       map.on('zoomanim', this._onZoomAnim, this);
       map.on('zoomend viewreset moveend', this._updatePosition, this);
       this._updatePosition();
+      // Mobile pinch-zoom: update fog position every frame via touchmove
+      // zoomanim + CSS transition works for desktop but lags on mobile pinch
+      this._pinchActive = false;
+      this._onTouchStart = L.Util.bind(function(e) {
+        if (e.touches.length >= 2) this._pinchActive = true;
+      }, this);
+      this._onTouchMove = L.Util.bind(function() {
+        if (!this._pinchActive || !this._map._animatingZoom) return;
+        // Read current pane transform and apply matching position directly
+        var pane = this._map._mapPane;
+        var paneTransform = pane.style.transform || pane.style.webkitTransform || '';
+        if (paneTransform) {
+          // During pinch, Leaflet transforms _mapPane; fog canvas inherits that.
+          // We need to update our own transform to match the current zoom target.
+          // Use _animateToCenter/_animateToZoom which Leaflet sets during touch zoom.
+          var zoom = this._map._animateToZoom;
+          var center = this._map._animateToCenter;
+          if (zoom !== undefined && center) {
+            var topLeft = this._map._latLngToNewLayerPoint(fogBoundsNW, zoom, center);
+            var bottomRight = this._map._latLngToNewLayerPoint(fogBoundsSE, zoom, center);
+            var scaleX = (bottomRight.x - topLeft.x) / this._el.width;
+            // Bypass CSS transition by setting transform directly on the style
+            this._el.style.transform = 'translate3d(' + topLeft.x + 'px,' + topLeft.y + 'px,0) scale(' + scaleX + ')';
+          }
+        }
+      }, this);
+      this._onTouchEnd = L.Util.bind(function(e) {
+        if (e.touches.length < 2) this._pinchActive = false;
+      }, this);
+      map.getContainer().addEventListener('touchstart', this._onTouchStart, { passive: true });
+      map.getContainer().addEventListener('touchmove', this._onTouchMove, { passive: true });
+      document.addEventListener('touchend', this._onTouchEnd);
     },
     onRemove: function(map) {
       if (this._el && this._el.parentNode) this._el.parentNode.removeChild(this._el);
       map.off('zoomanim', this._onZoomAnim, this);
       map.off('zoomend viewreset moveend', this._updatePosition, this);
+      map.getContainer().removeEventListener('touchstart', this._onTouchStart);
+      map.getContainer().removeEventListener('touchmove', this._onTouchMove);
+      document.removeEventListener('touchend', this._onTouchEnd);
     },
-    // During zoom animation — CSS transform only (instant, no flash)
+    // During zoom animation — CSS transform only (desktop scroll wheel)
     _onZoomAnim: function(ev) {
       var topLeft = this._map._latLngToNewLayerPoint(fogBoundsNW, ev.zoom, ev.center);
       var bottomRight = this._map._latLngToNewLayerPoint(fogBoundsSE, ev.zoom, ev.center);
@@ -1611,6 +1647,29 @@
       fogBrushCursor.style.display = 'none';
     });
     document.addEventListener('mouseup', function() {
+      if (fogDrawing) {
+        fogDrawing = false;
+        leafletMap.dragging.enable();
+      }
+    });
+
+    // Touch events for FoW drawing on mobile/tablet
+    mapContainer.addEventListener('touchstart', function(e) {
+      if (!fogEnabled || fogToolbar.style.display === 'none') return;
+      if (!showBrushCursor()) return;
+      e.preventDefault();
+      fogDrawing = true;
+      leafletMap.dragging.disable();
+      var touch = e.touches[0];
+      fogBrushAt({ clientX: touch.clientX, clientY: touch.clientY });
+    }, { passive: false });
+    mapContainer.addEventListener('touchmove', function(e) {
+      if (!fogDrawing) return;
+      e.preventDefault();
+      var touch = e.touches[0];
+      fogBrushAt({ clientX: touch.clientX, clientY: touch.clientY });
+    }, { passive: false });
+    document.addEventListener('touchend', function() {
       if (fogDrawing) {
         fogDrawing = false;
         leafletMap.dragging.enable();
@@ -2624,6 +2683,7 @@
                 tokensData[i].scale = t.scale;
                 tokensData[i].char_name = t.char_name;
                 tokensData[i].char_avatar = t.char_avatar;
+                tokensData[i].conditions = t.conditions || [];
                 existing.setIcon(makeTokenIcon(tokensData[i]));
                 break;
               }
@@ -2631,7 +2691,7 @@
           } else {
             // New token — add it
             var token = { id: t.id, character_id: t.character_id, x: t.x, y: t.y, scale: t.scale,
-              char_name: t.char_name, char_avatar: t.char_avatar, char_user_id: t.char_user_id };
+              char_name: t.char_name, char_avatar: t.char_avatar, char_user_id: t.char_user_id, conditions: t.conditions || [] };
             tokensData.push(token);
             var ll = pctToLatLng(t.x, t.y);
             var draggable = isDM || (t.char_user_id === currentUserId);
