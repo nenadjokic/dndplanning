@@ -84,9 +84,19 @@ router.post('/users/:id/delete', requireLogin, requireAdmin, (req, res) => {
     safeDelete('DELETE FROM map_tokens WHERE character_id IN (SELECT id FROM characters WHERE user_id = ?)', targetId);
     // Delete map locations created by this user
     safeDelete('DELETE FROM map_locations WHERE created_by = ?', targetId);
+    // Delete NPC token conditions + map placements for maps by this user
+    safeDelete('DELETE FROM npc_token_conditions WHERE npc_map_token_id IN (SELECT id FROM map_npc_tokens WHERE map_id IN (SELECT id FROM maps WHERE created_by = ?))', targetId);
+    safeDelete('DELETE FROM map_npc_tokens WHERE map_id IN (SELECT id FROM maps WHERE created_by = ?)', targetId);
+    safeDelete('DELETE FROM map_npc_tokens WHERE placed_by = ?', targetId);
+    // Delete NPC tokens created by this user
+    safeDelete('DELETE FROM npc_token_conditions WHERE npc_map_token_id IN (SELECT id FROM map_npc_tokens WHERE npc_token_id IN (SELECT id FROM npc_tokens WHERE created_by = ?))', targetId);
+    safeDelete('DELETE FROM map_npc_tokens WHERE npc_token_id IN (SELECT id FROM npc_tokens WHERE created_by = ?)', targetId);
+    safeDelete('DELETE FROM npc_tokens WHERE created_by = ?', targetId);
+    safeDelete('DELETE FROM npc_categories WHERE created_by = ?', targetId);
     // Delete maps created by this user (handle children first)
     safeDelete('DELETE FROM map_tokens WHERE map_id IN (SELECT id FROM maps WHERE created_by = ?)', targetId);
     safeDelete('UPDATE maps SET parent_id = NULL WHERE parent_id IN (SELECT id FROM maps WHERE created_by = ?)', targetId);
+    safeDelete('UPDATE maps SET hidden_by = NULL WHERE hidden_by = ?', targetId);
     safeDelete('DELETE FROM maps WHERE created_by = ?', targetId);
     // Delete votes by this user
     db.prepare('DELETE FROM votes WHERE user_id = ?').run(targetId);

@@ -141,13 +141,18 @@ for (const sql of [
 // Fix legacy icon default 'marker' → 'pin'
 try { db.prepare("UPDATE map_locations SET icon = 'pin' WHERE icon = 'marker'").run(); } catch (e) { /* ignore */ }
 
-// Map hierarchy columns (idempotent)
+// Map hierarchy + hidden + fog columns (idempotent)
 for (const sql of [
   "ALTER TABLE maps ADD COLUMN parent_id INTEGER REFERENCES maps(id)",
   "ALTER TABLE maps ADD COLUMN map_type TEXT NOT NULL DEFAULT 'overworld'",
   "ALTER TABLE maps ADD COLUMN pin_x REAL DEFAULT 50",
   "ALTER TABLE maps ADD COLUMN pin_y REAL DEFAULT 50",
-  "ALTER TABLE maps ADD COLUMN description TEXT"
+  "ALTER TABLE maps ADD COLUMN description TEXT",
+  "ALTER TABLE maps ADD COLUMN hidden_by INTEGER REFERENCES users(id)",
+  "ALTER TABLE maps ADD COLUMN fog_enabled INTEGER DEFAULT 0",
+  "ALTER TABLE maps ADD COLUMN fog_data TEXT",
+  "ALTER TABLE maps ADD COLUMN fog_draft TEXT",
+  "ALTER TABLE maps ADD COLUMN fog_explored TEXT"
 ]) {
   try { db.exec(sql); } catch (e) { /* already exists */ }
 }
@@ -166,8 +171,9 @@ db.exec(`
   );
 `);
 
-// Token scale column (idempotent)
+// Token scale + vision columns (idempotent)
 try { db.exec("ALTER TABLE map_tokens ADD COLUMN scale REAL NOT NULL DEFAULT 1.0"); } catch (e) { /* already exists */ }
+try { db.exec("ALTER TABLE map_tokens ADD COLUMN vision_radius REAL DEFAULT 0"); } catch (e) { /* already exists */ }
 
 // Token conditions table
 db.exec(`
@@ -178,6 +184,56 @@ db.exec(`
     applied_by INTEGER NOT NULL REFERENCES users(id),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE(token_id, condition_name)
+  );
+`);
+
+// NPC token system tables
+db.exec(`
+  CREATE TABLE IF NOT EXISTS npc_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS npc_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    avatar TEXT,
+    source_type TEXT DEFAULT 'custom',
+    source_key TEXT,
+    category_id INTEGER REFERENCES npc_categories(id),
+    max_hp INTEGER DEFAULT 0,
+    current_hp INTEGER DEFAULT 0,
+    hp_visible INTEGER DEFAULT 1,
+    hidden INTEGER DEFAULT 0,
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS map_npc_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    map_id INTEGER NOT NULL REFERENCES maps(id),
+    npc_token_id INTEGER NOT NULL REFERENCES npc_tokens(id),
+    x REAL NOT NULL DEFAULT 50,
+    y REAL NOT NULL DEFAULT 50,
+    scale REAL DEFAULT 1.0,
+    current_hp INTEGER,
+    hp_visible INTEGER DEFAULT 1,
+    hidden INTEGER DEFAULT 0,
+    vision_radius REAL DEFAULT 0,
+    placed_by INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS npc_token_conditions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    npc_map_token_id INTEGER NOT NULL REFERENCES map_npc_tokens(id) ON DELETE CASCADE,
+    condition_name TEXT NOT NULL,
+    applied_by INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(npc_map_token_id, condition_name)
   );
 `);
 

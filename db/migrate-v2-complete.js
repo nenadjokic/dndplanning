@@ -568,6 +568,61 @@ try {
         enabled INTEGER NOT NULL DEFAULT 1,
         UNIQUE(user_id, notif_type)
       )`
+    },
+    {
+      name: 'npc_categories',
+      sql: `CREATE TABLE npc_categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        created_by INTEGER REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`
+    },
+    {
+      name: 'npc_tokens',
+      sql: `CREATE TABLE npc_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        avatar TEXT,
+        source_type TEXT DEFAULT 'custom',
+        source_key TEXT,
+        category_id INTEGER REFERENCES npc_categories(id),
+        max_hp INTEGER DEFAULT 0,
+        current_hp INTEGER DEFAULT 0,
+        hp_visible INTEGER DEFAULT 1,
+        hidden INTEGER DEFAULT 0,
+        notes TEXT,
+        created_by INTEGER REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`
+    },
+    {
+      name: 'map_npc_tokens',
+      sql: `CREATE TABLE map_npc_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        map_id INTEGER NOT NULL REFERENCES maps(id),
+        npc_token_id INTEGER NOT NULL REFERENCES npc_tokens(id),
+        x REAL NOT NULL DEFAULT 50,
+        y REAL NOT NULL DEFAULT 50,
+        scale REAL DEFAULT 1.0,
+        current_hp INTEGER,
+        hp_visible INTEGER DEFAULT 1,
+        hidden INTEGER DEFAULT 0,
+        vision_radius REAL DEFAULT 0,
+        placed_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`
+    },
+    {
+      name: 'npc_token_conditions',
+      sql: `CREATE TABLE npc_token_conditions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        npc_map_token_id INTEGER NOT NULL REFERENCES map_npc_tokens(id) ON DELETE CASCADE,
+        condition_name TEXT NOT NULL,
+        applied_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(npc_map_token_id, condition_name)
+      )`
     }
   ];
 
@@ -628,7 +683,13 @@ try {
     { table: 'dnd_data_meta', column: 'background_count', sql: 'ALTER TABLE dnd_data_meta ADD COLUMN background_count INTEGER DEFAULT 0' },
     { table: 'dnd_data_meta', column: 'monster_count', sql: 'ALTER TABLE dnd_data_meta ADD COLUMN monster_count INTEGER DEFAULT 0' },
     { table: 'dnd_data_meta', column: 'condition_count', sql: 'ALTER TABLE dnd_data_meta ADD COLUMN condition_count INTEGER DEFAULT 0' },
-    { table: 'dnd_data_meta', column: 'rule_count', sql: 'ALTER TABLE dnd_data_meta ADD COLUMN rule_count INTEGER DEFAULT 0' }
+    { table: 'dnd_data_meta', column: 'rule_count', sql: 'ALTER TABLE dnd_data_meta ADD COLUMN rule_count INTEGER DEFAULT 0' },
+    { table: 'maps', column: 'hidden_by', sql: 'ALTER TABLE maps ADD COLUMN hidden_by INTEGER REFERENCES users(id)' },
+    { table: 'maps', column: 'fog_enabled', sql: 'ALTER TABLE maps ADD COLUMN fog_enabled INTEGER DEFAULT 0' },
+    { table: 'maps', column: 'fog_data', sql: 'ALTER TABLE maps ADD COLUMN fog_data TEXT' },
+    { table: 'maps', column: 'fog_draft', sql: 'ALTER TABLE maps ADD COLUMN fog_draft TEXT' },
+    { table: 'maps', column: 'fog_explored', sql: 'ALTER TABLE maps ADD COLUMN fog_explored TEXT' },
+    { table: 'map_tokens', column: 'vision_radius', sql: 'ALTER TABLE map_tokens ADD COLUMN vision_radius REAL DEFAULT 0' }
   ];
 
   for (const col of missingColumns) {

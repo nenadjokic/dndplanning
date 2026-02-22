@@ -31,22 +31,28 @@
       <div class="welcome-modal whatsnew-modal">
         <h2>What's New in v<%= appVersion %> 🗺️</h2>
         <div class="whatsnew-content">
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Resizable Tokens</h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">NPC Token System</h3>
           <ul class="whatsnew-list">
-            <li><strong>🔍 Per-Token Scaling</strong> &mdash; Click any token to resize it with a slider (0.5x&ndash;3x); labels stay readable at any size</li>
-            <li><strong>📐 Scale All Panel</strong> &mdash; DM toolbar button to resize all tokens on the map at once with a global slider</li>
+            <li><strong>👹 NPC Library</strong> &mdash; Create and manage NPCs with categories, HP, avatar, and notes</li>
+            <li><strong>📚 Import from Vault</strong> &mdash; Search Bestiary (2200+ monsters), Races, or Classes to auto-fill NPC stats and HP</li>
+            <li><strong>❤️ HP Tracker</strong> &mdash; Delta-based HP calculator (+15 / -33), color-coded HP bar (green/yellow/red)</li>
+            <li><strong>👁️ Hide/Reveal NPCs</strong> &mdash; Toggle NPC visibility for players in real-time</li>
           </ul>
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Token Conditions</h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Fog of War</h3>
           <ul class="whatsnew-list">
-            <li><strong>⚡ D&amp;D 5e Conditions</strong> &mdash; DM can apply conditions (Blinded, Poisoned, Stunned, etc.) to tokens from the Vault</li>
-            <li><strong>🎨 Color-Coded Badges</strong> &mdash; Each condition has a unique color and emoji icon, stacked on the token</li>
-            <li><strong>✨ Animated Effects</strong> &mdash; Bouncy entrance animation + continuous pulse + avatar border glow</li>
-            <li><strong>🔎 Searchable Picker</strong> &mdash; Quick search through all 15 standard conditions with applied-state tracking</li>
+            <li><strong>🌫️ FoW Canvas Overlay</strong> &mdash; Full-map fog that hides unexplored areas from players</li>
+            <li><strong>🖌️ Reveal/Hide Brush</strong> &mdash; Paint to reveal or re-hide areas with adjustable brush size</li>
+            <li><strong>📡 Draft &amp; Publish</strong> &mdash; DM paints changes, then publishes to players instantly via SSE</li>
+            <li><strong>🔒 NPCs Under Fog</strong> &mdash; NPC tokens hidden by fog are invisible to players</li>
           </ul>
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Other Improvements</h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Map Improvements</h3>
           <ul class="whatsnew-list">
-            <li><strong>📸 30MB Upload Limit</strong> &mdash; Map and board image uploads increased from 5MB to 30MB</li>
-            <li><strong>🔧 Complete Migration Script</strong> &mdash; All tables and columns now covered for seamless upgrades</li>
+            <li><strong>🔗 Drag &amp; Drop Reparenting</strong> &mdash; Drag standalone maps onto others to create sub-maps</li>
+            <li><strong>📌 Link Existing Maps</strong> &mdash; Link an existing map as a sub-map from any pin</li>
+            <li><strong>🖼️ Aspect Ratio Fix</strong> &mdash; Maps now preserve their natural image dimensions</li>
+            <li><strong>🔒 Hidden Maps</strong> &mdash; DMs can hide maps from players; admins see placeholders</li>
+            <li><strong>📡 Real-Time Tokens</strong> &mdash; Token moves, NPC changes, and placements sync instantly across all players</li>
+            <li><strong>🖥️ Fullscreen Toolbar</strong> &mdash; Tokens, NPCs, Scale, and Fog controls available in fullscreen mode</li>
           </ul>
         </div>
         <div class="whatsnew-links">

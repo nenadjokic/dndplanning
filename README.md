@@ -1,6 +1,6 @@
-# Quest Planner v2.0.7 — D&D Session Scheduler
+# Quest Planner v2.0.8 — D&D Session Scheduler
 
-> **Latest release:** v2.0.7 (2026-02-21)
+> **Latest release:** v2.0.8 (2026-02-22)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -93,11 +93,17 @@ If you enjoy Quest Planner, consider buying me a coffee:
 - **Unavailability Days** — Players mark dates they can't play; DM sees these when creating sessions
 - **Calendar Feed (iCal)** — Personal feed (sessions + unavailability) and public sessions-only feed
 - **Omni-Channel Notifications** — Broadcast session events (created, confirmed, cancelled, reopened, completed, recap) to Discord, Telegram, or Viber; configured per-guild in Guild Settings
-- **Multiple Maps** — Create and manage multiple interactive Leaflet.js maps at `/map` with custom image upload, location pins (city, dungeon, tavern), draggable party marker, click-to-add locations
+- **Multiple Maps** — Create and manage multiple interactive Leaflet.js maps at `/map` with custom image upload, location pins (city, dungeon, tavern), draggable party marker, click-to-add locations; natural aspect ratio preservation
+- **NPC Token System** — NPC library with categories, Vault import (Bestiary/Races/Classes), map placement, delta-based HP calculator, color-coded HP bars, hide/reveal toggles, conditions; real-time sync via SSE
+- **Fog of War** — Full-map fog canvas overlay hiding unexplored areas from players; DM reveal/hide brush with adjustable size; draft & publish workflow; NPC tokens under fog invisible to players; flicker-free zoom
+- **Hidden Maps** — DMs can toggle map visibility; hidden maps invisible to players, shown as placeholders to admins
+- **Drag & Drop Map Reparenting** — Drag standalone maps onto others to create sub-map hierarchies; detach child maps back to standalone
+- **Link Existing Maps** — Link an existing standalone map as a sub-map from any location pin
+- **Real-Time Map Tokens** — Token moves, NPC changes, and placements sync instantly across all connected players via SSE
 - **Party Inventory (Loot Tracker)** — Shared inventory at `/loot` with categories (weapon, armor, potion, quest, gold, item), item assignment to players, quest item highlights
 - **Session Analytics** — Chart.js dashboard at `/analytics` with sessions-per-month, preferred day, player attendance %, streak counter, and summary stats
 - **Session Locations** — Optional location dropdown on session creation, linking sessions to map locations
-- **Map Fullscreen** — View the world map in immersive fullscreen mode (Escape or button to exit)
+- **Map Fullscreen** — View the world map in immersive fullscreen mode with floating toolbar (Tokens, NPCs, Scale, Fog) (Escape or button to exit)
 - **Pin Editing** — DMs can edit any map location's name, description, and icon type directly from the map or table
 - **DM Tools** — Streamdeck-style customizable tool board at `/dm-tools` for quick access to external resources (generators, music, references)
 - **DM Tools Favicon Scraping** — Auto-fetch website favicons as tool thumbnails (apple-touch-icon preferred, falls back to favicon.ico)
@@ -803,6 +809,38 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v2.0.8 (2026-02-22) 🗺️ NPC Tokens, Fog of War & Real-Time Maps
+
+**NPC Token System:**
+- **👹 NPC Library** — Create and manage NPCs with categories, avatars, HP, and notes
+- **📚 Vault Import** — Search Bestiary (2200+ monsters), Races, or Classes to auto-fill NPC name, HP, and stats
+- **❤️ HP Tracker** — Delta-based HP calculator (+15 / -33) with color-coded HP bar (green/yellow/red)
+- **👁️ Hide/Reveal** — Toggle NPC visibility for players; hidden NPCs show DM-only badge
+- **⚡ Conditions** — Apply D&D 5e conditions to NPC tokens with color-coded badges
+
+**Fog of War:**
+- **🌫️ Full-Map Fog** — Canvas overlay hiding unexplored areas from players with solid black fog
+- **🖌️ Reveal/Hide Brush** — Paint to reveal or re-hide map areas with adjustable brush size
+- **📡 Draft & Publish** — DM paints changes privately, then publishes to all players instantly via SSE
+- **🔒 NPCs Under Fog** — NPC tokens in fogged areas are invisible to players (rendered below fog layer)
+- **🎯 Flicker-Free Zoom** — Fixed-size canvas with CSS transform scaling; no gap/flash during zoom
+
+**Map Hierarchy & Organization:**
+- **🔗 Drag & Drop Reparenting** — Drag standalone maps onto others in the tree view to create sub-maps
+- **📌 Link Existing Maps** — Third tab in add-location modal to link existing standalone maps as sub-maps
+- **🔒 Hidden Maps** — DMs toggle map visibility; players can't see hidden maps; admins see placeholders
+- **↩️ Detach Maps** — Unparent child maps back to standalone with one click
+
+**Real-Time Updates:**
+- **📡 Live Token Sync** — Token moves, NPC placement/deletion, HP changes, and hide/reveal sync instantly via SSE
+- **🖥️ Fullscreen Toolbar** — Floating toolbar with Tokens, NPCs, Scale, and Fog buttons in fullscreen mode
+
+**Bug Fixes:**
+- **🖼️ Aspect Ratio** — Maps now preserve natural image dimensions (no more 1000x700 stretch)
+- **🎭 Token Avatars** — Fixed missing `/avatars/` prefix on character token images
+
+---
 
 ### v2.0.7 (2026-02-21) 🗺️ Resizable Tokens, Token Conditions & Upload Boost
 

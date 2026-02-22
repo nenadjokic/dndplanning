@@ -3393,6 +3393,97 @@ select:hover {
   flex-shrink: 0;
 }
 
+/* === Fog of War === */
+.fog-toolbar {
+  position: fixed;
+  top: 80px;
+  left: 20px;
+  z-index: 1000;
+  background: var(--bg-card);
+  border: 1px solid var(--gold-dim);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  width: 210px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+.fog-toolbar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  color: var(--gold);
+}
+
+.fog-toolbar-body .btn.active {
+  background: var(--gold) !important;
+  color: var(--bg-darker) !important;
+  border-color: var(--gold) !important;
+}
+
+.fog-overlay-canvas {
+  pointer-events: none;
+}
+
+/* === Map Drag & Drop Reparenting === */
+.maps-tree-item[draggable="true"] {
+  cursor: grab;
+}
+.maps-tree-item.dragging {
+  opacity: 0.4;
+}
+.maps-tree-item.drag-over > .maps-tree-row {
+  outline: 2px dashed var(--green-light, #2ecc71);
+  outline-offset: -2px;
+  background: rgba(46, 204, 113, 0.08);
+  border-radius: var(--radius);
+}
+
+/* === NPC Tokens === */
+.map-npc-token-avatar {
+  border-color: #c0392b !important;
+  box-shadow: 0 0 6px rgba(192, 57, 43, 0.5) !important;
+}
+
+.npc-hp-bar {
+  height: 4px;
+  background: rgba(0,0,0,0.5);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 1px;
+}
+
+.npc-hp-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.npc-token-label {
+  background: rgba(139, 0, 0, 0.8) !important;
+}
+
+.npc-hidden-badge {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  font-size: 10px;
+  z-index: 11;
+  background: rgba(0,0,0,0.7);
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-token.npc-hidden {
+  opacity: 0.5;
+}
+
 /* Make token wrapper relative for condition badges */
 .map-token-wrapper {
   position: relative;
@@ -3604,6 +3695,83 @@ select:hover {
 
 .map-fullscreen .map-fullscreen-close {
   display: flex;
+}
+
+/* Fullscreen floating toolbar */
+.map-fs-toolbar {
+  display: none;
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1002;
+  background: rgba(20, 15, 10, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+  gap: 0.25rem;
+  align-items: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.map-fullscreen .map-fs-toolbar {
+  display: flex;
+}
+.map-fs-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.65rem;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-family: 'Crimson Text', serif;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.map-fs-btn:hover {
+  background: rgba(212, 175, 55, 0.15);
+  color: var(--gold);
+  border-color: var(--gold);
+}
+.map-fs-btn svg {
+  flex-shrink: 0;
+}
+.map-fs-btn-npc {
+  color: #e74c3c;
+}
+.map-fs-btn-npc:hover {
+  background: rgba(231, 76, 60, 0.15);
+  color: #e74c3c;
+  border-color: #c0392b;
+}
+
+/* Modals and panels visible above fullscreen */
+.map-fullscreen ~ .token-picker-modal,
+.map-fullscreen ~ .token-scale-panel,
+.map-fullscreen ~ .fog-toolbar {
+  z-index: 1003 !important;
+}
+body.map-fs-active .token-picker-modal {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 1003 !important;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+body.map-fs-active .token-scale-panel {
+  z-index: 1003 !important;
+}
+body.map-fs-active .fog-toolbar {
+  z-index: 1003 !important;
 }
 
 /* === DM Tools === */

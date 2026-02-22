@@ -44,7 +44,39 @@
 <% } else { %>
   <div class="card">
     <% function renderMapNode(node, level) { %>
-      <div class="maps-tree-item<%= level > 0 ? ' maps-tree-child' : '' %>" style="<%= level > 0 ? 'margin-left: ' + (level * 1.5) + 'rem;' : '' %>">
+      <%
+        var isStandalone = !node.parent_id && (!node.children || node.children.length === 0);
+        var hasChildren = node.children && node.children.length > 0;
+        var isHidden = !!node.hidden_by;
+        var isCreator = node.created_by === (typeof currentUserId !== 'undefined' ? currentUserId : -1);
+        var showAsPlaceholder = isHidden && !isCreator && (typeof isAdmin !== 'undefined' && isAdmin);
+      %>
+      <% if (showAsPlaceholder) { %>
+      <div class="maps-tree-item<%= level > 0 ? ' maps-tree-child' : '' %>" style="<%= level > 0 ? 'margin-left: ' + (level * 1.5) + 'rem;' : '' %>; opacity: 0.4;">
+        <div class="maps-tree-row">
+          <div class="maps-tree-thumb"><div class="maps-tree-placeholder"><span>🔒</span></div></div>
+          <div class="maps-tree-info">
+            <span class="maps-tree-name" style="color: var(--text-secondary); cursor: default;">Hidden Map</span>
+            <div class="maps-tree-meta"><span class="map-type-badge" style="background:rgba(255,255,255,0.1);color:var(--text-secondary);">🔒 Hidden</span></div>
+          </div>
+          <% if (isDM) { %>
+            <div class="maps-tree-actions">
+              <form action="/map/<%= node.id %>/delete" method="POST" class="inline-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this hidden map?')">&times;</button>
+              </form>
+            </div>
+          <% } %>
+        </div>
+      </div>
+      <% } else { %>
+      <div class="maps-tree-item<%= level > 0 ? ' maps-tree-child' : '' %>"
+           style="<%= level > 0 ? 'margin-left: ' + (level * 1.5) + 'rem;' : '' %>"
+           data-map-id="<%= node.id %>"
+           data-depth="<%= level %>"
+           data-has-children="<%= hasChildren ? '1' : '0' %>"
+           <% if (isDM && isStandalone) { %>draggable="true"<% } %>
+      >
         <div class="maps-tree-row">
           <div class="maps-tree-thumb">
             <% if (node.image_path) { %>
@@ -61,22 +93,29 @@
             <a href="/map/<%= node.id %>" class="maps-tree-name"><%= node.name %></a>
             <div class="maps-tree-meta">
               <span class="map-type-badge map-type-<%= node.map_type %>"><%= MARKER_TYPES[node.map_type] ? MARKER_TYPES[node.map_type].icon : '🌍' %> <%= MARKER_TYPES[node.map_type] ? MARKER_TYPES[node.map_type].label : node.map_type %></span>
-              <% if (node.children && node.children.length > 0) { %>
+              <% if (hasChildren) { %>
                 <span class="text-muted" style="font-size: 0.8rem;"><%= node.children.length %> sub-map<%= node.children.length !== 1 ? 's' : '' %></span>
               <% } %>
             </div>
           </div>
           <% if (isDM) { %>
             <div class="maps-tree-actions">
+              <% if (node.parent_id) { %>
+                <button type="button" class="btn btn-small btn-outline" data-unparent="<%= node.id %>" title="Detach from parent">Detach</button>
+              <% } %>
               <form action="/map/<%= node.id %>/delete" method="POST" class="inline-form">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this map<%= node.children && node.children.length > 0 ? ' and all sub-maps' : '' %>?')">&times;</button>
+                <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this map<%= hasChildren ? ' and all sub-maps' : '' %>?')">&times;</button>
               </form>
             </div>
           <% } %>
+          <% if (isHidden && isCreator) { %>
+            <span class="map-hidden-badge" style="margin-left:0.5rem;font-size:0.7rem;color:var(--text-secondary);background:rgba(255,255,255,0.08);padding:0.1rem 0.4rem;border-radius:999px;">🔒 Hidden</span>
+          <% } %>
         </div>
       </div>
-      <% if (node.children && node.children.length > 0) { %>
+      <% } /* end else (not placeholder) */ %>
+      <% if (hasChildren) { %>
         <% for (const child of node.children) { %>
           <% renderMapNode(child, level + 1); %>
         <% } %>
@@ -87,6 +126,74 @@
       <% renderMapNode(root, 0); %>
     <% } %>
   </div>
+<% } %>
+
+<% if (isDM && tree.length > 0) { %>
+<script>
+(function() {
+  var csrfToken = '<%= csrfToken %>';
+  var draggedId = null;
+
+  document.querySelectorAll('.maps-tree-item[draggable="true"]').forEach(function(el) {
+    el.addEventListener('dragstart', function(e) {
+      draggedId = el.getAttribute('data-map-id');
+      e.dataTransfer.effectAllowed = 'move';
+      el.classList.add('dragging');
+    });
+    el.addEventListener('dragend', function() {
+      draggedId = null;
+      el.classList.remove('dragging');
+      document.querySelectorAll('.maps-tree-item.drag-over').forEach(function(t) { t.classList.remove('drag-over'); });
+    });
+  });
+
+  document.querySelectorAll('.maps-tree-item').forEach(function(el) {
+    el.addEventListener('dragover', function(e) {
+      if (!draggedId) return;
+      var targetId = el.getAttribute('data-map-id');
+      if (targetId === draggedId) return;
+      var depth = parseInt(el.getAttribute('data-depth') || '0');
+      if (depth >= 2) return; // max 3 levels
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      el.classList.add('drag-over');
+    });
+    el.addEventListener('dragleave', function() {
+      el.classList.remove('drag-over');
+    });
+    el.addEventListener('drop', function(e) {
+      e.preventDefault();
+      el.classList.remove('drag-over');
+      if (!draggedId) return;
+      var targetId = el.getAttribute('data-map-id');
+      if (targetId === draggedId) return;
+      fetch('/map/' + draggedId + '/reparent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ parent_id: parseInt(targetId) })
+      }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.success) location.reload();
+        else alert(d.error || 'Failed to reparent map');
+      });
+    });
+  });
+
+  // Unparent (detach) buttons
+  document.querySelectorAll('[data-unparent]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var mapId = btn.getAttribute('data-unparent');
+      if (!confirm('Detach this map from its parent?')) return;
+      fetch('/map/' + mapId + '/unparent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }
+      }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.success) location.reload();
+        else alert(d.error || 'Failed to detach map');
+      });
+    });
+  });
+})();
+</script>
 <% } %>
 
 <%- include('partials/foot') %>
