@@ -243,6 +243,16 @@ db.exec(`
   );
 `);
 
+// NPC token movement delegation (assign NPC control to players)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS npc_token_assignments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    npc_token_id INTEGER NOT NULL REFERENCES map_npc_tokens(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(npc_token_id, user_id)
+  );
+`);
+
 // Add alignment column to map_npc_tokens (idempotent)
 try { db.exec("ALTER TABLE map_npc_tokens ADD COLUMN alignment TEXT DEFAULT 'hostile'"); } catch (e) { /* already exists */ }
 

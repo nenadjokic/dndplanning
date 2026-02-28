@@ -2781,6 +2781,8 @@ select:hover {
   border-radius: var(--radius);
   overflow: hidden;
   background: var(--bg-darker);
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .map-controls {
@@ -3319,6 +3321,12 @@ select:hover {
   color: var(--gold);
   min-width: 2.5rem;
   text-align: right;
+}
+
+.scale-step-btn.active {
+  background: var(--gold) !important;
+  color: var(--bg-card) !important;
+  border-color: var(--gold) !important;
 }
 
 /* === Condition Picker Overlay === */

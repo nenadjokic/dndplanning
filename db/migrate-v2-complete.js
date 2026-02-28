@@ -640,6 +640,15 @@ try {
       )`
     },
     {
+      name: 'npc_token_assignments',
+      sql: `CREATE TABLE npc_token_assignments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        npc_token_id INTEGER NOT NULL REFERENCES map_npc_tokens(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE(npc_token_id, user_id)
+      )`
+    },
+    {
       name: 'map_links',
       sql: `CREATE TABLE map_links (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

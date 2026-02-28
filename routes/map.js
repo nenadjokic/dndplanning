@@ -363,7 +363,33 @@ router.get('/:id', requireLogin, (req, res) => {
     `).all(map.id);
   } catch (e) { /* table may not exist yet */ }
 
-  res.render('map', { map, locations, isDM, isAdmin, chain, children, tokens, npcTokens, showPartyMarker, canAddChild, MARKER_TYPES, currentUserId: req.user.id, mapLinks });
+  // Fetch all players for NPC assignment UI
+  const allPlayers = db.prepare("SELECT id, username FROM users WHERE role IN ('player', 'dm', 'admin') ORDER BY username").all();
+
+  // Fetch NPC token assignments for this map
+  const npcMapTokenIds = npcTokens.map(nt => nt.id);
+  if (npcMapTokenIds.length > 0) {
+    const assignments = db.prepare(`
+      SELECT nta.npc_token_id, nta.user_id, u.username
+      FROM npc_token_assignments nta
+      JOIN users u ON u.id = nta.user_id
+      WHERE nta.npc_token_id IN (${npcMapTokenIds.map(() => '?').join(',')})
+    `).all(...npcMapTokenIds);
+    const assignByToken = {};
+    for (const a of assignments) {
+      if (!assignByToken[a.npc_token_id]) assignByToken[a.npc_token_id] = [];
+      assignByToken[a.npc_token_id].push({ user_id: a.user_id, username: a.username });
+    }
+    for (const nt of npcTokens) {
+      nt.assigned_users = assignByToken[nt.id] || [];
+    }
+  } else {
+    for (const nt of npcTokens) {
+      nt.assigned_users = [];
+    }
+  }
+
+  res.render('map', { map, locations, isDM, isAdmin, chain, children, tokens, npcTokens, showPartyMarker, canAddChild, MARKER_TYPES, currentUserId: req.user.id, mapLinks, allPlayers });
 });
 
 // Upload map image
@@ -566,6 +592,30 @@ router.get('/:id/token-state', requireLogin, (req, res) => {
     if (nt.npc_avatar && !nt.npc_avatar.startsWith('/')) nt.npc_avatar = '/avatars/' + nt.npc_avatar;
     nt.conditions = db.prepare('SELECT id, condition_name FROM npc_token_conditions WHERE npc_map_token_id = ?').all(nt.id);
   }
+  // Fetch NPC token assignments
+  const npcMapTokenIds = npcTokens.map(nt => nt.id);
+  if (npcMapTokenIds.length > 0) {
+    try {
+      const assignments = db.prepare(`
+        SELECT nta.npc_token_id, nta.user_id, u.username
+        FROM npc_token_assignments nta
+        JOIN users u ON u.id = nta.user_id
+        WHERE nta.npc_token_id IN (${npcMapTokenIds.map(() => '?').join(',')})
+      `).all(...npcMapTokenIds);
+      const assignByToken = {};
+      for (const a of assignments) {
+        if (!assignByToken[a.npc_token_id]) assignByToken[a.npc_token_id] = [];
+        assignByToken[a.npc_token_id].push({ user_id: a.user_id, username: a.username });
+      }
+      for (const nt of npcTokens) {
+        nt.assigned_users = assignByToken[nt.id] || [];
+      }
+    } catch (e) {
+      for (const nt of npcTokens) { nt.assigned_users = []; }
+    }
+  } else {
+    for (const nt of npcTokens) { nt.assigned_users = []; }
+  }
   // Filter hidden NPCs for players
   if (!isDMUser) {
     npcTokens = npcTokens.filter(nt => !nt.hidden);
@@ -642,7 +692,7 @@ router.post('/:id/tokens/:tokenId/delete', requireLogin, express.json(), (req, r
 router.post('/:id/tokens/:tokenId/resize', requireLogin, requireDM, express.json(), (req, res) => {
   const token = db.prepare('SELECT id FROM map_tokens WHERE id = ? AND map_id = ?').get(req.params.tokenId, req.params.id);
   if (!token) return res.status(404).json({ error: 'Token not found' });
-  const scale = Math.max(0.5, Math.min(3.0, parseFloat(req.body.scale) || 1.0));
+  const scale = Math.max(0.5, Math.min(20.0, parseFloat(req.body.scale) || 1.0));
   db.prepare('UPDATE map_tokens SET scale = ? WHERE id = ?').run(scale, token.id);
   res.json({ success: true, scale });
 });
@@ -653,10 +703,10 @@ router.post('/:id/tokens/resize-all', requireLogin, requireDM, express.json(), (
   if (!map) return res.status(404).json({ error: 'Map not found' });
   const delta = parseFloat(req.body.delta);
   if (isNaN(delta)) return res.status(400).json({ error: 'Delta required' });
-  // Apply delta to all player tokens, clamped to 0.3-3.0
-  db.prepare('UPDATE map_tokens SET scale = MIN(3.0, MAX(0.3, scale + ?)) WHERE map_id = ?').run(delta, map.id);
+  // Apply delta to all player tokens, clamped to 0.1 minimum (no upper cap)
+  db.prepare('UPDATE map_tokens SET scale = MAX(0.1, scale + ?) WHERE map_id = ?').run(delta, map.id);
   // Apply delta to all NPC tokens too
-  db.prepare('UPDATE map_npc_tokens SET scale = MIN(3.0, MAX(0.3, scale + ?)) WHERE map_id = ?').run(delta, map.id);
+  db.prepare('UPDATE map_npc_tokens SET scale = MAX(0.1, scale + ?) WHERE map_id = ?').run(delta, map.id);
   sse.broadcast('map-update', { mapId: map.id, action: 'resize-all' });
   res.json({ success: true });
 });
@@ -831,10 +881,38 @@ router.post('/:id/npc-tokens', requireLogin, requireDM, express.json(), (req, re
   res.json({ success: true, id: result.lastInsertRowid });
 });
 
-// Move NPC token on map
-router.post('/:id/npc-tokens/:ntId/move', requireLogin, requireDM, express.json(), (req, res) => {
+// Assign/unassign NPC token to player (DM only)
+router.post('/:id/npc-tokens/:ntId/assign', requireLogin, requireDM, express.json(), (req, res) => {
   const nt = db.prepare('SELECT id FROM map_npc_tokens WHERE id = ? AND map_id = ?').get(req.params.ntId, req.params.id);
   if (!nt) return res.status(404).json({ error: 'NPC token not found' });
+  const userId = parseInt(req.body.user_id);
+  const assign = req.body.assign; // true or false
+  if (!userId) return res.status(400).json({ error: 'user_id required' });
+  if (assign) {
+    try {
+      db.prepare('INSERT OR IGNORE INTO npc_token_assignments (npc_token_id, user_id) VALUES (?, ?)').run(nt.id, userId);
+    } catch (e) { /* already assigned */ }
+  } else {
+    db.prepare('DELETE FROM npc_token_assignments WHERE npc_token_id = ? AND user_id = ?').run(nt.id, userId);
+  }
+  // Fetch updated assignments
+  const assignments = db.prepare(`
+    SELECT nta.user_id, u.username FROM npc_token_assignments nta
+    JOIN users u ON u.id = nta.user_id WHERE nta.npc_token_id = ?
+  `).all(nt.id);
+  sse.broadcast('map-update', { mapId: parseInt(req.params.id), action: 'npc-assignment', ntId: nt.id });
+  res.json({ success: true, assigned_users: assignments });
+});
+
+// Move NPC token on map (DM or assigned player)
+router.post('/:id/npc-tokens/:ntId/move', requireLogin, express.json(), (req, res) => {
+  const nt = db.prepare('SELECT id FROM map_npc_tokens WHERE id = ? AND map_id = ?').get(req.params.ntId, req.params.id);
+  if (!nt) return res.status(404).json({ error: 'NPC token not found' });
+  const isDMUser = req.user.role === 'dm' || req.user.role === 'admin';
+  if (!isDMUser) {
+    const assignment = db.prepare('SELECT id FROM npc_token_assignments WHERE npc_token_id = ? AND user_id = ?').get(nt.id, req.user.id);
+    if (!assignment) return res.status(403).json({ error: 'Not authorized to move this NPC' });
+  }
   const px = Math.max(0, Math.min(100, parseFloat(req.body.x) || 50));
   const py = Math.max(0, Math.min(100, parseFloat(req.body.y) || 50));
   db.prepare('UPDATE map_npc_tokens SET x = ?, y = ? WHERE id = ?').run(px, py, nt.id);
@@ -846,7 +924,7 @@ router.post('/:id/npc-tokens/:ntId/move', requireLogin, requireDM, express.json(
 router.post('/:id/npc-tokens/:ntId/resize', requireLogin, requireDM, express.json(), (req, res) => {
   const nt = db.prepare('SELECT id FROM map_npc_tokens WHERE id = ? AND map_id = ?').get(req.params.ntId, req.params.id);
   if (!nt) return res.status(404).json({ error: 'NPC token not found' });
-  const scale = Math.max(0.5, Math.min(3.0, parseFloat(req.body.scale) || 1.0));
+  const scale = Math.max(0.5, Math.min(20.0, parseFloat(req.body.scale) || 1.0));
   db.prepare('UPDATE map_npc_tokens SET scale = ? WHERE id = ?').run(scale, nt.id);
   sse.broadcast('map-update', { mapId: parseInt(req.params.id), action: 'npc-update', ntId: nt.id });
   res.json({ success: true, scale });
@@ -856,6 +934,7 @@ router.post('/:id/npc-tokens/:ntId/resize', requireLogin, requireDM, express.jso
 router.post('/:id/npc-tokens/:ntId/delete', requireLogin, requireDM, express.json(), (req, res) => {
   const nt = db.prepare('SELECT id FROM map_npc_tokens WHERE id = ? AND map_id = ?').get(req.params.ntId, req.params.id);
   if (!nt) return res.status(404).json({ error: 'NPC token not found' });
+  try { db.prepare('DELETE FROM npc_token_assignments WHERE npc_token_id = ?').run(nt.id); } catch (e) { /* table may not exist */ }
   db.prepare('DELETE FROM npc_token_conditions WHERE npc_map_token_id = ?').run(nt.id);
   db.prepare('DELETE FROM map_npc_tokens WHERE id = ?').run(nt.id);
   sse.broadcast('map-update', { mapId: parseInt(req.params.id), action: 'npc-delete', ntId: nt.id });
@@ -1059,6 +1138,7 @@ router.post('/:id/delete', requireLogin, requireDM, (req, res) => {
     // NPC tokens cleanup
     const npcMapTokenIds = db.prepare('SELECT id FROM map_npc_tokens WHERE map_id = ?').all(mapId);
     for (const nt of npcMapTokenIds) {
+      try { db.prepare('DELETE FROM npc_token_assignments WHERE npc_token_id = ?').run(nt.id); } catch (e) { /* ignore */ }
       db.prepare('DELETE FROM npc_token_conditions WHERE npc_map_token_id = ?').run(nt.id);
     }
     db.prepare('DELETE FROM map_npc_tokens WHERE map_id = ?').run(mapId);

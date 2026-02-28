@@ -809,6 +809,21 @@ Then restart the server.
 
 ## Changelog
 
+### v2.0.12 (2026-02-28) 🗺️ NPC Move Delegation, Token Scale & FoW Fix
+
+**New Features:**
+- **🎭 NPC Move Delegation** — DM can assign NPC token movement to specific players (familiars, summons, mounts) via checkboxes in the NPC popup; assigned players can drag NPC tokens in real-time
+- **📐 Scale Step Size** — Global scale +/- buttons now have selectable step sizes: 0.1, 0.5, or 1.0
+
+**Improvements:**
+- **🔍 Token Scale 20x** — Individual token resize sliders raised from 3.0 to 20.0 max for huge/gargantuan creatures
+- **📏 No Global Scale Cap** — Global scale offset no longer capped at 3.0; only lower bound (0.1) enforced
+
+**Bug Fixes:**
+- **🌫️ FoW Ctrl+A Fix** — Ctrl+A / Cmd+A no longer makes fog of war transparent (prevented browser select-all on map container)
+
+---
+
 ### v2.0.11 (2026-02-23) 🗺️ Live Conditions, FoW Touch & Zoom Fix
 
 **Bug Fixes:**

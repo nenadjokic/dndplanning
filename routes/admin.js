@@ -84,6 +84,8 @@ router.post('/users/:id/delete', requireLogin, requireAdmin, (req, res) => {
     safeDelete('DELETE FROM map_tokens WHERE character_id IN (SELECT id FROM characters WHERE user_id = ?)', targetId);
     // Delete map locations created by this user
     safeDelete('DELETE FROM map_locations WHERE created_by = ?', targetId);
+    // Delete NPC token assignments for this user
+    safeDelete('DELETE FROM npc_token_assignments WHERE user_id = ?', targetId);
     // Delete NPC token conditions + map placements for maps by this user
     safeDelete('DELETE FROM npc_token_conditions WHERE npc_map_token_id IN (SELECT id FROM map_npc_tokens WHERE map_id IN (SELECT id FROM maps WHERE created_by = ?))', targetId);
     safeDelete('DELETE FROM map_npc_tokens WHERE map_id IN (SELECT id FROM maps WHERE created_by = ?)', targetId);
