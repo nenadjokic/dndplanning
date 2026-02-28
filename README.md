@@ -605,74 +605,111 @@ The Guild Master can access **Guild Settings** (cogwheel icon) to:
 
 ```
 dndplanning/
-├── server.js              # Express entry point
+├── server.js                # Express entry point
 ├── package.json
-├── LICENSE                # GPL-3.0 license
-├── .env                   # Environment variables (not in git)
-├── .env.example           # Example env file
+├── LICENSE                  # GPL-3.0 license
+├── .env                     # Environment variables (not in git)
+├── .env.example             # Example env file
 ├── Dockerfile
 ├── docker-compose.yml
+├── docker-compose.prod.yml  # Production compose with resource limits
+├── docker-entrypoint.sh     # Auto-runs migrations before server start
 ├── .dockerignore
+├── fly.toml                 # Fly.io deployment config
+├── render.yaml              # Render deployment config
 ├── db/
-│   ├── schema.sql         # DDL for SQLite tables (users, sessions, slots, votes, preferences, unavailability, posts, replies, notifications)
-│   └── connection.js      # SQLite connection and initialization
+│   ├── schema.sql           # Base DDL for SQLite tables
+│   ├── 5etools-schema.sql   # 5e.tools data tables (spells, classes, races, items, monsters, conditions)
+│   ├── connection.js        # SQLite connection, auto-init, schema migrations (idempotent)
+│   └── migrate-v2-complete.js  # Full migration for existing production databases (v0.9.23+)
 ├── helpers/
-│   ├── time.js            # Date/time formatting helpers (12h/24h)
-│   ├── notifications.js   # Notification creation, @mention parsing
-│   ├── messenger.js       # Omni-channel messaging (Discord, Telegram, Viber)
-│   └── push.js            # PWA push notification service (Web Push / VAPID)
+│   ├── time.js              # Date/time formatting helpers (12h/24h)
+│   ├── notifications.js     # Notification creation, @mention parsing
+│   ├── messenger.js         # Omni-channel messaging (Discord, Telegram, Viber)
+│   ├── push.js              # PWA push notification service (Web Push / VAPID)
+│   ├── sse.js               # Server-Sent Events broadcaster (real-time updates)
+│   ├── google.js            # Google OAuth helper
+│   ├── markdown.js          # Markdown rendering helper
+│   └── vault-local.js       # Local Vault data query helper
 ├── middleware/
-│   ├── auth.js            # Auth middleware (login, DM check, user data, theme)
-│   └── flash.js           # Flash messages
+│   ├── auth.js              # Auth middleware (login, DM check, user data, theme)
+│   ├── flash.js             # Flash messages
+│   └── install-check.js     # First-run install redirect
+├── scripts/
+│   ├── import-5etools-data.js  # 5e.tools data import (races, classes, spells, items)
+│   ├── build-release.js     # Release build helper
+│   ├── docker-build-push.sh # Docker image build & push
+│   └── vps-install.sh       # VPS installation script
 ├── routes/
-│   ├── auth.js            # Register, login, logout, Google OAuth (first-login flag)
-│   ├── admin.js           # User management, update check, announcements, password reset, Google OAuth config
-│   ├── board.js           # Bulletin board posts, replies, reactions, polls, images, delete
-│   ├── calendar.js        # Personal iCal feed + public sessions-only feed
-│   ├── dashboard.js       # Role-based redirect (DM/Player), welcome popup
-│   ├── notifications.js   # Notification API (fetch, mark read)
-│   ├── history.js          # Session history page (completed D&D/RPG sessions)
-│   ├── players.js         # Guild members directory
-│   ├── profile.js         # User profile (avatar, birthday, about, multiple characters, public profiles)
-│   ├── sessions.js        # Session CRUD, slot confirmation, recap, comments, replies
-│   ├── settings.js        # User settings (theme, time, password, unavailability, calendar)
-│   ├── votes.js           # Player voting
-│   ├── map.js             # Multiple maps, locations, party marker, image upload
-│   ├── loot.js            # Party inventory (loot tracker)
-│   ├── analytics.js       # Session analytics and charts
-│   ├── dice.js            # Dice roll history API (save & retrieve rolls, presence heartbeat)
-│   ├── dm-tools.js        # DM Tools streamdeck page
-│   ├── vault.js           # Ancient Lore Library (D&D 5e reference browser)
-│   └── dnd-data.js        # 5e.tools data import API (races, classes, spells, items)
-├── views/                 # EJS templates
-│   ├── partials/          # Header (theme), footer (about/GPL/support), nav (bell/clock), flash, slot grid, comments
-│   ├── auth/              # Login, register pages
-│   ├── dm/                # DM dashboard, session form (date+time picker), session detail
-│   ├── player/            # Player dashboard, voting
-│   ├── board.ejs          # Bulletin board page
-│   ├── history.ejs        # Session history page
-│   ├── players.ejs        # Guild members directory page
-│   ├── profile.ejs        # Edit own profile page
-│   ├── profile-public.ejs # Public read-only profile page
-│   ├── maps.ejs           # Maps index page
-│   ├── map.ejs            # Single map view (Leaflet.js)
-│   ├── loot.ejs           # Party inventory page
-│   ├── analytics.ejs      # Session analytics page (Chart.js)
-│   ├── vault.ejs          # Ancient Lore Library (D&D 5e reference with tabs: races, classes, spells, items)
-│   ├── pwa.ejs            # PWA installation instructions page
-│   └── settings.ejs       # User settings page (theme, time, password, unavailability, calendar, notification prefs)
+│   ├── auth.js              # Register, login, logout, Google OAuth
+│   ├── admin.js             # User management, update check, announcements, password reset, Google OAuth config
+│   ├── admin-updates.js     # Git-based update system (pull from web UI)
+│   ├── board.js             # Bulletin board posts, replies, reactions, polls, images, categories
+│   ├── calendar.js          # Personal iCal feed + public sessions-only feed
+│   ├── dashboard.js         # Role-based redirect (DM/Player), welcome popup
+│   ├── notifications.js     # Notification API (fetch, mark read)
+│   ├── history.js           # Session history page (completed sessions)
+│   ├── install.js           # First-run web installer
+│   ├── players.js           # Guild members directory
+│   ├── profile.js           # User profile (avatar, birthday, about, multiple characters, public profiles)
+│   ├── sessions.js          # Session CRUD, slot confirmation, recap, comments, replies
+│   ├── settings.js          # User settings (theme, time, password, unavailability, calendar)
+│   ├── votes.js             # Player voting
+│   ├── map.js               # Maps system (multi-map, hierarchy, NPC tokens, fog of war, token delegation, SSE sync)
+│   ├── loot.js              # Party inventory (loot tracker)
+│   ├── analytics.js         # Session analytics and charts
+│   ├── dice.js              # Dice roll history API (save & retrieve rolls, presence heartbeat)
+│   ├── dm-tools.js          # DM Tools streamdeck page
+│   ├── vault.js             # Ancient Lore Library (D&D 5e reference browser)
+│   └── dnd-data.js          # 5e.tools data import API
+├── views/                   # EJS templates
+│   ├── partials/            # head, foot (What's New modal), nav, flash, slot-grid, comments, activity-feed, embers, empty-state
+│   ├── auth/                # Login, register pages
+│   ├── admin/               # User management, announcements
+│   ├── dm/                  # DM dashboard, session form, session detail, DM tools
+│   ├── player/              # Player dashboard, voting
+│   ├── board.ejs            # Bulletin board page
+│   ├── board-categories.ejs # Board category management
+│   ├── board-category.ejs   # Single category view
+│   ├── board-topic.ejs      # Single topic/thread view
+│   ├── history.ejs          # Session history page
+│   ├── install.ejs          # First-run installer page
+│   ├── players.ejs          # Guild members directory page
+│   ├── profile.ejs          # Edit own profile page
+│   ├── profile-public.ejs   # Public read-only profile page
+│   ├── maps.ejs             # Maps index page (tree view)
+│   ├── map.ejs              # Single map view (Leaflet.js, NPC tokens, fog of war, token conditions, delegation)
+│   ├── character-detail.ejs # Character detail page
+│   ├── character-sheet.ejs  # Interactive character sheet
+│   ├── loot.ejs             # Party inventory page
+│   ├── analytics.ejs        # Session analytics page (Chart.js)
+│   ├── vault.ejs            # Ancient Lore Library (D&D 5e reference)
+│   ├── pwa.ejs              # PWA installation instructions page
+│   └── settings.ejs         # User settings page
 ├── public/
-│   ├── css/style.css      # Dark + light theme, notifications, mentions, board, map, loot, analytics, PWA, characters styles
-│   ├── js/app.js          # Clock, notifications, time picker, unavailability warnings, theme recheck
-│   ├── manifest.json      # PWA web app manifest
-│   ├── sw.js              # Service worker for PWA offline support
-│   ├── offline.html       # Offline fallback page
-│   └── icons/             # PWA app icons (192x192, 512x512)
-└── data/                  # SQLite files + avatars + maps + thumbnails (not in git)
-    ├── avatars/           # User avatar uploads
-    ├── character-avatars/ # Character avatar uploads (256x256)
-    ├── maps/              # Uploaded world map images
-    └── thumbnails/        # DM Tools thumbnails (128x128)
+│   ├── css/style.css        # Dark + light themes, all component styles
+│   ├── js/
+│   │   ├── app.js           # Clock, notifications, time picker, theme recheck
+│   │   ├── dice-roller.js   # 3D dice roller (Three.js + cannon-es)
+│   │   ├── dice-geometry.js # Dice mesh geometry generator
+│   │   ├── dice-themes.js   # Dice color/material themes
+│   │   ├── character-sheet.js # Interactive character sheet logic
+│   │   ├── auto-save.js     # Form auto-save helper
+│   │   ├── datetime-picker.js # Date/time picker component
+│   │   ├── dnd-modals.js    # D&D reference modals (spells, items)
+│   │   ├── image-upload.js  # Image upload with preview
+│   │   ├── menu.js          # Mobile menu handler
+│   │   ├── quick-post.js    # Quick post from dashboard
+│   │   ├── toast.js         # Toast notification component
+│   │   └── vault.js         # Vault browser client-side logic
+│   ├── manifest.json        # PWA web app manifest
+│   ├── sw.js                # Service worker for PWA offline support
+│   ├── offline.html         # Offline fallback page
+│   └── icons/               # PWA app icons (192x192, 512x512)
+└── data/                    # SQLite files + uploads (not in git)
+    ├── avatars/             # User + NPC avatar uploads
+    ├── maps/                # Uploaded map images
+    └── thumbnails/          # DM Tools thumbnails (128x128)
 ```
 
 ---
