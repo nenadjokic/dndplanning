@@ -92,13 +92,13 @@ If you enjoy Quest Planner, consider buying me a coffee:
 - **Unavailability Days** — Players mark dates they can't play; DM sees these when creating sessions
 - **Calendar Feed (iCal)** — Personal feed (sessions + unavailability) and public sessions-only feed
 - **Omni-Channel Notifications** — Broadcast session events (created, confirmed, cancelled, reopened, completed, recap) to Discord, Telegram, or Viber; configured per-guild in Guild Settings
-- **Multiple Maps** — Create and manage multiple interactive Leaflet.js maps at `/map` with custom image upload, location pins (city, dungeon, tavern), draggable party marker, click-to-add locations; natural aspect ratio preservation
-- **NPC Token System** — NPC library with categories, Vault import (Bestiary/Races/Classes), map placement, delta-based HP calculator, color-coded HP bars, hide/reveal toggles, conditions; real-time sync via SSE
+- **Multiple Maps** — Create and manage multiple interactive Leaflet.js maps at `/map` with custom image upload, location pins (city, dungeon, tavern), draggable party marker, click-to-add locations; parent/child hierarchy with drag-to-reparent, non-hierarchical map links, hidden maps; natural aspect ratio preservation
+- **NPC Token System** — NPC library with categories, Vault import (Bestiary), map placement, delta-based HP calculator, color-coded HP bars, hide/reveal toggles, conditions, alignment (hostile/friendly/neutral with colored borders); DM can delegate NPC movement to specific players (familiars, summons, mounts); real-time sync via SSE
 - **Fog of War** — Full-map fog canvas overlay hiding unexplored areas from players; DM reveal/hide brush with adjustable size; draft & publish workflow; NPC tokens under fog invisible to players; flicker-free zoom
 - **Hidden Maps** — DMs can toggle map visibility; hidden maps invisible to players, shown as placeholders to admins
 - **Drag & Drop Map Reparenting** — Drag standalone maps onto others to create sub-map hierarchies; detach child maps back to standalone
 - **Link Existing Maps** — Link an existing standalone map as a sub-map from any location pin
-- **Real-Time Map Tokens** — Token moves, NPC changes, and placements sync instantly across all connected players via SSE
+- **Real-Time Map Tokens** — Token moves, NPC changes, HP updates, conditions, fog publishes, and delegation assignments sync instantly across all connected players via SSE
 - **Party Inventory (Loot Tracker)** — Shared inventory at `/loot` with categories (weapon, armor, potion, quest, gold, item), item assignment to players, quest item highlights
 - **Session Analytics** — Chart.js dashboard at `/analytics` with sessions-per-month, preferred day, player attendance %, streak counter, and summary stats
 - **Session Locations** — Optional location dropdown on session creation, linking sessions to map locations
@@ -168,8 +168,8 @@ quest-planner-vX.X.X-web-installer.zip
 1. **Extract the ZIP** to your web server directory:
 
    ```bash
-   unzip quest-planner-v1.0.18-web-installer.zip
-   cd quest-planner-v1.0.18-web-installer
+   unzip quest-planner-vX.X.X-web-installer.zip
+   cd quest-planner-vX.X.X-web-installer
    ```
 
 2. **Install Node.js dependencies:**
@@ -526,7 +526,7 @@ All users can access **Settings** (pencil icon in the nav bar) to:
 
 ### Maps
 
-- Click **"Maps"** in the hamburger menu to view the maps index
+- Click **"Maps"** in the hamburger menu to view the maps index (tree view with parent/child hierarchy)
 - Create multiple maps, each with their own name, image, locations, and party marker
 - Click a map name or thumbnail to view the interactive Leaflet.js map
 - **DM/Admin**: click anywhere on the map to add a location (name, description, icon type)
@@ -534,7 +534,18 @@ All users can access **Settings** (pencil icon in the nav bar) to:
 - **DM/Admin**: upload a custom map image (JPG, PNG, GIF, WebP, max 30MB)
 - Default: a parchment placeholder is shown until a map image is uploaded
 - Location pins are color-coded: red (pin), blue (city), purple (dungeon), green (tavern)
-- When creating a session, DMs can optionally link it to a map location (shows map name alongside location name)
+- When creating a session, DMs can optionally link it to a map location
+- **Map Hierarchy**: Drag standalone maps onto others to create sub-map trees; detach child maps back to standalone; link existing standalone maps as sub-maps from any location pin
+- **Hidden Maps**: DMs can toggle map visibility; hidden maps are invisible to players
+- **Map Links**: Link any map to any other map (non-hierarchical hyperlinks) with draggable link pins and click-to-navigate
+- **NPC Tokens**: Open the NPC sidebar to browse/search your NPC library by category, then click to place on the map; adjust position, scale (up to 20x), HP, alignment (hostile/friendly/neutral with colored borders), visibility, and D&D 5e conditions from the token popup
+- **NPC Move Delegation**: DM can assign NPC token movement to specific players (for familiars, summons, mounts) via checkboxes in the NPC popup; assigned players can drag those NPC tokens in real-time
+- **Fog of War**: Full-map fog canvas hiding unexplored areas from players; DM reveal/hide brush with adjustable size; draft & publish workflow; NPC tokens under fog are invisible to players
+- **Token Conditions**: Apply D&D 5e conditions (Blinded, Charmed, Frightened, etc.) to both player and NPC tokens with visual indicators
+- **Token Resize**: Individual token scale slider (0.5–20.0) for each player and NPC token; global scale +/- buttons with selectable step sizes (0.1, 0.5, 1.0)
+- **Multi-Select**: Ctrl+Click tokens to select and move as a group (DM only)
+- **Fullscreen Mode**: View the map in immersive fullscreen with floating toolbar (Tokens, NPCs, Scale, Fog)
+- **Real-Time Sync**: All token moves, NPC changes, HP updates, conditions, and fog publishes sync instantly via SSE
 
 ### Party Inventory (Loot Tracker)
 
