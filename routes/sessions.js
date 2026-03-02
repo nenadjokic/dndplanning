@@ -24,7 +24,7 @@ router.get('/new', requireLogin, requireDM, (req, res) => {
 });
 
 router.post('/', requireLogin, requireDM, (req, res) => {
-  const { title, description, slot_dates, slot_labels, category, location_id } = req.body;
+  const { title, description, slot_dates, slot_labels, category, location_id, recurrence_day, recurrence_time, min_players } = req.body;
   const validCategories = ['dnd', 'rpg', 'gamenight', 'casual'];
   const sessionCategory = validCategories.includes(category) ? category : 'dnd';
   const slotDatesDate = req.body['slot_dates_date'];
@@ -62,11 +62,22 @@ router.post('/', requireLogin, requireDM, (req, res) => {
   }
 
   const locId = location_id ? parseInt(location_id, 10) : null;
-  const insertSession = db.prepare('INSERT INTO sessions (title, description, created_by, category, location_id) VALUES (?, ?, ?, ?, ?)');
+
+  // Build recurrence rule if provided
+  let recurrenceRule = null;
+  const validDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  if (recurrence_day && validDays.includes(recurrence_day)) {
+    recurrenceRule = JSON.stringify({ day: recurrence_day, time: recurrence_time || '19:00' });
+  }
+
+  // Parse min_players
+  const minPlayers = min_players ? Math.max(1, Math.min(20, parseInt(min_players, 10) || 0)) : null;
+
+  const insertSession = db.prepare('INSERT INTO sessions (title, description, created_by, category, location_id, recurrence_rule, min_players) VALUES (?, ?, ?, ?, ?, ?, ?)');
   const insertSlot = db.prepare('INSERT INTO slots (session_id, date_time, label) VALUES (?, ?, ?)');
 
   const createSession = db.transaction(() => {
-    const result = insertSession.run(title, description || null, req.user.id, sessionCategory, locId);
+    const result = insertSession.run(title, description || null, req.user.id, sessionCategory, locId, recurrenceRule, minPlayers || null);
     const sessionId = result.lastInsertRowid;
 
     for (let i = 0; i < dates.length; i++) {
@@ -87,7 +98,12 @@ router.post('/', requireLogin, requireDM, (req, res) => {
     sessionId: sessionId
   });
 
-  messenger.send('session_created', { title, category: sessionCategory, link: '/sessions/' + sessionId, actorName: req.user.username }).catch(() => {});
+  const slotDates = db.prepare('SELECT date_time FROM slots WHERE session_id = ? ORDER BY date_time').all(sessionId).map(s => {
+    const d = new Date(s.date_time);
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  });
+  const playerCount = db.prepare("SELECT COUNT(*) as c FROM users WHERE role != 'dm' AND role != 'admin'").get().c;
+  messenger.send('session_created', { title, category: sessionCategory, slotDates, playerCount, link: '/sessions/' + sessionId, actorName: req.user.username }).catch(() => {});
   pushService.sendToAll('New Quest Posted', `"${title}" — Vote now!`, '/sessions/' + sessionId).catch(() => {});
   req.flash('success', 'Quest session posted to the tavern board!');
   res.redirect('/sessions/' + sessionId);
@@ -169,6 +185,27 @@ router.get('/:id', requireLogin, (req, res) => {
   }
 
   const isDM = req.user.role === 'dm' || req.user.role === 'admin';
+
+  // Load session notes for current user
+  let myNotes = null;
+  const noteType = isDM ? 'dm' : 'player';
+  myNotes = db.prepare('SELECT * FROM session_notes WHERE session_id = ? AND user_id = ? AND note_type = ?').get(session.id, req.user.id, noteType);
+
+  // Load session gallery images
+  const sessionImages = db.prepare(`
+    SELECT si.*, u.username
+    FROM session_images si
+    JOIN users u ON si.user_id = u.id
+    WHERE si.session_id = ?
+    ORDER BY si.created_at ASC
+  `).all(session.id);
+
+  // Load attendance data
+  const attendance = db.prepare('SELECT sa.*, u.username FROM session_attendance sa JOIN users u ON sa.user_id = u.id WHERE sa.session_id = ?').all(session.id);
+  const attendanceMap = {};
+  for (const a of attendance) {
+    attendanceMap[a.user_id] = a.attended;
+  }
 
   // Load preferences for DM/admin users
   const preferences = db.prepare(`
@@ -276,6 +313,19 @@ router.get('/:id', requireLogin, (req, res) => {
   const host = req.get('host');
   const sessionForOG = session;
 
+  // Compute per-slot quorum data
+  const quorumData = {};
+  if (session.min_players) {
+    for (const slot of slots) {
+      const available = slotSummary[slot.id].available;
+      quorumData[slot.id] = {
+        met: available >= session.min_players,
+        needed: Math.max(0, session.min_players - available),
+        available: available
+      };
+    }
+  }
+
   if (isDM) {
     const myPreference = preferenceMap[req.user.id] || null;
     const myVotes = {};
@@ -284,7 +334,8 @@ router.get('/:id', requireLogin, (req, res) => {
         myVotes[v.slot_id] = v.status;
       }
     }
-    res.render('dm/session-detail', { session, slots, players, voteMap, slotSummary, preferences, preferenceMap, myPreference, myVotes, allUsersMap, unavailabilityMap, sessionPosts, sessionReplyMap, locationName, postReactions, userPostReactions, replyReactions, userReplyReactions, postPolls, sessionForOG, protocol, host });
+    const arcs = db.prepare('SELECT * FROM campaign_arcs ORDER BY sort_order, name').all();
+    res.render('dm/session-detail', { session, slots, players, voteMap, slotSummary, preferences, preferenceMap, myPreference, myVotes, allUsersMap, unavailabilityMap, sessionPosts, sessionReplyMap, locationName, postReactions, userPostReactions, replyReactions, userReplyReactions, postPolls, sessionForOG, protocol, host, myNotes, sessionImages, attendanceMap, quorumData, arcs });
   } else {
     // Get this player's votes
     const myVotes = {};
@@ -293,7 +344,7 @@ router.get('/:id', requireLogin, (req, res) => {
         myVotes[v.slot_id] = v.status;
       }
     }
-    res.render('player/vote', { session, slots, myVotes, players, voteMap, slotSummary, allUsersMap, unavailabilityMap, sessionPosts, sessionReplyMap, locationName, postReactions, userPostReactions, replyReactions, userReplyReactions, postPolls, sessionForOG, protocol, host });
+    res.render('player/vote', { session, slots, myVotes, players, voteMap, slotSummary, allUsersMap, unavailabilityMap, sessionPosts, sessionReplyMap, locationName, postReactions, userPostReactions, replyReactions, userReplyReactions, postPolls, sessionForOG, protocol, host, myNotes, sessionImages, quorumData });
   }
 });
 
@@ -430,9 +481,17 @@ router.post('/:id/confirm', requireLogin, requireDM, (req, res) => {
   const slotDateTime = confirmedSlot ? confirmedSlot.date_time : '';
   const slotDate = slotDateTime ? slotDateTime.split('T')[0] : '';
   const slotTime = slotDateTime && slotDateTime.includes('T') ? slotDateTime.split('T')[1] : '';
+  const confirmedPlayers = db.prepare(`
+    SELECT u.username FROM votes v
+    JOIN users u ON v.user_id = u.id
+    WHERE v.slot_id = ? AND v.vote = 'available'
+  `).all(slot_id).map(r => r.username);
+  const sessionLocation = session.location_id ? db.prepare('SELECT name FROM map_locations WHERE id = ?').get(session.location_id) : null;
   messenger.send('session_confirmed', {
     title: session.title, date: slotDate, time: slotTime,
     label: confirmedSlot ? confirmedSlot.label : '',
+    playerList: confirmedPlayers,
+    mapName: sessionLocation ? sessionLocation.name : null,
     link: '/sessions/' + session.id, actorName: req.user.username
   }).catch(() => {});
   pushService.sendToAll('Quest Confirmed', `"${session.title}" on ${slotDate}`, '/sessions/' + session.id).catch(() => {});
@@ -510,6 +569,123 @@ router.post('/:id/reopen', requireLogin, requireDM, (req, res) => {
   res.redirect('/sessions/' + session.id);
 });
 
+// --- Generate Next Recurring Session ---
+router.post('/:id/generate-next', requireLogin, requireDM, (req, res) => {
+  const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(req.params.id);
+  if (!session) {
+    req.flash('error', 'Session not found.');
+    return res.redirect('/');
+  }
+
+  if (!session.recurrence_rule) {
+    req.flash('error', 'This session has no recurrence rule.');
+    return res.redirect('/sessions/' + session.id);
+  }
+
+  const rule = JSON.parse(session.recurrence_rule);
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const targetDay = dayNames.indexOf(rule.day);
+
+  // Find latest slot date from this session
+  const latestSlot = db.prepare('SELECT date_time FROM slots WHERE session_id = ? ORDER BY date_time DESC LIMIT 1').get(session.id);
+  let baseDate = latestSlot ? new Date(latestSlot.date_time) : new Date();
+
+  // Calculate next occurrence: advance to next matching weekday
+  let nextDate = new Date(baseDate);
+  nextDate.setDate(nextDate.getDate() + 1); // start from tomorrow
+  while (nextDate.getDay() !== targetDay) {
+    nextDate.setDate(nextDate.getDate() + 1);
+  }
+
+  const dateStr = nextDate.toISOString().split('T')[0];
+  const timeStr = rule.time || '19:00';
+  const slotDateTime = dateStr + 'T' + timeStr;
+
+  const createNext = db.transaction(() => {
+    const result = db.prepare('INSERT INTO sessions (title, description, created_by, category, location_id, recurrence_rule, parent_session_id, min_players) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
+      session.title, session.description, req.user.id, session.category, session.location_id, session.recurrence_rule, session.id, session.min_players
+    );
+    const newId = result.lastInsertRowid;
+    db.prepare('INSERT INTO slots (session_id, date_time) VALUES (?, ?)').run(newId, slotDateTime);
+    return newId;
+  });
+
+  const newSessionId = createNext();
+
+  sse.broadcast('new-session', {
+    username: req.user.username,
+    title: session.title,
+    sessionId: newSessionId
+  });
+  messenger.send('session_created', { title: session.title, category: session.category, link: '/sessions/' + newSessionId, actorName: req.user.username }).catch(() => {});
+  pushService.sendToAll('Next Session Posted', `"${session.title}" — Vote now!`, '/sessions/' + newSessionId).catch(() => {});
+
+  req.flash('success', 'Next recurring session created!');
+  res.redirect('/sessions/' + newSessionId);
+});
+
+// --- Skip and Generate Next ---
+router.post('/:id/skip', requireLogin, requireDM, (req, res) => {
+  const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(req.params.id);
+  if (!session) {
+    req.flash('error', 'Session not found.');
+    return res.redirect('/');
+  }
+
+  if (!session.recurrence_rule) {
+    req.flash('error', 'This session has no recurrence rule.');
+    return res.redirect('/sessions/' + session.id);
+  }
+
+  // Cancel current session
+  db.prepare('UPDATE sessions SET status = ?, confirmed_slot_id = NULL WHERE id = ?').run('cancelled', session.id);
+
+  sse.broadcast('session-cancelled', {
+    username: req.user.username,
+    sessionTitle: session.title,
+    sessionId: session.id
+  });
+
+  const rule = JSON.parse(session.recurrence_rule);
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const targetDay = dayNames.indexOf(rule.day);
+
+  const latestSlot = db.prepare('SELECT date_time FROM slots WHERE session_id = ? ORDER BY date_time DESC LIMIT 1').get(session.id);
+  let baseDate = latestSlot ? new Date(latestSlot.date_time) : new Date();
+
+  let nextDate = new Date(baseDate);
+  nextDate.setDate(nextDate.getDate() + 1);
+  while (nextDate.getDay() !== targetDay) {
+    nextDate.setDate(nextDate.getDate() + 1);
+  }
+
+  const dateStr = nextDate.toISOString().split('T')[0];
+  const timeStr = rule.time || '19:00';
+  const slotDateTime = dateStr + 'T' + timeStr;
+
+  const createNext = db.transaction(() => {
+    const result = db.prepare('INSERT INTO sessions (title, description, created_by, category, location_id, recurrence_rule, parent_session_id, min_players) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
+      session.title, session.description, req.user.id, session.category, session.location_id, session.recurrence_rule, session.id, session.min_players
+    );
+    const newId = result.lastInsertRowid;
+    db.prepare('INSERT INTO slots (session_id, date_time) VALUES (?, ?)').run(newId, slotDateTime);
+    return newId;
+  });
+
+  const newSessionId = createNext();
+
+  sse.broadcast('new-session', {
+    username: req.user.username,
+    title: session.title,
+    sessionId: newSessionId
+  });
+  messenger.send('session_created', { title: session.title, category: session.category, link: '/sessions/' + newSessionId, actorName: req.user.username }).catch(() => {});
+  pushService.sendToAll('Next Session Posted', `"${session.title}" (skipped this week)`, '/sessions/' + newSessionId).catch(() => {});
+
+  req.flash('success', 'Session skipped — next recurring session created.');
+  res.redirect('/sessions/' + newSessionId);
+});
+
 router.post('/:id/summary', requireLogin, requireDM, (req, res) => {
   const { summary } = req.body;
   const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(req.params.id);
@@ -564,6 +740,10 @@ router.post('/:id/delete', requireLogin, requireAdmin, (req, res) => {
     db.prepare('DELETE FROM replies WHERE post_id IN (SELECT id FROM posts WHERE session_id = ?)').run(session.id);
     db.prepare('DELETE FROM posts WHERE session_id = ?').run(session.id);
     db.prepare('DELETE FROM slots WHERE session_id = ?').run(session.id);
+    // Delete session notes, images, and attendance
+    db.prepare('DELETE FROM session_notes WHERE session_id = ?').run(session.id);
+    db.prepare('DELETE FROM session_images WHERE session_id = ?').run(session.id);
+    db.prepare('DELETE FROM session_attendance WHERE session_id = ?').run(session.id);
     db.prepare('DELETE FROM sessions WHERE id = ?').run(session.id);
   });
 
@@ -698,6 +878,138 @@ router.post('/:sessionId/poll/:pollId/vote', requireLogin, (req, res) => {
     ...pollData,
     userVote: optionId
   });
+});
+
+// --- Session Notes Auto-Save ---
+
+router.post('/:id/notes', requireLogin, (req, res) => {
+  const { content } = req.body;
+  const session = db.prepare('SELECT id FROM sessions WHERE id = ?').get(req.params.id);
+  if (!session) return res.status(404).json({ error: 'Session not found' });
+
+  const isDM = req.user.role === 'dm' || req.user.role === 'admin';
+  const noteType = isDM ? 'dm' : 'player';
+
+  db.prepare(`
+    INSERT INTO session_notes (session_id, user_id, content, note_type, updated_at)
+    VALUES (?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(session_id, user_id, note_type)
+    DO UPDATE SET content = excluded.content, updated_at = datetime('now')
+  `).run(session.id, req.user.id, content || '', noteType);
+
+  res.json({ success: true, updatedAt: new Date().toISOString() });
+});
+
+// --- Session Attendance ---
+
+router.post('/:id/attendance', requireLogin, requireDM, (req, res) => {
+  const session = db.prepare('SELECT id FROM sessions WHERE id = ?').get(req.params.id);
+  if (!session) {
+    req.flash('error', 'Session not found.');
+    return res.redirect('/');
+  }
+
+  const attendees = req.body.attendees || [];
+  const attendeeIds = Array.isArray(attendees) ? attendees.map(id => parseInt(id, 10)) : [parseInt(attendees, 10)];
+
+  // Get all non-DM/admin players
+  const allPlayers = db.prepare("SELECT id FROM users WHERE role = 'player'").all();
+
+  const saveAttendance = db.transaction(() => {
+    db.prepare('DELETE FROM session_attendance WHERE session_id = ?').run(session.id);
+    for (const player of allPlayers) {
+      const attended = attendeeIds.includes(player.id) ? 1 : 0;
+      db.prepare('INSERT INTO session_attendance (session_id, user_id, attended) VALUES (?, ?, ?)').run(session.id, player.id, attended);
+    }
+  });
+
+  saveAttendance();
+  req.flash('success', 'Attendance saved.');
+  res.redirect('/sessions/' + session.id);
+});
+
+// --- Session Gallery ---
+
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+const galleryDir = path.join(__dirname, '..', 'data', 'uploads', 'sessions');
+if (!fs.existsSync(galleryDir)) fs.mkdirSync(galleryDir, { recursive: true });
+
+const galleryUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, galleryDir),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, 'session-' + uniqueSuffix + ext);
+    }
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, allowed.includes(ext));
+  }
+});
+
+router.post('/:id/gallery', requireLogin, (req, res) => {
+  galleryUpload.single('image')(req, res, function(err) {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        req.flash('error', 'Image too large. Maximum size is 5 MB.');
+      } else {
+        req.flash('error', 'Upload failed: ' + err.message);
+      }
+      return res.redirect('/sessions/' + req.params.id);
+    }
+
+    // Validate deferred CSRF for multipart
+    if (req.app.locals.validateCSRF && !req.app.locals.validateCSRF(req, res)) return;
+
+    const session = db.prepare('SELECT id FROM sessions WHERE id = ?').get(req.params.id);
+    if (!session) {
+      req.flash('error', 'Session not found.');
+      return res.redirect('/');
+    }
+
+    if (!req.file) {
+      req.flash('error', 'No image selected.');
+      return res.redirect('/sessions/' + session.id);
+    }
+
+    const caption = req.body.caption ? req.body.caption.trim().substring(0, 200) : null;
+    db.prepare('INSERT INTO session_images (session_id, user_id, image_path, caption) VALUES (?, ?, ?, ?)').run(
+      session.id, req.user.id, req.file.filename, caption
+    );
+
+    req.flash('success', 'Image uploaded to gallery.');
+    res.redirect('/sessions/' + session.id);
+  });
+});
+
+router.post('/:id/gallery/:imageId/delete', requireLogin, (req, res) => {
+  const image = db.prepare('SELECT * FROM session_images WHERE id = ? AND session_id = ?').get(req.params.imageId, req.params.id);
+  if (!image) {
+    req.flash('error', 'Image not found.');
+    return res.redirect('/sessions/' + req.params.id);
+  }
+
+  // Only the uploader, DM, or admin can delete
+  const isDM = req.user.role === 'dm' || req.user.role === 'admin';
+  if (image.user_id !== req.user.id && !isDM) {
+    req.flash('error', 'You can only delete your own images.');
+    return res.redirect('/sessions/' + req.params.id);
+  }
+
+  // Delete file from disk
+  const filePath = path.join(galleryDir, image.image_path);
+  try { fs.unlinkSync(filePath); } catch (e) { /* file may already be gone */ }
+
+  db.prepare('DELETE FROM session_images WHERE id = ?').run(image.id);
+  req.flash('success', 'Image deleted.');
+  res.redirect('/sessions/' + req.params.id);
 });
 
 module.exports = router;

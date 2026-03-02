@@ -1,0 +1,169 @@
+<%- include('partials/head', { pageTitle: 'Handouts' }) %>
+
+<div class="page-header">
+  <h1>Handouts & Documents</h1>
+  <a href="/" class="btn btn-outline">Back to Chamber</a>
+</div>
+
+<% if (isDM) { %>
+<div class="card" style="margin-bottom:1.5rem;">
+  <h2>Share a Handout</h2>
+  <div class="vault-tabs handout-type-tabs" style="margin-bottom:1rem;">
+    <button class="vault-tab active" onclick="switchHandoutType('image')">Image</button>
+    <button class="vault-tab" onclick="switchHandoutType('text')">Text</button>
+  </div>
+  <form action="/handouts" method="POST" enctype="multipart/form-data" id="handout-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="hidden" name="type" id="handout-type" value="image">
+    <div class="form-group">
+      <label for="handout-title">Title</label>
+      <input type="text" name="title" id="handout-title" required placeholder="Map of the Dungeon">
+    </div>
+    <div id="handout-image-field">
+      <div class="form-group">
+        <label>Image (max 10MB: JPG, PNG, GIF, WebP, PDF)</label>
+        <input type="file" name="image" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf">
+      </div>
+    </div>
+    <div id="handout-text-field" style="display:none;">
+      <div class="form-group">
+        <label>Text Content</label>
+        <textarea name="content" rows="6" placeholder="The ancient scroll reads..."></textarea>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+      <div class="form-group">
+        <label>Link to NPC (optional)</label>
+        <select name="linked_npc_id">
+          <option value="">-- None --</option>
+          <% for (const n of npcs) { %>
+            <option value="<%= n.id %>"><%= n.name %></option>
+          <% } %>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Link to Location (optional)</label>
+        <select name="linked_location_id">
+          <option value="">-- None --</option>
+          <% for (const l of locations) { %>
+            <option value="<%= l.id %>"><%= l.name %></option>
+          <% } %>
+        </select>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Upload Handout</button>
+  </form>
+</div>
+<% } %>
+
+<% if (handouts.length === 0) { %>
+  <div class="card">
+    <div class="empty-state">
+      <p class="empty-state-text"><% if (isDM) { %>No handouts yet. Share images, maps, or text with your players above.<% } else { %>No handouts shared yet. The DM will share documents as the adventure unfolds.<% } %></p>
+    </div>
+  </div>
+<% } else { %>
+  <div class="handout-grid">
+    <% for (const h of handouts) { %>
+      <div class="handout-card card">
+        <% if (h.type === 'image' && h.image_path) { %>
+          <div class="handout-thumb" onclick="openHandoutLightbox('/uploads/handouts/<%= h.image_path %>')">
+            <img src="/uploads/handouts/<%= h.image_path %>" alt="<%= h.title %>" loading="lazy">
+          </div>
+        <% } else { %>
+          <div class="handout-text-preview" onclick="openHandoutText(this)" data-content="<%= (h.content || '').replace(/"/g, '&quot;') %>">
+            <p><%= (h.content || '').substring(0, 120) %><%= (h.content || '').length > 120 ? '...' : '' %></p>
+          </div>
+        <% } %>
+        <div class="handout-info">
+          <strong><%= h.title %></strong>
+          <% if (!h.revealed && isDM) { %>
+            <span class="staged-badge">Hidden</span>
+          <% } %>
+          <% if (h.npc_name) { %><span class="handout-link-badge">NPC: <%= h.npc_name %></span><% } %>
+          <% if (h.location_name) { %><span class="handout-link-badge">Loc: <%= h.location_name %></span><% } %>
+        </div>
+        <% if (isDM) { %>
+          <div class="handout-actions">
+            <% if (h.revealed) { %>
+              <form action="/handouts/<%= h.id %>/hide" method="POST" class="inline-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="btn btn-small btn-outline">Hide</button>
+              </form>
+            <% } else { %>
+              <form action="/handouts/<%= h.id %>/reveal" method="POST" class="inline-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="btn btn-small btn-primary">Reveal</button>
+              </form>
+            <% } %>
+            <form action="/handouts/<%= h.id %>/delete" method="POST" class="inline-form">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this handout?')">&times;</button>
+            </form>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+<% } %>
+
+<!-- Handout Lightbox -->
+<div class="handout-lightbox" id="handout-lightbox" style="display:none">
+  <button class="handout-lightbox-close" onclick="document.getElementById('handout-lightbox').style.display='none'">&times;</button>
+  <img id="handout-lightbox-img" src="" alt="">
+</div>
+
+<!-- Handout Toast (SSE) -->
+<script>
+function switchHandoutType(type) {
+  document.getElementById('handout-type').value = type;
+  document.getElementById('handout-image-field').style.display = type === 'image' ? 'block' : 'none';
+  document.getElementById('handout-text-field').style.display = type === 'text' ? 'block' : 'none';
+  document.querySelectorAll('.handout-type-tabs .vault-tab').forEach(function(t) { t.classList.remove('active'); });
+  event.target.classList.add('active');
+}
+
+function openHandoutLightbox(src) {
+  var lb = document.getElementById('handout-lightbox');
+  document.getElementById('handout-lightbox-img').src = src;
+  lb.style.display = 'flex';
+  lb.addEventListener('click', function handler(e) {
+    if (e.target === lb) { lb.style.display = 'none'; lb.removeEventListener('click', handler); }
+  });
+}
+
+function openHandoutText(el) {
+  var content = el.dataset.content;
+  var lb = document.getElementById('handout-lightbox');
+  document.getElementById('handout-lightbox-img').style.display = 'none';
+  var existing = lb.querySelector('.handout-lightbox-text');
+  if (existing) existing.remove();
+  var div = document.createElement('div');
+  div.className = 'handout-lightbox-text';
+  div.textContent = content;
+  lb.appendChild(div);
+  lb.style.display = 'flex';
+  lb.addEventListener('click', function handler(e) {
+    if (e.target === lb) {
+      lb.style.display = 'none';
+      document.getElementById('handout-lightbox-img').style.display = '';
+      if (div.parentNode) div.remove();
+      lb.removeEventListener('click', handler);
+    }
+  });
+}
+
+// SSE: Listen for handout reveals
+if (typeof EventSource !== 'undefined') {
+  var evtSource = document.querySelector('script[data-sse]');
+  // Use existing SSE or create listener
+  document.addEventListener('sse-handout-reveal', function(e) {
+    var data = e.detail;
+    if (typeof showToast === 'function') {
+      showToast('DM shared: ' + data.title, 'info', 8000);
+    }
+  });
+}
+</script>
+
+<%- include('partials/foot') %>

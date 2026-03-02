@@ -44,10 +44,37 @@
       </div>
     </div>
 
-    <!-- Quick Post: First Time Slot with Smart Defaults -->
+    <!-- Recurring toggle -->
     <div class="form-group">
-      <label>First Time Slot</label>
-      <p class="form-hint">Click to pick date and time</p>
+      <label class="recurring-toggle-label">
+        <input type="checkbox" id="recurring-toggle"> Recurring Session
+      </label>
+      <p class="form-hint" id="recurring-hint" style="display:none;">Session repeats weekly. Only one time slot allowed.</p>
+    </div>
+
+    <!-- Recurring config (hidden by default) -->
+    <div class="form-group" id="recurring-config" style="display:none;">
+      <label>Repeat Every</label>
+      <div class="recurrence-row">
+        <select name="recurrence_day" id="recurrence_day">
+          <option value="">-- Pick a day --</option>
+          <option value="monday">Monday</option>
+          <option value="tuesday">Tuesday</option>
+          <option value="wednesday">Wednesday</option>
+          <option value="thursday">Thursday</option>
+          <option value="friday">Friday</option>
+          <option value="saturday">Saturday</option>
+          <option value="sunday">Sunday</option>
+        </select>
+        <span>at</span>
+        <input type="time" name="recurrence_time" id="recurrence_time" value="19:00">
+      </div>
+    </div>
+
+    <!-- Quick Post: First Time Slot with Smart Defaults -->
+    <div class="form-group" id="slots-section">
+      <label id="slots-label">First Time Slot</label>
+      <p class="form-hint" id="slots-hint">Click to pick date and time</p>
       <div id="slots-container">
         <div class="slot-row">
           <input type="text" class="datetime-input" id="first-slot-datetime" placeholder="Select date & time..." readonly required>
@@ -81,6 +108,12 @@
           </select>
         </div>
         <% } %>
+
+        <div class="form-group">
+          <label for="min_players">Minimum Players (Quorum)</label>
+          <p class="form-hint">Slots will show whether enough players are available</p>
+          <input type="number" id="min_players" name="min_players" min="1" max="20" placeholder="No minimum">
+        </div>
       </div>
     </details>
 
@@ -95,5 +128,43 @@
 </script>
 <script src="/js/datetime-picker.js?v=<%= appVersion %>"></script>
 <script src="/js/quick-post.js?v=<%= appVersion %>"></script>
+<script>
+(function() {
+  var toggle = document.getElementById('recurring-toggle');
+  var config = document.getElementById('recurring-config');
+  var hint = document.getElementById('recurring-hint');
+  var addSlotBtn = document.getElementById('add-slot');
+  var slotsContainer = document.getElementById('slots-container');
+  var slotsLabel = document.getElementById('slots-label');
+  var slotsHint = document.getElementById('slots-hint');
+  var recurrenceDay = document.getElementById('recurrence_day');
+
+  function updateRecurringUI() {
+    var isRecurring = toggle.checked;
+    config.style.display = isRecurring ? '' : 'none';
+    hint.style.display = isRecurring ? '' : 'none';
+    addSlotBtn.style.display = isRecurring ? 'none' : '';
+
+    if (isRecurring) {
+      // Remove all extra slots, keep only the first
+      var rows = slotsContainer.querySelectorAll('.slot-row');
+      for (var i = 1; i < rows.length; i++) {
+        rows[i].remove();
+      }
+      slotsLabel.textContent = 'First Session Date';
+      slotsHint.textContent = 'Pick the date for the first occurrence';
+      // Clear recurrence_day if not set — make it required
+      if (!recurrenceDay.value) recurrenceDay.focus();
+    } else {
+      slotsLabel.textContent = 'First Time Slot';
+      slotsHint.textContent = 'Click to pick date and time';
+      // Clear recurrence fields
+      recurrenceDay.value = '';
+    }
+  }
+
+  toggle.addEventListener('change', updateRecurringUI);
+})();
+</script>
 
 <%- include('../partials/foot') %>

@@ -708,6 +708,15 @@ document.addEventListener('DOMContentLoaded', function() {
     showActivity(msg, '/loot');
   });
 
+  eventSource.addEventListener('handout-reveal', function(e) {
+    var data = JSON.parse(e.data);
+    var msg = 'DM shared a handout: "<strong>' + escapeHtml(data.title) + '</strong>"';
+    showActivity(msg, '/handouts');
+    if (typeof showToast === 'function') {
+      showToast('DM shared: ' + data.title, 'info', 8000);
+    }
+  });
+
   eventSource.addEventListener('session-confirmed', function(e) {
     var data = JSON.parse(e.data);
     var msg = '<strong>' + escapeHtml(data.username) + '</strong> confirmed session: "<strong>' + escapeHtml(data.sessionTitle) + '</strong>"';
@@ -738,6 +747,22 @@ document.addEventListener('DOMContentLoaded', function() {
     showActivity(msg, link);
   });
 
+  eventSource.addEventListener('quest-reveal', function(e) {
+    var data = JSON.parse(e.data);
+    var msg = 'New quest posted: "<strong>' + escapeHtml(data.title) + '</strong>"';
+    showActivity(msg, '/quests');
+    if (window.Toast) {
+      window.Toast.info('New quest: ' + data.title, 6000);
+    }
+  });
+
+  eventSource.addEventListener('quest-update', function(e) {
+    // Refresh if on quest board page
+    if (window.location.pathname === '/quests') {
+      location.reload();
+    }
+  });
+
   eventSource.addEventListener('unavailability-added', function(e) {
     var data = JSON.parse(e.data);
     var msg = '<strong>' + escapeHtml(data.username) + '</strong> added unavailability';
@@ -753,6 +778,122 @@ document.addEventListener('DOMContentLoaded', function() {
       eventSource = new EventSource('/api/events');
     }, 5000);
   };
+})();
+
+// === Sound Panel (Tabletopy iframe) ===
+(function() {
+  var panel = document.getElementById('sound-panel');
+  var closeBtn = document.getElementById('sound-panel-close');
+  var dragHandle = document.getElementById('sound-panel-drag');
+  if (!panel) return;
+
+  var isOpen = false;
+  var soundWindow = null;
+
+  function toggleSoundPanel() {
+    isOpen = !isOpen;
+    panel.style.display = isOpen ? 'flex' : 'none';
+    localStorage.setItem('sound-panel-open', isOpen ? '1' : '0');
+    var navBtn = document.getElementById('nav-sound-btn');
+    if (navBtn) navBtn.classList.toggle('active', isOpen);
+  }
+
+  function openSoundSite(url, name) {
+    // Open in popup window — audio persists across Quest Planner page navigations
+    if (soundWindow && !soundWindow.closed) {
+      soundWindow.location.href = url;
+      soundWindow.focus();
+    } else {
+      soundWindow = window.open(url, 'QuestPlannerSound', 'width=500,height=700,menubar=no,toolbar=no,location=yes,status=no');
+    }
+    localStorage.setItem('sound-last-url', url);
+    if (window.Toast) window.Toast.info('Opened ' + name + ' in sound window', 3000);
+  }
+
+  // Site buttons
+  document.querySelectorAll('.sound-site-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      openSoundSite(btn.getAttribute('data-url'), btn.getAttribute('data-name'));
+    });
+  });
+
+  // Custom URL
+  var customOpenBtn = document.getElementById('sound-custom-open');
+  var customUrlInput = document.getElementById('sound-custom-url');
+  if (customOpenBtn && customUrlInput) {
+    customOpenBtn.addEventListener('click', function() {
+      var url = customUrlInput.value.trim();
+      if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+        openSoundSite(url, 'Custom');
+      }
+    });
+  }
+
+  // Restore state on load
+  var savedOpen = localStorage.getItem('sound-panel-open');
+  if (savedOpen === '1') {
+    toggleSoundPanel();
+  }
+
+  // Restore position
+  var savedPos = localStorage.getItem('sound-panel-pos');
+  if (savedPos) {
+    try {
+      var pos = JSON.parse(savedPos);
+      panel.style.bottom = 'auto';
+      panel.style.right = 'auto';
+      panel.style.top = pos.top + 'px';
+      panel.style.left = pos.left + 'px';
+    } catch(e) {}
+  }
+
+  // Nav button
+  var navBtn = document.getElementById('nav-sound-btn');
+  if (navBtn) navBtn.addEventListener('click', toggleSoundPanel);
+
+  // Close button
+  if (closeBtn) closeBtn.addEventListener('click', toggleSoundPanel);
+
+  // Map toolbar sound buttons
+  var mapSoundBtn = document.getElementById('map-sound-btn');
+  if (mapSoundBtn) mapSoundBtn.addEventListener('click', toggleSoundPanel);
+  var fsSoundBtn = document.getElementById('fs-sound-btn');
+  if (fsSoundBtn) fsSoundBtn.addEventListener('click', toggleSoundPanel);
+
+  // Make globally accessible
+  window.toggleSoundPanel = toggleSoundPanel;
+
+  // Draggable
+  if (dragHandle) {
+    var dragging = false, dragOffX = 0, dragOffY = 0;
+    dragHandle.addEventListener('mousedown', function(e) {
+      if (e.target.closest('.sound-panel-close')) return;
+      dragging = true;
+      var rect = panel.getBoundingClientRect();
+      dragOffX = e.clientX - rect.left;
+      dragOffY = e.clientY - rect.top;
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!dragging) return;
+      var x = e.clientX - dragOffX;
+      var y = e.clientY - dragOffY;
+      panel.style.bottom = 'auto';
+      panel.style.right = 'auto';
+      panel.style.left = Math.max(0, x) + 'px';
+      panel.style.top = Math.max(0, y) + 'px';
+    });
+    document.addEventListener('mouseup', function() {
+      if (dragging) {
+        dragging = false;
+        localStorage.setItem('sound-panel-pos', JSON.stringify({
+          top: parseInt(panel.style.top),
+          left: parseInt(panel.style.left)
+        }));
+      }
+    });
+  }
+
 })();
 
 // === Toggle Share Menu ===

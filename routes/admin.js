@@ -100,6 +100,10 @@ router.post('/users/:id/delete', requireLogin, requireAdmin, (req, res) => {
     safeDelete('UPDATE maps SET parent_id = NULL WHERE parent_id IN (SELECT id FROM maps WHERE created_by = ?)', targetId);
     safeDelete('UPDATE maps SET hidden_by = NULL WHERE hidden_by = ?', targetId);
     safeDelete('DELETE FROM maps WHERE created_by = ?', targetId);
+    // Delete session notes, images, and attendance for this user
+    safeDelete('DELETE FROM session_notes WHERE user_id = ?', targetId);
+    safeDelete('DELETE FROM session_images WHERE user_id = ?', targetId);
+    safeDelete('DELETE FROM session_attendance WHERE user_id = ?', targetId);
     // Delete votes by this user
     db.prepare('DELETE FROM votes WHERE user_id = ?').run(targetId);
     // Delete preferences by this user
@@ -121,6 +125,9 @@ router.post('/users/:id/delete', requireLogin, requireAdmin, (req, res) => {
       db.prepare('DELETE FROM preferences WHERE session_id = ?').run(sid);
       safeDelete('DELETE FROM replies WHERE post_id IN (SELECT id FROM posts WHERE session_id = ?)', sid);
       safeDelete('DELETE FROM posts WHERE session_id = ?', sid);
+      safeDelete('DELETE FROM session_notes WHERE session_id = ?', sid);
+      safeDelete('DELETE FROM session_images WHERE session_id = ?', sid);
+      safeDelete('DELETE FROM session_attendance WHERE session_id = ?', sid);
       db.prepare('UPDATE sessions SET confirmed_slot_id = NULL WHERE id = ?').run(sid);
       db.prepare('DELETE FROM slots WHERE session_id = ?').run(sid);
     }

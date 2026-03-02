@@ -308,6 +308,19 @@ router.get('/', requireLogin, (req, res) => {
     }
   }
 
+  // === REAL ATTENDANCE (from session_attendance table) ===
+  const realAttendance = db.prepare(`
+    SELECT u.username, u.avatar,
+      COUNT(CASE WHEN sa.attended = 1 THEN 1 END) as attended,
+      COUNT(sa.id) as total,
+      ROUND(CAST(COUNT(CASE WHEN sa.attended = 1 THEN 1 END) AS FLOAT) / MAX(COUNT(sa.id), 1) * 100) as pct
+    FROM users u
+    LEFT JOIN session_attendance sa ON sa.user_id = u.id
+    WHERE u.role = 'player'
+    GROUP BY u.id HAVING total > 0
+    ORDER BY pct DESC
+  `).all();
+
   const analyticsData = {
     totalSessions,
     completedSessions,
@@ -335,7 +348,8 @@ router.get('/', requireLogin, (req, res) => {
       totalReplies,
       topPoster: topPoster || null,
       mostRepliedTopic: mostRepliedTopic && mostRepliedTopic.reply_count > 0 ? mostRepliedTopic : null
-    }
+    },
+    realAttendance
   };
 
   res.render('analytics', { analyticsData });

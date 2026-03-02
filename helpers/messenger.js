@@ -67,24 +67,43 @@ class MessengerService {
     const linkText = link ? ` — ${link}` : '';
 
     switch (type) {
-      case 'session_created':
+      case 'session_created': {
+        const categoryEmoji = { dnd: '\u2694\ufe0f', gamenight: '\ud83c\udfb2', rpg: '\ud83c\udfad', casual: '\ud83c\udfd5\ufe0f' };
+        let desc = data.description || '';
+        if (data.slotDates && data.slotDates.length > 0) {
+          desc += (desc ? '\n' : '') + 'Proposed dates: ' + data.slotDates.join(', ');
+        }
+        if (data.playerCount) {
+          desc += (desc ? '\n' : '') + `${data.playerCount} players in guild`;
+        }
         return {
-          emoji: '\ud83d\udcc5',
+          emoji: categoryEmoji[data.category] || '\ud83d\udcc5',
           title: 'New Quest',
           text: `New Quest: "${data.title}" — Vote now!${linkText}`,
           color: 0xd4a843,
-          description: data.description || '',
-          link
+          description: desc,
+          link,
+          thumbnail: true
         };
-      case 'session_confirmed':
+      }
+      case 'session_confirmed': {
+        let details = data.label ? `Time slot: ${data.label}` : '';
+        if (data.playerList && data.playerList.length > 0) {
+          details += (details ? '\n' : '') + 'Players: ' + data.playerList.join(', ');
+        }
+        if (data.mapName) {
+          details += (details ? '\n' : '') + `Map: ${data.mapName}`;
+        }
         return {
           emoji: '\u2705',
           title: 'Quest Confirmed',
           text: `Quest Confirmed: "${data.title}" on ${data.date || ''} at ${data.time || ''}${linkText}`,
           color: 0x2ecc71,
-          description: data.label ? `Time slot: ${data.label}` : '',
-          link
+          description: details,
+          link,
+          thumbnail: true
         };
+      }
       case 'session_cancelled':
         return {
           emoji: '\u274c',
@@ -121,6 +140,21 @@ class MessengerService {
           description: data.summary ? (data.summary.length > 200 ? data.summary.substring(0, 200) + '...' : data.summary) : '',
           link
         };
+      case 'session_reminder': {
+        let reminderDesc = '';
+        if (data.playerList && data.playerList.length > 0) {
+          reminderDesc = 'Players: ' + data.playerList.join(', ');
+        }
+        return {
+          emoji: '\u23f0',
+          title: 'Quest Reminder',
+          text: `Reminder: "${data.title}" starts in ${data.timeUntil}!${linkText}`,
+          color: 0xe67e22,
+          description: reminderDesc,
+          link,
+          thumbnail: true
+        };
+      }
       case 'test':
         return {
           emoji: '\ud83c\udff0',
@@ -198,6 +232,10 @@ class MessengerService {
 
     if (message.link) {
       embed.setURL(message.link);
+    }
+
+    if (message.thumbnail && this.config.public_url) {
+      embed.setThumbnail(this.config.public_url.replace(/\/+$/, '') + '/icons/icon-192.png');
     }
 
     try {

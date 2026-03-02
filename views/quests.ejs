@@ -1,0 +1,228 @@
+<%- include('partials/head', { pageTitle: 'Quest Board' }) %>
+
+<div class="page-header">
+  <h1>Quest Board</h1>
+  <% if (isDM) { %>
+    <button type="button" class="btn btn-primary" id="quest-form-toggle">Post a Quest</button>
+  <% } %>
+</div>
+
+<% if (isDM) { %>
+<div id="quest-form-section" class="quest-form-section card" style="display:none;">
+  <h2 style="margin-bottom:1rem;">Post a Quest</h2>
+  <form action="/quests" method="POST" id="quest-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="form-group">
+      <label for="q-title">Quest Title *</label>
+      <input type="text" name="title" id="q-title" required maxlength="200" placeholder="Slay the Dragon of Ashenmoor">
+    </div>
+    <div class="form-group">
+      <label for="q-desc">Description</label>
+      <textarea name="description" id="q-desc" rows="3" placeholder="A fearsome wyrm has been terrorizing the villages..."></textarea>
+    </div>
+    <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+      <div class="form-group">
+        <label for="q-difficulty">Difficulty</label>
+        <select name="difficulty" id="q-difficulty">
+          <option value="">-- None --</option>
+          <option value="trivial">Trivial</option>
+          <option value="easy">Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Hard</option>
+          <option value="deadly">Deadly</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="q-reward">Reward</label>
+        <input type="text" name="reward" id="q-reward" placeholder="500 gp, Magic Sword">
+      </div>
+    </div>
+    <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+      <div class="form-group">
+        <label for="q-npc">Quest Giver (NPC)</label>
+        <select name="quest_giver_npc_id" id="q-npc">
+          <option value="">-- None --</option>
+          <% npcs.forEach(n => { %>
+            <option value="<%= n.id %>"><%= n.name %></option>
+          <% }); %>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="q-npc-name">Quest Giver Name (text)</label>
+        <input type="text" name="quest_giver_name" id="q-npc-name" placeholder="Elder Thornwick">
+      </div>
+    </div>
+    <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+      <div class="form-group">
+        <label for="q-map">Linked Map</label>
+        <select name="linked_map_id" id="q-map">
+          <option value="">-- None --</option>
+          <% maps.forEach(m => { %>
+            <option value="<%= m.id %>"><%= m.name %></option>
+          <% }); %>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="q-arc">Story Arc</label>
+        <select name="arc_id" id="q-arc">
+          <option value="">-- None --</option>
+          <% arcs.forEach(a => { %>
+            <option value="<%= a.id %>"><%= a.name %></option>
+          <% }); %>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Objectives</label>
+      <div id="objectives-list">
+        <div class="slot-row" style="margin-bottom:0.4rem;display:flex;gap:0.4rem;">
+          <input type="text" name="objectives" placeholder="Objective 1" style="flex:1;">
+          <button type="button" class="btn btn-small btn-danger obj-remove">&times;</button>
+        </div>
+      </div>
+      <button type="button" class="btn btn-small btn-secondary" id="add-objective">+ Add Objective</button>
+    </div>
+    <div class="form-group">
+      <label for="q-dm-notes">DM Notes (hidden from players)</label>
+      <textarea name="dm_notes" id="q-dm-notes" rows="2" placeholder="Secret info..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>
+        <input type="checkbox" name="revealed" value="on" checked>
+        Reveal to players immediately
+      </label>
+    </div>
+    <button type="submit" class="btn btn-primary">Create Quest</button>
+  </form>
+</div>
+<% } %>
+
+<%
+  var stagedQuests = quests.filter(q => !q.revealed);
+  var visibleQuests = quests.filter(q => q.revealed);
+  var activeQuests = visibleQuests.filter(q => q.status === 'active');
+  var availableQuests = visibleQuests.filter(q => q.status === 'available');
+  var completedQuests = visibleQuests.filter(q => q.status === 'completed' || q.status === 'failed');
+%>
+
+<% if (isDM && stagedQuests.length > 0) { %>
+<div style="margin-bottom:1.5rem;">
+  <h2 style="color:var(--gold);font-size:1rem;margin-bottom:0.75rem;">Staged Quests (Hidden)</h2>
+  <div class="quest-board">
+    <% stagedQuests.forEach(q => { %>
+      <%- include('partials/quest-card', { q, isDM }) %>
+    <% }); %>
+  </div>
+</div>
+<% } %>
+
+<% if (activeQuests.length > 0) { %>
+<h2 style="color:var(--gold);font-size:1rem;margin-bottom:0.75rem;">Active Quests</h2>
+<div class="quest-board">
+  <% activeQuests.forEach(q => { %>
+    <%- include('partials/quest-card', { q, isDM }) %>
+  <% }); %>
+</div>
+<% } %>
+
+<% if (availableQuests.length > 0) { %>
+<h2 style="color:var(--text-secondary);font-size:1rem;margin-bottom:0.75rem;margin-top:1.5rem;">Available Quests</h2>
+<div class="quest-board">
+  <% availableQuests.forEach(q => { %>
+    <%- include('partials/quest-card', { q, isDM }) %>
+  <% }); %>
+</div>
+<% } %>
+
+<% if (completedQuests.length > 0) { %>
+<h2 style="color:var(--text-secondary);font-size:1rem;margin-bottom:0.75rem;margin-top:1.5rem;">Completed / Failed</h2>
+<div class="quest-board">
+  <% completedQuests.forEach(q => { %>
+    <%- include('partials/quest-card', { q, isDM }) %>
+  <% }); %>
+</div>
+<% } %>
+
+<% if (quests.length === 0) { %>
+  <div class="card">
+    <%- include('partials/empty-state', {
+      icon: '📜',
+      title: 'No Quests Yet',
+      description: isDM ? 'Post your first quest to the board!' : 'No quests have been posted yet. Check back later!',
+      cta: isDM ? '<button class="btn btn-primary" onclick="document.getElementById(\'quest-form-toggle\').click()">Post a Quest</button>' : ''
+    }) %>
+  </div>
+<% } %>
+
+<script>
+(function() {
+  // Toggle form
+  var formToggle = document.getElementById('quest-form-toggle');
+  var formSection = document.getElementById('quest-form-section');
+  if (formToggle && formSection) {
+    formToggle.addEventListener('click', function() {
+      formSection.style.display = formSection.style.display === 'none' ? '' : 'none';
+    });
+  }
+
+  // Add objective
+  var addObj = document.getElementById('add-objective');
+  var objList = document.getElementById('objectives-list');
+  if (addObj && objList) {
+    addObj.addEventListener('click', function() {
+      var count = objList.querySelectorAll('input[name="objectives"]').length + 1;
+      var row = document.createElement('div');
+      row.className = 'slot-row';
+      row.style.cssText = 'margin-bottom:0.4rem;display:flex;gap:0.4rem;';
+      row.innerHTML = '<input type="text" name="objectives" placeholder="Objective ' + count + '" style="flex:1;">'
+        + '<button type="button" class="btn btn-small btn-danger obj-remove">&times;</button>';
+      objList.appendChild(row);
+    });
+    objList.addEventListener('click', function(e) {
+      if (e.target.classList.contains('obj-remove')) {
+        var rows = objList.querySelectorAll('.slot-row');
+        if (rows.length > 1) e.target.closest('.slot-row').remove();
+      }
+    });
+  }
+
+  // Status change via fetch
+  document.querySelectorAll('.quest-status-select').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+      var questId = this.getAttribute('data-quest-id');
+      var status = this.value;
+      fetch('/quests/' + questId + '/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('input[name="_csrf"]').value },
+        body: JSON.stringify({ status: status })
+      }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.success) location.reload();
+      });
+    });
+  });
+
+  // Objective toggle
+  document.querySelectorAll('.quest-obj-checkbox').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      var questId = this.getAttribute('data-quest-id');
+      var objId = this.getAttribute('data-obj-id');
+      fetch('/quests/' + questId + '/objectives', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('input[name="_csrf"]').value },
+        body: JSON.stringify({ objective_id: parseInt(objId), completed: this.checked })
+      });
+      this.closest('li').classList.toggle('completed', this.checked);
+    });
+  });
+
+  // Edit modal toggle
+  document.querySelectorAll('.quest-edit-toggle').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var form = document.getElementById('quest-edit-' + btn.getAttribute('data-quest-id'));
+      if (form) form.style.display = form.style.display === 'none' ? '' : 'none';
+    });
+  });
+})();
+</script>
+
+<%- include('partials/foot') %>

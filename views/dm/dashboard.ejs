@@ -11,6 +11,23 @@
   </div>
 <% } %>
 
+<% if (typeof latestRecap !== 'undefined' && latestRecap) { %>
+  <div class="previously-on-banner card">
+    <div class="previously-on-header">
+      <h3>Previously On...</h3>
+      <span class="previously-on-title"><%= latestRecap.title %></span>
+    </div>
+    <div class="recap-preview"><%- renderMarkdown(latestRecap.summary.length > 300 ? latestRecap.summary.substring(0, 300) + '...' : latestRecap.summary) %></div>
+    <div class="previously-on-footer">
+      <% if (latestRecap.confirmed_date) { %>
+        <span class="previously-on-date"><%= formatDate(latestRecap.confirmed_date, { month: 'short', day: 'numeric' }) %></span>
+      <% } %>
+      <a href="/sessions/<%= latestRecap.id %>" class="btn btn-outline btn-small">Read Full Recap</a>
+      <a href="/journal" class="btn btn-outline btn-small">Quest Journal</a>
+    </div>
+  </div>
+<% } %>
+
 <% if (sessions.length === 0) { %>
   <div class="card">
     <%- include('../partials/empty-state', {
@@ -26,6 +43,7 @@
       <a href="/sessions/<%= s.id %>" class="card session-card session-<%= s.status %> session-cat-<%= s.category || 'dnd' %>" data-session-index="<%= i %>"<% if (i >= 9) { %> style="display:none" class="session-hidden"<% } %>>
         <div class="session-category"><%= s.category === 'gamenight' ? 'Game Night' : s.category === 'rpg' ? 'RPG' : s.category === 'casual' ? 'Casual' : 'D&D' %></div>
         <div class="session-status-badge"><%= s.status %></div>
+        <% if (s.recurrence_rule) { %><span class="session-recurring-badge session-recurring-badge-sm">Recurring</span><% } %>
         <h2><%= s.title %></h2>
         <% if (s.description) { %>
           <p class="session-desc"><%= s.description %></p>
@@ -59,6 +77,24 @@
       })();
     </script>
   <% } %>
+<% } %>
+
+<% if (typeof activeQuests !== 'undefined' && activeQuests.length > 0) { %>
+<div class="page-header" style="margin-top:2rem">
+  <h2>Active Quests</h2>
+  <a href="/quests" class="btn btn-secondary">View All</a>
+</div>
+<div class="quest-widget-list">
+  <% activeQuests.forEach(q => { %>
+    <a href="/quests" class="quest-widget-item">
+      <span class="quest-widget-title"><%= q.title %></span>
+      <span class="quest-widget-status quest-status-<%= q.status %>"><%= q.status %></span>
+      <% if (q.difficulty) { %>
+        <span class="quest-difficulty-badge quest-diff-<%= q.difficulty %>" style="font-size:0.6rem;"><%= q.difficulty %></span>
+      <% } %>
+    </a>
+  <% }); %>
+</div>
 <% } %>
 
 <% if (boardPosts && boardPosts.length > 0) { %>

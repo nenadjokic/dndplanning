@@ -319,7 +319,7 @@ router.get('/:id', requireLogin, (req, res) => {
   const npcTokens = db.prepare(`
     SELECT mnt.id, mnt.map_id, mnt.npc_token_id, mnt.x, mnt.y, mnt.scale, mnt.current_hp,
            mnt.hp_visible, mnt.hidden, mnt.vision_radius, mnt.alignment,
-           n.name AS npc_name, n.avatar AS npc_avatar, n.max_hp, n.source_type
+           n.name AS npc_name, n.avatar AS npc_avatar, n.max_hp, n.source_type, n.source_key
     FROM map_npc_tokens mnt
     JOIN npc_tokens n ON n.id = mnt.npc_token_id
     WHERE mnt.map_id = ?
@@ -389,7 +389,25 @@ router.get('/:id', requireLogin, (req, res) => {
     }
   }
 
-  res.render('map', { map, locations, isDM, isAdmin, chain, children, tokens, npcTokens, showPartyMarker, canAddChild, MARKER_TYPES, currentUserId: req.user.id, mapLinks, allPlayers });
+  // Loot chests on this map
+  let lootChests = db.prepare('SELECT * FROM map_loot_chests WHERE map_id = ?').all(map.id);
+  if (!isDM) lootChests = lootChests.filter(c => !c.hidden);
+  for (const chest of lootChests) {
+    chest.items = db.prepare('SELECT id, name, description, quantity FROM chest_items WHERE chest_id = ?').all(chest.id);
+  }
+
+  // Saved encounters for DM
+  const encounters = isDM ? db.prepare('SELECT id, name, monsters, updated_at FROM encounters WHERE created_by = ? ORDER BY updated_at DESC').all(req.user.id) : [];
+
+  // Quests linked to this map
+  let mapQuests = [];
+  try {
+    mapQuests = isDM
+      ? db.prepare('SELECT id, title, status, description, difficulty, reward FROM quests WHERE linked_map_id = ?').all(map.id)
+      : db.prepare('SELECT id, title, status, description, difficulty, reward FROM quests WHERE linked_map_id = ? AND revealed = 1').all(map.id);
+  } catch (e) { /* table may not exist yet */ }
+
+  res.render('map', { map, locations, isDM, isAdmin, chain, children, tokens, npcTokens, lootChests, encounters, showPartyMarker, canAddChild, MARKER_TYPES, currentUserId: req.user.id, mapLinks, allPlayers, mapQuests });
 });
 
 // Upload map image
@@ -578,19 +596,19 @@ router.get('/:id/token-state', requireLogin, (req, res) => {
   `).all(map.id);
   for (const t of tokens) {
     if (t.char_avatar && !t.char_avatar.startsWith('/')) t.char_avatar = '/avatars/' + t.char_avatar;
-    t.conditions = db.prepare('SELECT id, condition_name FROM token_conditions WHERE token_id = ?').all(t.id);
+    t.conditions = db.prepare('SELECT id, condition_name, duration_rounds, duration_type FROM token_conditions WHERE token_id = ?').all(t.id);
   }
   // NPC tokens
   let npcTokens = db.prepare(`
     SELECT mnt.id, mnt.npc_token_id, mnt.x, mnt.y, mnt.scale, mnt.current_hp, mnt.hp_visible, mnt.hidden, mnt.alignment,
-           n.name AS npc_name, n.avatar AS npc_avatar, n.max_hp, n.source_type
+           n.name AS npc_name, n.avatar AS npc_avatar, n.max_hp, n.source_type, n.source_key
     FROM map_npc_tokens mnt
     JOIN npc_tokens n ON n.id = mnt.npc_token_id
     WHERE mnt.map_id = ?
   `).all(map.id);
   for (const nt of npcTokens) {
     if (nt.npc_avatar && !nt.npc_avatar.startsWith('/')) nt.npc_avatar = '/avatars/' + nt.npc_avatar;
-    nt.conditions = db.prepare('SELECT id, condition_name FROM npc_token_conditions WHERE npc_map_token_id = ?').all(nt.id);
+    nt.conditions = db.prepare('SELECT id, condition_name, duration_rounds, duration_type FROM npc_token_conditions WHERE npc_map_token_id = ?').all(nt.id);
   }
   // Fetch NPC token assignments
   const npcMapTokenIds = npcTokens.map(nt => nt.id);
@@ -620,7 +638,17 @@ router.get('/:id/token-state', requireLogin, (req, res) => {
   if (!isDMUser) {
     npcTokens = npcTokens.filter(nt => !nt.hidden);
   }
-  res.json({ tokens, npcTokens });
+  // Loot chests on this map
+  let lootChests = db.prepare('SELECT * FROM map_loot_chests WHERE map_id = ?').all(map.id);
+  if (!isDMUser) {
+    lootChests = lootChests.filter(c => !c.hidden);
+  }
+  for (const chest of lootChests) {
+    chest.items = db.prepare('SELECT id, name, description, quantity FROM chest_items WHERE chest_id = ?').all(chest.id);
+  }
+  // Grid settings
+  const gridMap = db.prepare('SELECT grid_enabled, grid_size, grid_offset_x, grid_offset_y, grid_color, grid_opacity, grid_type FROM maps WHERE id = ?').get(map.id);
+  res.json({ tokens, npcTokens, lootChests, grid: gridMap || {} });
 });
 
 // Place token on map
@@ -717,8 +745,10 @@ router.post('/:id/tokens/:tokenId/conditions', requireLogin, requireDM, express.
   if (!token) return res.status(404).json({ error: 'Token not found' });
   const name = (req.body.condition_name || '').trim();
   if (!name) return res.status(400).json({ error: 'Condition name required' });
+  const durRounds = req.body.duration_rounds != null ? parseInt(req.body.duration_rounds) : null;
+  const durType = ['start_of_turn', 'end_of_turn'].includes(req.body.duration_type) ? req.body.duration_type : 'indefinite';
   try {
-    const result = db.prepare('INSERT INTO token_conditions (token_id, condition_name, applied_by) VALUES (?, ?, ?)').run(token.id, name, req.user.id);
+    const result = db.prepare('INSERT INTO token_conditions (token_id, condition_name, applied_by, duration_rounds, duration_type) VALUES (?, ?, ?, ?, ?)').run(token.id, name, req.user.id, durRounds, durType);
     sse.broadcast('map-update', { mapId: parseInt(req.params.id), action: 'token-update' });
     res.json({ success: true, conditionId: result.lastInsertRowid, condition_name: name });
   } catch (e) {
@@ -755,6 +785,21 @@ router.get('/:id/conditions-list', requireLogin, (req, res) => {
     const standard = ['Blinded','Charmed','Deafened','Exhaustion','Frightened','Grappled','Incapacitated','Invisible','Paralyzed','Petrified','Poisoned','Prone','Restrained','Stunned','Unconscious'];
     res.json({ conditions: standard.map(n => ({ name: n })) });
   }
+});
+
+// ---- Grid Overlay ----
+
+// Save grid settings (DM only)
+router.post('/:id/grid', requireLogin, requireDM, express.json(), (req, res) => {
+  const map = db.prepare('SELECT id FROM maps WHERE id = ?').get(req.params.id);
+  if (!map) return res.status(404).json({ error: 'Map not found' });
+  const { grid_enabled, grid_size, grid_offset_x, grid_offset_y, grid_color, grid_opacity, grid_type } = req.body;
+  db.prepare(`UPDATE maps SET grid_enabled=?, grid_size=?, grid_offset_x=?, grid_offset_y=?,
+    grid_color=?, grid_opacity=?, grid_type=? WHERE id=?`)
+    .run(grid_enabled ? 1 : 0, grid_size || 50, grid_offset_x || 0, grid_offset_y || 0,
+      grid_color || '#ffffff', grid_opacity || 0.3, grid_type || 'square', map.id);
+  sse.broadcast('map-update', { mapId: parseInt(req.params.id) });
+  res.json({ success: true });
 });
 
 // ---- Fog of War ----
@@ -955,8 +1000,44 @@ router.post('/:id/npc-tokens/:ntId/hp', requireLogin, requireDM, express.json(),
   if (nt.max_hp > 0) newHp = Math.max(0, Math.min(nt.max_hp, newHp));
   else newHp = Math.max(0, newHp);
   db.prepare('UPDATE map_npc_tokens SET current_hp = ? WHERE id = ?').run(newHp, nt.id);
-  sse.broadcast('map-update', { mapId: parseInt(req.params.id), action: 'npc-update', ntId: nt.id });
-  res.json({ success: true, current_hp: newHp, max_hp: nt.max_hp });
+
+  // When NPC drops to 0 HP, create loot chest from linked loot items
+  let chestData = null;
+  if (newHp === 0 && nt.max_hp > 0) {
+    const npcPos = db.prepare('SELECT x, y FROM map_npc_tokens WHERE id = ?').get(nt.id);
+    const npcName = db.prepare('SELECT name FROM npc_tokens WHERE id = ?').get(nt.npc_token_id);
+    const hiddenLoot = db.prepare('SELECT id, name, description, quantity, category FROM loot_items WHERE linked_npc_id = ? AND hidden = 1').all(nt.npc_token_id);
+    if (hiddenLoot.length) {
+      // Parse coins from "Coin Pouch" items, collect real items
+      let pp = 0, gp = 0, sp = 0, cp = 0;
+      const realItems = [];
+      for (const item of hiddenLoot) {
+        if (item.category === 'currency' && item.description) {
+          const m = item.description.match(/(\d+)\s*PP/i); if (m) pp += parseInt(m[1]);
+          const m2 = item.description.match(/(\d+)\s*GP/i); if (m2) gp += parseInt(m2[1]);
+          const m3 = item.description.match(/(\d+)\s*SP/i); if (m3) sp += parseInt(m3[1]);
+          const m4 = item.description.match(/(\d+)\s*CP/i); if (m4) cp += parseInt(m4[1]);
+        } else {
+          realItems.push(item);
+        }
+      }
+      // Create chest at NPC position
+      const chestResult = db.prepare(
+        'INSERT INTO map_loot_chests (map_id, x, y, label, pp, gp, sp, cp, hidden, linked_npc_name, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)'
+      ).run(parseInt(req.params.id), npcPos.x, npcPos.y, (npcName ? npcName.name + "'s Loot" : 'Loot'), pp, gp, sp, cp, npcName ? npcName.name : null, req.user.id);
+      const chestId = chestResult.lastInsertRowid;
+      for (const item of realItems) {
+        db.prepare('INSERT INTO chest_items (chest_id, name, description, quantity) VALUES (?, ?, ?, ?)').run(chestId, item.name, item.description, item.quantity || 1);
+      }
+      // Reveal original loot items
+      db.prepare('UPDATE loot_items SET hidden = 0 WHERE linked_npc_id = ? AND hidden = 1').run(nt.npc_token_id);
+      chestData = { id: chestId, x: npcPos.x, y: npcPos.y, label: (npcName ? npcName.name + "'s Loot" : 'Loot'), pp, gp, sp, cp, items: realItems.map(i => ({ name: i.name, quantity: i.quantity })) };
+    }
+  }
+
+  const mapId = parseInt(req.params.id);
+  sse.broadcast('map-update', { mapId, action: 'npc-update', ntId: nt.id, chest: chestData || undefined });
+  res.json({ success: true, current_hp: newHp, max_hp: nt.max_hp, chest: chestData });
 });
 
 // Toggle NPC HP visibility on map
@@ -990,14 +1071,123 @@ router.post('/:id/npc-tokens/:ntId/alignment', requireLogin, requireDM, express.
   res.json({ success: true, alignment });
 });
 
+// ---- Loot Chests on Map ----
+
+// Create loot chest (DM only)
+router.post('/:id/loot-chests', requireLogin, requireDM, express.json(), (req, res) => {
+  const map = db.prepare('SELECT id FROM maps WHERE id = ?').get(req.params.id);
+  if (!map) return res.status(404).json({ error: 'Map not found' });
+  const x = Math.max(0, Math.min(100, parseFloat(req.body.x) || 50));
+  const y = Math.max(0, Math.min(100, parseFloat(req.body.y) || 50));
+  const label = (req.body.label || 'Loot Chest').trim();
+  const notes = (req.body.notes || '').trim() || null;
+  const pp = Math.max(0, parseInt(req.body.pp) || 0);
+  const gp = Math.max(0, parseInt(req.body.gp) || 0);
+  const sp = Math.max(0, parseInt(req.body.sp) || 0);
+  const cp = Math.max(0, parseInt(req.body.cp) || 0);
+  const hidden = req.body.hidden ? 1 : 0;
+  const result = db.prepare(
+    'INSERT INTO map_loot_chests (map_id, x, y, label, notes, pp, gp, sp, cp, hidden, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(map.id, x, y, label, notes, pp, gp, sp, cp, hidden, req.user.id);
+  const chestId = result.lastInsertRowid;
+  // Add items
+  const items = req.body.items || [];
+  for (const item of items) {
+    if (item.name && item.name.trim()) {
+      db.prepare('INSERT INTO chest_items (chest_id, name, description, quantity) VALUES (?, ?, ?, ?)').run(chestId, item.name.trim(), item.description || null, item.quantity || 1);
+    }
+  }
+  sse.broadcast('map-update', { mapId: map.id, action: 'chest-create', chestId });
+  res.json({ success: true, id: chestId });
+});
+
+// Update loot chest (DM only)
+router.post('/:id/loot-chests/:chestId/edit', requireLogin, requireDM, express.json(), (req, res) => {
+  const chest = db.prepare('SELECT id FROM map_loot_chests WHERE id = ? AND map_id = ?').get(req.params.chestId, req.params.id);
+  if (!chest) return res.status(404).json({ error: 'Chest not found' });
+  const label = (req.body.label || 'Loot Chest').trim();
+  const notes = (req.body.notes || '').trim() || null;
+  const pp = Math.max(0, parseInt(req.body.pp) || 0);
+  const gp = Math.max(0, parseInt(req.body.gp) || 0);
+  const sp = Math.max(0, parseInt(req.body.sp) || 0);
+  const cp = Math.max(0, parseInt(req.body.cp) || 0);
+  db.prepare('UPDATE map_loot_chests SET label = ?, notes = ?, pp = ?, gp = ?, sp = ?, cp = ? WHERE id = ?')
+    .run(label, notes, pp, gp, sp, cp, chest.id);
+  // Replace items
+  db.prepare('DELETE FROM chest_items WHERE chest_id = ?').run(chest.id);
+  const items = req.body.items || [];
+  for (const item of items) {
+    if (item.name && item.name.trim()) {
+      db.prepare('INSERT INTO chest_items (chest_id, name, description, quantity) VALUES (?, ?, ?, ?)').run(chest.id, item.name.trim(), item.description || null, item.quantity || 1);
+    }
+  }
+  sse.broadcast('map-update', { mapId: parseInt(req.params.id), action: 'chest-update', chestId: chest.id });
+  res.json({ success: true });
+});
+
+// Toggle chest hidden (DM only)
+router.post('/:id/loot-chests/:chestId/toggle-hidden', requireLogin, requireDM, express.json(), (req, res) => {
+  const chest = db.prepare('SELECT id, hidden FROM map_loot_chests WHERE id = ? AND map_id = ?').get(req.params.chestId, req.params.id);
+  if (!chest) return res.status(404).json({ error: 'Chest not found' });
+  const newVal = chest.hidden ? 0 : 1;
+  db.prepare('UPDATE map_loot_chests SET hidden = ? WHERE id = ?').run(newVal, chest.id);
+  sse.broadcast('map-update', { mapId: parseInt(req.params.id), action: 'chest-update', chestId: chest.id });
+  res.json({ success: true, hidden: newVal });
+});
+
+// Move chest (DM only)
+router.post('/:id/loot-chests/:chestId/move', requireLogin, requireDM, express.json(), (req, res) => {
+  const chest = db.prepare('SELECT id FROM map_loot_chests WHERE id = ? AND map_id = ?').get(req.params.chestId, req.params.id);
+  if (!chest) return res.status(404).json({ error: 'Chest not found' });
+  const x = Math.max(0, Math.min(100, parseFloat(req.body.x) || 50));
+  const y = Math.max(0, Math.min(100, parseFloat(req.body.y) || 50));
+  db.prepare('UPDATE map_loot_chests SET x = ?, y = ? WHERE id = ?').run(x, y, chest.id);
+  sse.broadcast('map-update', { mapId: parseInt(req.params.id), action: 'chest-move', chestId: chest.id });
+  res.json({ success: true });
+});
+
+// Collect chest loot → add to party treasury + party loot, remove chest
+router.post('/:id/loot-chests/:chestId/collect', requireLogin, requireDM, express.json(), (req, res) => {
+  const chest = db.prepare('SELECT * FROM map_loot_chests WHERE id = ? AND map_id = ?').get(req.params.chestId, req.params.id);
+  if (!chest) return res.status(404).json({ error: 'Chest not found' });
+  // Add coins to party treasury
+  if (chest.pp || chest.gp || chest.sp || chest.cp) {
+    db.prepare('UPDATE party_currency SET pp = pp + ?, gp = gp + ?, sp = sp + ?, cp = cp + ? WHERE id = 1')
+      .run(chest.pp, chest.gp, chest.sp, chest.cp);
+    db.prepare('INSERT INTO currency_log (target, pp_change, gp_change, sp_change, cp_change, reason, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run('party', chest.pp, chest.gp, chest.sp, chest.cp, 'Collected from chest: ' + chest.label, req.user.id);
+  }
+  // Add items to party loot
+  const items = db.prepare('SELECT name, description, quantity FROM chest_items WHERE chest_id = ?').all(chest.id);
+  for (const item of items) {
+    db.prepare('INSERT INTO loot_items (name, description, quantity, category, created_by) VALUES (?, ?, ?, ?, ?)')
+      .run(item.name, item.description, item.quantity, 'item', req.user.id);
+  }
+  // Remove chest
+  db.prepare('DELETE FROM map_loot_chests WHERE id = ?').run(chest.id);
+  sse.broadcast('map-update', { mapId: parseInt(req.params.id), action: 'chest-delete', chestId: chest.id });
+  res.json({ success: true, coinsCollected: !!(chest.pp || chest.gp || chest.sp || chest.cp), itemsCollected: items.length });
+});
+
+// Delete chest without collecting
+router.post('/:id/loot-chests/:chestId/delete', requireLogin, requireDM, express.json(), (req, res) => {
+  const chest = db.prepare('SELECT id FROM map_loot_chests WHERE id = ? AND map_id = ?').get(req.params.chestId, req.params.id);
+  if (!chest) return res.status(404).json({ error: 'Chest not found' });
+  db.prepare('DELETE FROM map_loot_chests WHERE id = ?').run(chest.id);
+  sse.broadcast('map-update', { mapId: parseInt(req.params.id), action: 'chest-delete', chestId: chest.id });
+  res.json({ success: true });
+});
+
 // Add condition to NPC map token
 router.post('/:id/npc-tokens/:ntId/conditions', requireLogin, requireDM, express.json(), (req, res) => {
   const nt = db.prepare('SELECT id FROM map_npc_tokens WHERE id = ? AND map_id = ?').get(req.params.ntId, req.params.id);
   if (!nt) return res.status(404).json({ error: 'NPC token not found' });
   const name = (req.body.condition_name || '').trim();
   if (!name) return res.status(400).json({ error: 'Condition name required' });
+  const durRounds = req.body.duration_rounds != null ? parseInt(req.body.duration_rounds) : null;
+  const durType = ['start_of_turn', 'end_of_turn'].includes(req.body.duration_type) ? req.body.duration_type : 'indefinite';
   try {
-    const result = db.prepare('INSERT INTO npc_token_conditions (npc_map_token_id, condition_name, applied_by) VALUES (?, ?, ?)').run(nt.id, name, req.user.id);
+    const result = db.prepare('INSERT INTO npc_token_conditions (npc_map_token_id, condition_name, applied_by, duration_rounds, duration_type) VALUES (?, ?, ?, ?, ?)').run(nt.id, name, req.user.id, durRounds, durType);
     sse.broadcast('map-update', { mapId: parseInt(req.params.id), action: 'npc-update', ntId: nt.id });
     res.json({ success: true, conditionId: result.lastInsertRowid, condition_name: name });
   } catch (e) {
@@ -1135,6 +1325,11 @@ router.post('/:id/delete', requireLogin, requireDM, (req, res) => {
       db.prepare('UPDATE sessions SET location_id = NULL WHERE location_id = ?').run(loc.id);
     }
     db.prepare('DELETE FROM map_locations WHERE map_id = ?').run(mapId);
+    // Combat cleanup
+    try {
+      db.prepare('DELETE FROM combat_participants WHERE encounter_id IN (SELECT id FROM combat_encounters WHERE map_id = ?)').run(mapId);
+      db.prepare('DELETE FROM combat_encounters WHERE map_id = ?').run(mapId);
+    } catch (e) { /* tables may not exist */ }
     // NPC tokens cleanup
     const npcMapTokenIds = db.prepare('SELECT id FROM map_npc_tokens WHERE map_id = ?').all(mapId);
     for (const nt of npcMapTokenIds) {
@@ -1164,6 +1359,383 @@ router.post('/:id/delete', requireLogin, requireDM, (req, res) => {
   const redirectTo = map.parent_id ? '/map/' + map.parent_id : '/map';
   req.flash('success', 'Map deleted.');
   res.redirect(redirectTo);
+});
+
+// ========================
+// COMBAT TRACKER ROUTES
+// ========================
+
+// Helper: recalculate sort_order for all participants in an encounter
+function recalcCombatOrder(encounterId) {
+  const participants = db.prepare(
+    'SELECT id, initiative, initiative_modifier FROM combat_participants WHERE encounter_id = ? ORDER BY initiative DESC, initiative_modifier DESC, id ASC'
+  ).all(encounterId);
+  const stmt = db.prepare('UPDATE combat_participants SET sort_order = ? WHERE id = ?');
+  participants.forEach((p, i) => stmt.run(i, p.id));
+}
+
+// Helper: get participant display info
+function getCombatParticipants(encounterId, isDMUser) {
+  const rows = db.prepare(`
+    SELECT cp.*,
+      mt.character_id, mt.x AS token_x, mt.y AS token_y,
+      c.name AS pc_name, c.avatar AS pc_avatar, c.user_id AS pc_user_id,
+      mnt.npc_token_id, mnt.x AS npc_x, mnt.y AS npc_y, mnt.current_hp AS npc_current_hp, mnt.hp_visible AS npc_hp_visible, mnt.hidden AS npc_hidden, mnt.alignment AS npc_alignment,
+      n.name AS npc_name, n.avatar AS npc_avatar, n.max_hp AS npc_max_hp
+    FROM combat_participants cp
+    LEFT JOIN map_tokens mt ON mt.id = cp.token_id
+    LEFT JOIN characters c ON c.id = mt.character_id
+    LEFT JOIN map_npc_tokens mnt ON mnt.id = cp.npc_map_token_id
+    LEFT JOIN npc_tokens n ON n.id = mnt.npc_token_id
+    WHERE cp.encounter_id = ?
+    ORDER BY cp.sort_order ASC
+  `).all(encounterId);
+
+  return rows.map(r => {
+    const isPC = r.token_id != null;
+    const p = {
+      id: r.id,
+      type: isPC ? 'pc' : 'npc',
+      initiative: r.initiative,
+      initiative_modifier: r.initiative_modifier,
+      sort_order: r.sort_order,
+      legendary_actions_max: r.legendary_actions_max,
+      legendary_actions_used: r.legendary_actions_used
+    };
+    if (isPC) {
+      p.token_id = r.token_id;
+      p.name = r.pc_name;
+      p.avatar = r.pc_avatar && !r.pc_avatar.startsWith('/') ? '/avatars/' + r.pc_avatar : r.pc_avatar;
+      p.user_id = r.pc_user_id;
+      p.x = r.token_x;
+      p.y = r.token_y;
+      p.conditions = db.prepare('SELECT id, condition_name, duration_rounds, duration_type FROM token_conditions WHERE token_id = ?').all(r.token_id);
+    } else {
+      p.npc_map_token_id = r.npc_map_token_id;
+      p.name = r.npc_name;
+      p.avatar = r.npc_avatar && !r.npc_avatar.startsWith('/') ? '/avatars/' + r.npc_avatar : r.npc_avatar;
+      p.current_hp = r.npc_current_hp;
+      p.max_hp = r.npc_max_hp;
+      p.hp_visible = r.npc_hp_visible;
+      p.hidden = r.npc_hidden;
+      p.alignment = r.npc_alignment;
+      p.conditions = db.prepare('SELECT id, condition_name, duration_rounds, duration_type FROM npc_token_conditions WHERE npc_map_token_id = ?').all(r.npc_map_token_id);
+    }
+    return p;
+  });
+}
+
+// Start combat encounter
+router.post('/:id/combat/start', requireLogin, requireDM, express.json(), (req, res) => {
+  const mapId = parseInt(req.params.id);
+  const map = db.prepare('SELECT id FROM maps WHERE id = ?').get(mapId);
+  if (!map) return res.status(404).json({ error: 'Map not found' });
+
+  // Check no existing combat
+  const existing = db.prepare('SELECT id FROM combat_encounters WHERE map_id = ?').get(mapId);
+  if (existing) return res.status(409).json({ error: 'Combat already active on this map' });
+
+  const participants = req.body.participants || [];
+  if (participants.length === 0) return res.status(400).json({ error: 'No participants selected' });
+
+  const visibility = ['full', 'order_only', 'hidden'].includes(req.body.visibility) ? req.body.visibility : 'full';
+
+  const enc = db.prepare('INSERT INTO combat_encounters (map_id, visibility, started_by) VALUES (?, ?, ?)').run(mapId, visibility, req.user.id);
+  const encounterId = enc.lastInsertRowid;
+
+  const insertPart = db.prepare('INSERT INTO combat_participants (encounter_id, token_id, npc_map_token_id, initiative_modifier, legendary_actions_max) VALUES (?, ?, ?, ?, ?)');
+  for (const p of participants) {
+    let initMod = 0;
+    let legMax = 0;
+    if (p.type === 'npc') {
+      // Lookup DEX modifier from monster data
+      try {
+        const npcToken = db.prepare(`
+          SELECT n.source_type, n.source_key FROM npc_tokens n
+          JOIN map_npc_tokens mnt ON mnt.npc_token_id = n.id
+          WHERE mnt.id = ?
+        `).get(p.tokenId);
+        if (npcToken && npcToken.source_key) {
+          const monster = db.prepare('SELECT raw_data FROM dnd_monsters WHERE LOWER(name) = ?').get(npcToken.source_key.toLowerCase());
+          if (monster) {
+            const d = JSON.parse(monster.raw_data);
+            if (d.dex != null) initMod = Math.floor((d.dex - 10) / 2);
+            // Check for legendary actions
+            if (d.legendary_actions && Array.isArray(d.legendary_actions) && d.legendary_actions.length > 0) {
+              legMax = d.legendary_desc ? parseInt((d.legendary_desc.match(/(\d+)\s*legendary/i) || [])[1]) || 3 : 3;
+            }
+          }
+        }
+      } catch (e) { /* ignore lookup errors */ }
+      insertPart.run(encounterId, null, p.tokenId, initMod, legMax);
+    } else {
+      insertPart.run(encounterId, p.tokenId, null, 0, 0);
+    }
+  }
+
+  recalcCombatOrder(encounterId);
+  sse.broadcast('combat-update', { mapId, action: 'combat-start' });
+
+  const encounter = db.prepare('SELECT * FROM combat_encounters WHERE id = ?').get(encounterId);
+  const parts = getCombatParticipants(encounterId, true);
+  res.json({ success: true, encounter, participants: parts });
+});
+
+// Set initiative values
+router.post('/:id/combat/initiative', requireLogin, requireDM, express.json(), (req, res) => {
+  const mapId = parseInt(req.params.id);
+  const enc = db.prepare('SELECT id FROM combat_encounters WHERE map_id = ?').get(mapId);
+  if (!enc) return res.status(404).json({ error: 'No active combat' });
+
+  const initiatives = req.body.initiatives || [];
+  const stmt = db.prepare('UPDATE combat_participants SET initiative = ? WHERE id = ? AND encounter_id = ?');
+  for (const i of initiatives) {
+    stmt.run(parseInt(i.initiative) || 0, i.participantId, enc.id);
+  }
+
+  recalcCombatOrder(enc.id);
+  db.prepare("UPDATE combat_encounters SET updated_at = datetime('now') WHERE id = ?").run(enc.id);
+  sse.broadcast('combat-update', { mapId, action: 'initiative-update' });
+  res.json({ success: true });
+});
+
+// Advance to next turn
+router.post('/:id/combat/next-turn', requireLogin, requireDM, (req, res) => {
+  const mapId = parseInt(req.params.id);
+  const enc = db.prepare('SELECT * FROM combat_encounters WHERE map_id = ?').get(mapId);
+  if (!enc) return res.status(404).json({ error: 'No active combat' });
+
+  const parts = db.prepare('SELECT * FROM combat_participants WHERE encounter_id = ? ORDER BY sort_order ASC').all(enc.id);
+  if (parts.length === 0) return res.status(400).json({ error: 'No participants' });
+
+  const prevIndex = enc.current_turn_index;
+  const prevPart = parts[prevIndex] || parts[0];
+
+  // Decrement end-of-turn conditions for previous participant
+  if (prevPart) {
+    if (prevPart.token_id) {
+      db.prepare("UPDATE token_conditions SET duration_rounds = duration_rounds - 1 WHERE token_id = ? AND duration_type = 'end_of_turn' AND duration_rounds IS NOT NULL").run(prevPart.token_id);
+      db.prepare("DELETE FROM token_conditions WHERE token_id = ? AND duration_type = 'end_of_turn' AND duration_rounds IS NOT NULL AND duration_rounds <= 0").run(prevPart.token_id);
+    } else if (prevPart.npc_map_token_id) {
+      db.prepare("UPDATE npc_token_conditions SET duration_rounds = duration_rounds - 1 WHERE npc_map_token_id = ? AND duration_type = 'end_of_turn' AND duration_rounds IS NOT NULL").run(prevPart.npc_map_token_id);
+      db.prepare("DELETE FROM npc_token_conditions WHERE npc_map_token_id = ? AND duration_type = 'end_of_turn' AND duration_rounds IS NOT NULL AND duration_rounds <= 0").run(prevPart.npc_map_token_id);
+    }
+  }
+
+  let newIndex = prevIndex + 1;
+  let newRound = enc.round_number;
+  if (newIndex >= parts.length) {
+    newIndex = 0;
+    newRound++;
+    // Reset legendary actions for all participants
+    db.prepare('UPDATE combat_participants SET legendary_actions_used = 0 WHERE encounter_id = ?').run(enc.id);
+  }
+
+  // Decrement start-of-turn conditions for new current participant
+  const newPart = parts[newIndex];
+  if (newPart) {
+    if (newPart.token_id) {
+      db.prepare("UPDATE token_conditions SET duration_rounds = duration_rounds - 1 WHERE token_id = ? AND duration_type = 'start_of_turn' AND duration_rounds IS NOT NULL").run(newPart.token_id);
+      db.prepare("DELETE FROM token_conditions WHERE token_id = ? AND duration_type = 'start_of_turn' AND duration_rounds IS NOT NULL AND duration_rounds <= 0").run(newPart.token_id);
+    } else if (newPart.npc_map_token_id) {
+      db.prepare("UPDATE npc_token_conditions SET duration_rounds = duration_rounds - 1 WHERE npc_map_token_id = ? AND duration_type = 'start_of_turn' AND duration_rounds IS NOT NULL").run(newPart.npc_map_token_id);
+      db.prepare("DELETE FROM npc_token_conditions WHERE npc_map_token_id = ? AND duration_type = 'start_of_turn' AND duration_rounds IS NOT NULL AND duration_rounds <= 0").run(newPart.npc_map_token_id);
+    }
+  }
+
+  db.prepare("UPDATE combat_encounters SET current_turn_index = ?, round_number = ?, updated_at = datetime('now') WHERE id = ?").run(newIndex, newRound, enc.id);
+  sse.broadcast('combat-update', { mapId, action: 'turn-change' });
+  sse.broadcast('map-update', { mapId, action: 'token-update' }); // refresh conditions on map
+  res.json({ success: true, round: newRound, turnIndex: newIndex });
+});
+
+// Go back one turn
+router.post('/:id/combat/prev-turn', requireLogin, requireDM, (req, res) => {
+  const mapId = parseInt(req.params.id);
+  const enc = db.prepare('SELECT * FROM combat_encounters WHERE map_id = ?').get(mapId);
+  if (!enc) return res.status(404).json({ error: 'No active combat' });
+
+  const parts = db.prepare('SELECT * FROM combat_participants WHERE encounter_id = ? ORDER BY sort_order ASC').all(enc.id);
+  if (parts.length === 0) return res.status(400).json({ error: 'No participants' });
+
+  let newIndex = enc.current_turn_index - 1;
+  let newRound = enc.round_number;
+  if (newIndex < 0) {
+    newIndex = parts.length - 1;
+    newRound = Math.max(1, newRound - 1);
+  }
+
+  db.prepare("UPDATE combat_encounters SET current_turn_index = ?, round_number = ?, updated_at = datetime('now') WHERE id = ?").run(newIndex, newRound, enc.id);
+  sse.broadcast('combat-update', { mapId, action: 'turn-change' });
+  res.json({ success: true, round: newRound, turnIndex: newIndex });
+});
+
+// Get current combat state
+router.get('/:id/combat/state', requireLogin, (req, res) => {
+  const mapId = parseInt(req.params.id);
+  const enc = db.prepare('SELECT * FROM combat_encounters WHERE map_id = ?').get(mapId);
+  if (!enc) return res.json({ active: false });
+
+  const isDMUser = req.user.role === 'dm' || req.user.role === 'admin';
+
+  // If hidden from players, return minimal
+  if (!isDMUser && enc.visibility === 'hidden') {
+    return res.json({ active: false });
+  }
+
+  const parts = getCombatParticipants(enc.id, isDMUser);
+
+  // Filter for player visibility
+  let filteredParts = parts;
+  if (!isDMUser && enc.visibility === 'order_only') {
+    filteredParts = parts.map(p => ({
+      id: p.id,
+      type: p.type,
+      name: p.type === 'npc' && p.hidden ? '???' : p.name,
+      avatar: p.type === 'npc' && p.hidden ? null : p.avatar,
+      initiative: p.initiative,
+      sort_order: p.sort_order
+    }));
+  } else if (!isDMUser) {
+    // full visibility — but hide hidden NPCs' details
+    filteredParts = parts.map(p => {
+      if (p.type === 'npc' && p.hidden) {
+        return { ...p, name: '???', avatar: null, current_hp: undefined, max_hp: undefined, conditions: [] };
+      }
+      // Hide HP for NPCs where hp_visible is 0
+      if (p.type === 'npc' && !p.hp_visible) {
+        return { ...p, current_hp: undefined, max_hp: undefined };
+      }
+      return p;
+    });
+  }
+
+  res.json({
+    active: true,
+    encounter: {
+      id: enc.id,
+      round_number: enc.round_number,
+      current_turn_index: enc.current_turn_index,
+      visibility: isDMUser ? enc.visibility : undefined
+    },
+    participants: filteredParts
+  });
+});
+
+// Add participant mid-combat
+router.post('/:id/combat/add-participant', requireLogin, requireDM, express.json(), (req, res) => {
+  const mapId = parseInt(req.params.id);
+  const enc = db.prepare('SELECT id, current_turn_index FROM combat_encounters WHERE map_id = ?').get(mapId);
+  if (!enc) return res.status(404).json({ error: 'No active combat' });
+
+  const { type, tokenId, initiative } = req.body;
+  const init = parseInt(initiative) || 0;
+  let initMod = 0;
+  let legMax = 0;
+
+  if (type === 'npc') {
+    try {
+      const npcToken = db.prepare('SELECT n.source_key FROM npc_tokens n JOIN map_npc_tokens mnt ON mnt.npc_token_id = n.id WHERE mnt.id = ?').get(tokenId);
+      if (npcToken && npcToken.source_key) {
+        const monster = db.prepare('SELECT raw_data FROM dnd_monsters WHERE LOWER(name) = ?').get(npcToken.source_key.toLowerCase());
+        if (monster) {
+          const d = JSON.parse(monster.raw_data);
+          if (d.dex != null) initMod = Math.floor((d.dex - 10) / 2);
+          if (d.legendary_actions && Array.isArray(d.legendary_actions) && d.legendary_actions.length > 0) {
+            legMax = d.legendary_desc ? parseInt((d.legendary_desc.match(/(\d+)\s*legendary/i) || [])[1]) || 3 : 3;
+          }
+        }
+      }
+    } catch (e) { /* ignore */ }
+    db.prepare('INSERT INTO combat_participants (encounter_id, npc_map_token_id, initiative, initiative_modifier, legendary_actions_max) VALUES (?, ?, ?, ?, ?)').run(enc.id, tokenId, init, initMod, legMax);
+  } else {
+    db.prepare('INSERT INTO combat_participants (encounter_id, token_id, initiative) VALUES (?, ?, ?)').run(enc.id, tokenId, init);
+  }
+
+  recalcCombatOrder(enc.id);
+  db.prepare("UPDATE combat_encounters SET updated_at = datetime('now') WHERE id = ?").run(enc.id);
+  sse.broadcast('combat-update', { mapId, action: 'participant-change' });
+  res.json({ success: true });
+});
+
+// Remove participant mid-combat
+router.post('/:id/combat/remove-participant', requireLogin, requireDM, express.json(), (req, res) => {
+  const mapId = parseInt(req.params.id);
+  const enc = db.prepare('SELECT * FROM combat_encounters WHERE map_id = ?').get(mapId);
+  if (!enc) return res.status(404).json({ error: 'No active combat' });
+
+  const { participantId } = req.body;
+  const part = db.prepare('SELECT * FROM combat_participants WHERE id = ? AND encounter_id = ?').get(participantId, enc.id);
+  if (!part) return res.status(404).json({ error: 'Participant not found' });
+
+  db.prepare('DELETE FROM combat_participants WHERE id = ?').run(participantId);
+  recalcCombatOrder(enc.id);
+
+  // Adjust current_turn_index if needed
+  const remaining = db.prepare('SELECT COUNT(*) as cnt FROM combat_participants WHERE encounter_id = ?').get(enc.id);
+  let newIndex = enc.current_turn_index;
+  if (remaining.cnt === 0) {
+    newIndex = 0;
+  } else if (part.sort_order < enc.current_turn_index) {
+    newIndex = Math.max(0, enc.current_turn_index - 1);
+  } else if (newIndex >= remaining.cnt) {
+    newIndex = remaining.cnt - 1;
+  }
+  db.prepare("UPDATE combat_encounters SET current_turn_index = ?, updated_at = datetime('now') WHERE id = ?").run(newIndex, enc.id);
+
+  sse.broadcast('combat-update', { mapId, action: 'participant-change' });
+  res.json({ success: true });
+});
+
+// End combat encounter
+router.post('/:id/combat/end', requireLogin, requireDM, (req, res) => {
+  const mapId = parseInt(req.params.id);
+  const enc = db.prepare('SELECT id FROM combat_encounters WHERE map_id = ?').get(mapId);
+  if (!enc) return res.status(404).json({ error: 'No active combat' });
+
+  // HP/conditions are already persisted in real-time, just clean up combat data
+  db.prepare('DELETE FROM combat_participants WHERE encounter_id = ?').run(enc.id);
+  db.prepare('DELETE FROM combat_encounters WHERE id = ?').run(enc.id);
+
+  sse.broadcast('combat-update', { mapId, action: 'combat-end' });
+  res.json({ success: true });
+});
+
+// Update legendary action counter
+router.post('/:id/combat/legendary', requireLogin, requireDM, express.json(), (req, res) => {
+  const mapId = parseInt(req.params.id);
+  const enc = db.prepare('SELECT id FROM combat_encounters WHERE map_id = ?').get(mapId);
+  if (!enc) return res.status(404).json({ error: 'No active combat' });
+
+  const { participantId, action: legAction, used } = req.body;
+  const part = db.prepare('SELECT * FROM combat_participants WHERE id = ? AND encounter_id = ?').get(participantId, enc.id);
+  if (!part) return res.status(404).json({ error: 'Participant not found' });
+
+  let newUsed = part.legendary_actions_used;
+  if (legAction === 'use') {
+    newUsed = Math.min(part.legendary_actions_max, newUsed + 1);
+  } else if (legAction === 'reset') {
+    newUsed = 0;
+  } else if (used != null) {
+    newUsed = Math.max(0, Math.min(part.legendary_actions_max, parseInt(used) || 0));
+  }
+
+  db.prepare('UPDATE combat_participants SET legendary_actions_used = ? WHERE id = ?').run(newUsed, part.id);
+  sse.broadcast('combat-update', { mapId, action: 'turn-change' });
+  res.json({ success: true, legendary_actions_used: newUsed });
+});
+
+// Change visibility setting
+router.post('/:id/combat/visibility', requireLogin, requireDM, express.json(), (req, res) => {
+  const mapId = parseInt(req.params.id);
+  const enc = db.prepare('SELECT id FROM combat_encounters WHERE map_id = ?').get(mapId);
+  if (!enc) return res.status(404).json({ error: 'No active combat' });
+
+  const visibility = ['full', 'order_only', 'hidden'].includes(req.body.visibility) ? req.body.visibility : 'full';
+  db.prepare("UPDATE combat_encounters SET visibility = ?, updated_at = datetime('now') WHERE id = ?").run(visibility, enc.id);
+
+  sse.broadcast('combat-update', { mapId, action: 'turn-change' });
+  res.json({ success: true, visibility });
 });
 
 module.exports = router;

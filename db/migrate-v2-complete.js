@@ -441,7 +441,14 @@ try {
         fog_enabled INTEGER DEFAULT 0,
         fog_data TEXT,
         fog_draft TEXT,
-        fog_explored TEXT
+        fog_explored TEXT,
+        grid_enabled INTEGER DEFAULT 0,
+        grid_size REAL DEFAULT 50,
+        grid_offset_x REAL DEFAULT 0,
+        grid_offset_y REAL DEFAULT 0,
+        grid_color TEXT DEFAULT '#ffffff',
+        grid_opacity REAL DEFAULT 0.3,
+        grid_type TEXT DEFAULT 'square'
       )`
     },
     {
@@ -649,6 +656,40 @@ try {
       )`
     },
     {
+      name: 'session_notes',
+      sql: `CREATE TABLE session_notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        content TEXT NOT NULL DEFAULT '',
+        note_type TEXT NOT NULL DEFAULT 'player' CHECK(note_type IN ('dm', 'player')),
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(session_id, user_id, note_type)
+      )`
+    },
+    {
+      name: 'session_images',
+      sql: `CREATE TABLE session_images (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        image_path TEXT NOT NULL,
+        caption TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`
+    },
+    {
+      name: 'session_attendance',
+      sql: `CREATE TABLE session_attendance (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        attended INTEGER NOT NULL DEFAULT 1,
+        UNIQUE(session_id, user_id)
+      )`
+    },
+    {
       name: 'map_links',
       sql: `CREATE TABLE map_links (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -658,6 +699,177 @@ try {
         pin_y REAL DEFAULT 50,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(source_map_id, target_map_id)
+      )`
+    },
+    {
+      name: 'combat_encounters',
+      sql: `CREATE TABLE combat_encounters (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        map_id INTEGER NOT NULL UNIQUE REFERENCES maps(id) ON DELETE CASCADE,
+        round_number INTEGER NOT NULL DEFAULT 1,
+        current_turn_index INTEGER NOT NULL DEFAULT 0,
+        visibility TEXT NOT NULL DEFAULT 'full' CHECK(visibility IN ('full', 'order_only', 'hidden')),
+        started_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`
+    },
+    {
+      name: 'combat_participants',
+      sql: `CREATE TABLE combat_participants (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        encounter_id INTEGER NOT NULL REFERENCES combat_encounters(id) ON DELETE CASCADE,
+        token_id INTEGER REFERENCES map_tokens(id) ON DELETE CASCADE,
+        npc_map_token_id INTEGER REFERENCES map_npc_tokens(id) ON DELETE CASCADE,
+        initiative INTEGER NOT NULL DEFAULT 0,
+        initiative_modifier INTEGER NOT NULL DEFAULT 0,
+        legendary_actions_max INTEGER NOT NULL DEFAULT 0,
+        legendary_actions_used INTEGER NOT NULL DEFAULT 0,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        CHECK(
+          (token_id IS NOT NULL AND npc_map_token_id IS NULL) OR
+          (token_id IS NULL AND npc_map_token_id IS NOT NULL)
+        )
+      )`
+    },
+    {
+      name: 'encounters',
+      sql: `CREATE TABLE encounters (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        party_size INTEGER NOT NULL DEFAULT 4,
+        party_levels TEXT NOT NULL DEFAULT '[]',
+        monsters TEXT NOT NULL DEFAULT '[]',
+        template TEXT,
+        created_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`
+    },
+    {
+      name: 'party_currency',
+      sql: `CREATE TABLE party_currency (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        pp INTEGER NOT NULL DEFAULT 0,
+        gp INTEGER NOT NULL DEFAULT 0,
+        sp INTEGER NOT NULL DEFAULT 0,
+        cp INTEGER NOT NULL DEFAULT 0
+      )`
+    },
+    {
+      name: 'character_currency',
+      sql: `CREATE TABLE character_currency (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        pp INTEGER NOT NULL DEFAULT 0,
+        gp INTEGER NOT NULL DEFAULT 0,
+        sp INTEGER NOT NULL DEFAULT 0,
+        cp INTEGER NOT NULL DEFAULT 0,
+        UNIQUE(user_id)
+      )`
+    },
+    {
+      name: 'currency_log',
+      sql: `CREATE TABLE currency_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        target TEXT NOT NULL DEFAULT 'party',
+        user_id INTEGER REFERENCES users(id),
+        pp_change INTEGER NOT NULL DEFAULT 0,
+        gp_change INTEGER NOT NULL DEFAULT 0,
+        sp_change INTEGER NOT NULL DEFAULT 0,
+        cp_change INTEGER NOT NULL DEFAULT 0,
+        reason TEXT,
+        created_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`
+    },
+    {
+      name: 'handouts',
+      sql: `CREATE TABLE handouts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'image',
+        content TEXT,
+        image_path TEXT,
+        linked_npc_id INTEGER REFERENCES npc_tokens(id) ON DELETE SET NULL,
+        linked_location_id INTEGER REFERENCES map_locations(id) ON DELETE SET NULL,
+        revealed INTEGER NOT NULL DEFAULT 0,
+        created_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`
+    },
+    {
+      name: 'campaign_arcs',
+      sql: `CREATE TABLE campaign_arcs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        color TEXT DEFAULT '#d4a843',
+        created_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`
+    },
+    {
+      name: 'map_loot_chests',
+      sql: `CREATE TABLE map_loot_chests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        map_id INTEGER NOT NULL REFERENCES maps(id) ON DELETE CASCADE,
+        x REAL NOT NULL DEFAULT 50,
+        y REAL NOT NULL DEFAULT 50,
+        label TEXT DEFAULT 'Loot Chest',
+        notes TEXT,
+        pp INTEGER NOT NULL DEFAULT 0,
+        gp INTEGER NOT NULL DEFAULT 0,
+        sp INTEGER NOT NULL DEFAULT 0,
+        cp INTEGER NOT NULL DEFAULT 0,
+        hidden INTEGER NOT NULL DEFAULT 0,
+        linked_npc_name TEXT,
+        created_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`
+    },
+    {
+      name: 'chest_items',
+      sql: `CREATE TABLE chest_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chest_id INTEGER NOT NULL REFERENCES map_loot_chests(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        description TEXT,
+        quantity INTEGER NOT NULL DEFAULT 1
+      )`
+    },
+    {
+      name: 'quests',
+      sql: `CREATE TABLE quests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        status TEXT NOT NULL DEFAULT 'available',
+        difficulty TEXT,
+        reward TEXT,
+        quest_giver_npc_id INTEGER REFERENCES npc_tokens(id),
+        quest_giver_name TEXT,
+        linked_map_id INTEGER REFERENCES maps(id),
+        linked_location_id INTEGER REFERENCES map_locations(id),
+        arc_id INTEGER REFERENCES campaign_arcs(id),
+        revealed INTEGER DEFAULT 1,
+        dm_notes TEXT,
+        sort_order INTEGER DEFAULT 0,
+        created_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        completed_at TEXT
+      )`
+    },
+    {
+      name: 'quest_objectives',
+      sql: `CREATE TABLE quest_objectives (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        quest_id INTEGER NOT NULL REFERENCES quests(id) ON DELETE CASCADE,
+        text TEXT NOT NULL,
+        completed INTEGER DEFAULT 0,
+        sort_order INTEGER DEFAULT 0
       )`
     }
   ];
@@ -725,8 +937,30 @@ try {
     { table: 'maps', column: 'fog_data', sql: 'ALTER TABLE maps ADD COLUMN fog_data TEXT' },
     { table: 'maps', column: 'fog_draft', sql: 'ALTER TABLE maps ADD COLUMN fog_draft TEXT' },
     { table: 'maps', column: 'fog_explored', sql: 'ALTER TABLE maps ADD COLUMN fog_explored TEXT' },
+    { table: 'maps', column: 'grid_enabled', sql: 'ALTER TABLE maps ADD COLUMN grid_enabled INTEGER DEFAULT 0' },
+    { table: 'maps', column: 'grid_size', sql: 'ALTER TABLE maps ADD COLUMN grid_size REAL DEFAULT 50' },
+    { table: 'maps', column: 'grid_offset_x', sql: 'ALTER TABLE maps ADD COLUMN grid_offset_x REAL DEFAULT 0' },
+    { table: 'maps', column: 'grid_offset_y', sql: 'ALTER TABLE maps ADD COLUMN grid_offset_y REAL DEFAULT 0' },
+    { table: 'maps', column: 'grid_color', sql: "ALTER TABLE maps ADD COLUMN grid_color TEXT DEFAULT '#ffffff'" },
+    { table: 'maps', column: 'grid_opacity', sql: 'ALTER TABLE maps ADD COLUMN grid_opacity REAL DEFAULT 0.3' },
+    { table: 'maps', column: 'grid_type', sql: "ALTER TABLE maps ADD COLUMN grid_type TEXT DEFAULT 'square'" },
     { table: 'map_tokens', column: 'vision_radius', sql: 'ALTER TABLE map_tokens ADD COLUMN vision_radius REAL DEFAULT 0' },
-    { table: 'map_npc_tokens', column: 'alignment', sql: "ALTER TABLE map_npc_tokens ADD COLUMN alignment TEXT DEFAULT 'hostile'" }
+    { table: 'map_npc_tokens', column: 'alignment', sql: "ALTER TABLE map_npc_tokens ADD COLUMN alignment TEXT DEFAULT 'hostile'" },
+    { table: 'token_conditions', column: 'duration_rounds', sql: 'ALTER TABLE token_conditions ADD COLUMN duration_rounds INTEGER' },
+    { table: 'token_conditions', column: 'duration_type', sql: "ALTER TABLE token_conditions ADD COLUMN duration_type TEXT DEFAULT 'indefinite'" },
+    { table: 'npc_token_conditions', column: 'duration_rounds', sql: 'ALTER TABLE npc_token_conditions ADD COLUMN duration_rounds INTEGER' },
+    { table: 'npc_token_conditions', column: 'duration_type', sql: "ALTER TABLE npc_token_conditions ADD COLUMN duration_type TEXT DEFAULT 'indefinite'" },
+    { table: 'sessions', column: 'recurrence_rule', sql: 'ALTER TABLE sessions ADD COLUMN recurrence_rule TEXT' },
+    { table: 'sessions', column: 'parent_session_id', sql: 'ALTER TABLE sessions ADD COLUMN parent_session_id INTEGER REFERENCES sessions(id)' },
+    { table: 'sessions', column: 'min_players', sql: 'ALTER TABLE sessions ADD COLUMN min_players INTEGER' },
+    { table: 'loot_items', column: 'hidden', sql: 'ALTER TABLE loot_items ADD COLUMN hidden INTEGER DEFAULT 0' },
+    { table: 'loot_items', column: 'attuned_to', sql: 'ALTER TABLE loot_items ADD COLUMN attuned_to INTEGER REFERENCES characters(id)' },
+    { table: 'loot_items', column: 'vault_item_name', sql: 'ALTER TABLE loot_items ADD COLUMN vault_item_name TEXT' },
+    { table: 'loot_items', column: 'rarity', sql: 'ALTER TABLE loot_items ADD COLUMN rarity TEXT' },
+    { table: 'loot_items', column: 'linked_npc_id', sql: 'ALTER TABLE loot_items ADD COLUMN linked_npc_id INTEGER REFERENCES npc_tokens(id) ON DELETE SET NULL' },
+    { table: 'sessions', column: 'arc_id', sql: 'ALTER TABLE sessions ADD COLUMN arc_id INTEGER REFERENCES campaign_arcs(id)' },
+    { table: 'sessions', column: 'reminder_24h_sent', sql: 'ALTER TABLE sessions ADD COLUMN reminder_24h_sent INTEGER DEFAULT 0' },
+    { table: 'sessions', column: 'reminder_1h_sent', sql: 'ALTER TABLE sessions ADD COLUMN reminder_1h_sent INTEGER DEFAULT 0' }
   ];
 
   for (const col of missingColumns) {
@@ -740,6 +974,13 @@ try {
         console.log(`✓ ${col.table}.${col.column} already exists`);
       }
     }
+  }
+
+  // Insert default party_currency row if table was just created
+  if (tableExists('party_currency')) {
+    try {
+      db.prepare('INSERT OR IGNORE INTO party_currency (id) VALUES (1)').run();
+    } catch (e) { /* already exists */ }
   }
 
   // Migrate single-category NPC data to junction table

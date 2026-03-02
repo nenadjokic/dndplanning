@@ -1,0 +1,107 @@
+<div class="quest-card<%= !q.revealed ? ' quest-staged' : '' %>">
+  <div class="quest-pin"></div>
+  <div class="quest-card-title"><%= q.title %></div>
+  <div class="quest-card-badges">
+    <span class="quest-status-badge quest-status-<%= q.status %>"><%= q.status %></span>
+    <% if (q.difficulty) { %>
+      <span class="quest-difficulty-badge quest-diff-<%= q.difficulty %>"><%= q.difficulty %></span>
+    <% } %>
+    <% if (q.arc_name) { %>
+      <span class="quest-arc-badge" style="border-color:<%= q.arc_color || 'var(--gold)' %>;color:<%= q.arc_color || 'var(--gold)' %>"><%= q.arc_name %></span>
+    <% } %>
+  </div>
+  <% if (q.description) { %>
+    <div class="quest-card-desc"><%= q.description %></div>
+  <% } %>
+  <% if (q.quest_giver_name || q.npc_name) { %>
+    <div class="quest-card-meta">Quest Giver: <strong><%= q.npc_name || q.quest_giver_name %></strong></div>
+  <% } %>
+  <% if (q.map_name) { %>
+    <div class="quest-card-meta">Location: <a href="/map/<%= q.linked_map_id %>"><%= q.map_name %></a><% if (q.location_name) { %> &mdash; <%= q.location_name %><% } %></div>
+  <% } %>
+  <% if (q.reward) { %>
+    <div class="quest-reward">Reward: <%= q.reward %></div>
+  <% } %>
+  <% if (q.objectives && q.objectives.length > 0) { %>
+    <ul class="quest-objectives">
+      <% q.objectives.forEach(obj => { %>
+        <li class="<%= obj.completed ? 'completed' : '' %>">
+          <% if (isDM) { %>
+            <input type="checkbox" class="quest-obj-checkbox" data-quest-id="<%= q.id %>" data-obj-id="<%= obj.id %>" <%= obj.completed ? 'checked' : '' %>>
+          <% } else { %>
+            <span style="font-size:0.75rem;"><%= obj.completed ? '&#9745;' : '&#9744;' %></span>
+          <% } %>
+          <span><%= obj.text %></span>
+        </li>
+      <% }); %>
+    </ul>
+  <% } %>
+  <% if (isDM && q.dm_notes) { %>
+    <div class="quest-dm-notes">
+      <div class="quest-dm-notes-label">DM Notes</div>
+      <%= q.dm_notes %>
+    </div>
+  <% } %>
+  <% if (isDM) { %>
+    <div class="quest-card-actions">
+      <select class="quest-status-select btn btn-small btn-outline" data-quest-id="<%= q.id %>" style="font-size:0.7rem;padding:0.2rem 0.3rem;">
+        <option value="available" <%= q.status === 'available' ? 'selected' : '' %>>Available</option>
+        <option value="active" <%= q.status === 'active' ? 'selected' : '' %>>Active</option>
+        <option value="completed" <%= q.status === 'completed' ? 'selected' : '' %>>Completed</option>
+        <option value="failed" <%= q.status === 'failed' ? 'selected' : '' %>>Failed</option>
+      </select>
+      <button type="button" class="btn btn-small btn-outline quest-edit-toggle" data-quest-id="<%= q.id %>">Edit</button>
+      <% if (!q.revealed) { %>
+        <form action="/quests/<%= q.id %>/reveal" method="POST" style="display:inline;">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" class="btn btn-small btn-primary">Reveal</button>
+        </form>
+      <% } else { %>
+        <form action="/quests/<%= q.id %>/hide" method="POST" style="display:inline;">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" class="btn btn-small btn-outline">Hide</button>
+        </form>
+      <% } %>
+      <form action="/quests/<%= q.id %>/delete" method="POST" style="display:inline;" onsubmit="return confirm('Delete this quest?')">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" class="btn btn-small btn-danger">Delete</button>
+      </form>
+    </div>
+    <!-- Inline edit form -->
+    <div id="quest-edit-<%= q.id %>" style="display:none;margin-top:0.75rem;padding-top:0.75rem;border-top:1px dashed #8b7355;">
+      <form action="/quests/<%= q.id %>/edit" method="POST">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="form-group" style="margin-bottom:0.4rem;">
+          <input type="text" name="title" value="<%= q.title %>" required style="background:#fff;color:#333;">
+        </div>
+        <div class="form-group" style="margin-bottom:0.4rem;">
+          <textarea name="description" rows="2" style="background:#fff;color:#333;"><%= q.description || '' %></textarea>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;margin-bottom:0.4rem;">
+          <select name="difficulty" style="font-size:0.75rem;background:#fff;color:#333;">
+            <option value="">No difficulty</option>
+            <option value="trivial" <%= q.difficulty === 'trivial' ? 'selected' : '' %>>Trivial</option>
+            <option value="easy" <%= q.difficulty === 'easy' ? 'selected' : '' %>>Easy</option>
+            <option value="medium" <%= q.difficulty === 'medium' ? 'selected' : '' %>>Medium</option>
+            <option value="hard" <%= q.difficulty === 'hard' ? 'selected' : '' %>>Hard</option>
+            <option value="deadly" <%= q.difficulty === 'deadly' ? 'selected' : '' %>>Deadly</option>
+          </select>
+          <input type="text" name="reward" value="<%= q.reward || '' %>" placeholder="Reward" style="font-size:0.75rem;background:#fff;color:#333;">
+        </div>
+        <div class="form-group" style="margin-bottom:0.4rem;">
+          <textarea name="dm_notes" rows="2" placeholder="DM Notes" style="font-size:0.75rem;background:#fff;color:#333;"><%= q.dm_notes || '' %></textarea>
+        </div>
+        <div class="form-group" style="margin-bottom:0.4rem;">
+          <label style="font-size:0.75rem;color:#6b5a4e;">Objectives (one per field):</label>
+          <% if (q.objectives && q.objectives.length > 0) { %>
+            <% q.objectives.forEach(obj => { %>
+              <input type="text" name="objectives" value="<%= obj.text %>" style="margin-bottom:0.2rem;font-size:0.75rem;background:#fff;color:#333;">
+            <% }); %>
+          <% } %>
+          <input type="text" name="objectives" placeholder="New objective..." style="font-size:0.75rem;background:#fff;color:#333;">
+        </div>
+        <button type="submit" class="btn btn-small btn-primary">Save Changes</button>
+      </form>
+    </div>
+  <% } %>
+</div>

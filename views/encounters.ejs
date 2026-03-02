@@ -1,0 +1,638 @@
+<%- include('partials/head', { pageTitle: 'Encounter Builder' }) %>
+
+<div class="page-header">
+  <h1>Encounter Builder</h1>
+  <a href="/" class="btn btn-outline">Back to Chamber</a>
+</div>
+
+<div class="encounter-layout">
+  <!-- Party Configuration -->
+  <div class="card encounter-party-config">
+    <h2>Party Configuration</h2>
+    <div class="encounter-party-row">
+      <div class="form-group" style="flex:0 0 auto;">
+        <label for="party-size">Party Size</label>
+        <input type="number" id="party-size" value="4" min="1" max="20" style="width: 70px;">
+      </div>
+      <div class="form-group" style="flex:1;">
+        <label>Character Levels</label>
+        <div id="party-levels-container" class="encounter-levels-row"></div>
+      </div>
+    </div>
+    <div class="encounter-xp-budget" id="xp-budget">
+      <p class="encounter-xp-hint">XP Thresholds (DMG p.82) &mdash; encounter adjusted XP that falls into each band determines difficulty:</p>
+      <div class="encounter-xp-labels">
+        <span class="xp-label xp-easy">Easy: <strong id="xp-easy">0</strong> XP</span>
+        <span class="xp-label xp-medium">Medium: <strong id="xp-medium">0</strong> XP</span>
+        <span class="xp-label xp-hard">Hard: <strong id="xp-hard">0</strong> XP</span>
+        <span class="xp-label xp-deadly">Deadly: <strong id="xp-deadly">0</strong> XP</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="encounter-columns">
+    <!-- Left: Monster Browser -->
+    <div class="card encounter-browser">
+      <h2>Monster Browser</h2>
+      <div class="encounter-search-row">
+        <input type="text" id="monster-search" placeholder="Search monsters..." class="encounter-search-input">
+      </div>
+      <div class="encounter-filter-row">
+        <select id="monster-cr-filter">
+          <option value="">Any CR</option>
+          <option value="0">CR 0</option>
+          <option value="1/8">CR 1/8</option>
+          <option value="1/4">CR 1/4</option>
+          <option value="1/2">CR 1/2</option>
+          <% for (let i = 1; i <= 30; i++) { %>
+            <option value="<%= i %>">CR <%= i %></option>
+          <% } %>
+        </select>
+        <select id="monster-type-filter">
+          <option value="">Any Type</option>
+        </select>
+        <select id="monster-size-filter">
+          <option value="">Any Size</option>
+          <option value="T">Tiny</option>
+          <option value="S">Small</option>
+          <option value="M">Medium</option>
+          <option value="L">Large</option>
+          <option value="H">Huge</option>
+          <option value="G">Gargantuan</option>
+        </select>
+      </div>
+      <div id="monster-results" class="encounter-monster-list">
+        <p class="text-muted" style="padding: 1rem; text-align: center;">Search for monsters to add to your encounter.</p>
+      </div>
+    </div>
+
+    <!-- Right: Encounter Roster -->
+    <div class="card encounter-roster-card">
+      <h2>Encounter Roster</h2>
+      <div id="encounter-roster" class="encounter-roster">
+        <p class="text-muted encounter-empty-roster" id="roster-empty">No monsters added yet. Use the browser to add monsters.</p>
+      </div>
+      <div class="encounter-summary" id="encounter-summary" style="display:none;">
+        <div class="encounter-xp-row">
+          <span>Raw XP: <strong id="raw-xp">0</strong></span>
+          <span>Adjusted XP: <strong id="adj-xp">0</strong></span>
+          <span>Multiplier: <strong id="xp-multiplier">x1</strong></span>
+        </div>
+        <div class="encounter-difficulty-bar">
+          <div class="encounter-difficulty-fill" id="difficulty-fill"></div>
+        </div>
+        <div class="encounter-difficulty-label" id="difficulty-label">-</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Templates -->
+  <div class="card">
+    <h2>Quick Templates</h2>
+    <div class="encounter-templates">
+      <button type="button" class="btn btn-outline" onclick="applyTemplate('ambush')">Ambush</button>
+      <button type="button" class="btn btn-outline" onclick="applyTemplate('boss')">Boss Fight</button>
+      <button type="button" class="btn btn-outline" onclick="applyTemplate('horde')">Horde</button>
+    </div>
+  </div>
+
+  <!-- Save / Load / Add to Map -->
+  <div class="card encounter-actions-card">
+    <div class="encounter-actions">
+      <div class="encounter-save-row">
+        <input type="text" id="encounter-name" placeholder="Encounter name..." style="flex:1;">
+        <button type="button" class="btn btn-primary" onclick="saveEncounter()">Save Encounter</button>
+      </div>
+      <div class="encounter-load-row">
+        <select id="encounter-load-select" onchange="loadEncounter(this.value)">
+          <option value="">-- Load Saved Encounter --</option>
+          <% for (const enc of encounters) { %>
+            <option value="<%= enc.id %>"><%= enc.name %> (<%= new Date(enc.updated_at).toLocaleDateString() %>)</option>
+          <% } %>
+        </select>
+        <button type="button" class="btn btn-outline btn-small" id="delete-encounter-btn" style="display:none;" onclick="deleteEncounter()">Delete</button>
+      </div>
+      <% if (maps.length > 0) { %>
+      <div class="encounter-map-row">
+        <select id="encounter-map-select">
+          <option value="">-- Select Map --</option>
+          <% for (const m of maps) { %>
+            <option value="<%= m.id %>"><%= m.name %></option>
+          <% } %>
+        </select>
+        <button type="button" class="btn btn-outline" onclick="addToMap()">Add to Map</button>
+      </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var csrfToken = '<%= csrfToken %>';
+
+  // XP thresholds per character level (DMG p.82) [Easy, Medium, Hard, Deadly]
+  var xpThresholds = {
+    1: [25, 50, 75, 100], 2: [50, 100, 150, 200], 3: [75, 150, 225, 400],
+    4: [125, 250, 375, 500], 5: [250, 500, 750, 1100], 6: [300, 600, 900, 1400],
+    7: [350, 750, 1100, 1700], 8: [450, 900, 1400, 2100], 9: [550, 1100, 1600, 2400],
+    10: [600, 1200, 1900, 2800], 11: [800, 1600, 2400, 3600], 12: [1000, 2000, 3000, 4500],
+    13: [1100, 2200, 3400, 5100], 14: [1250, 2500, 3800, 5700], 15: [1400, 2800, 4300, 6400],
+    16: [1600, 3200, 4800, 7200], 17: [2000, 3900, 5900, 8800], 18: [2100, 4200, 6300, 9500],
+    19: [2400, 4900, 7300, 10900], 20: [2800, 5700, 8500, 12700]
+  };
+
+  // XP by CR
+  var xpByCr = {
+    '0': 0, '1/8': 25, '1/4': 50, '1/2': 100,
+    '1': 200, '2': 450, '3': 700, '4': 1100, '5': 1800,
+    '6': 2300, '7': 2900, '8': 3900, '9': 5000, '10': 5900,
+    '11': 7200, '12': 8400, '13': 10000, '14': 11500, '15': 13000,
+    '16': 15000, '17': 18000, '18': 20000, '19': 22000, '20': 25000,
+    '21': 33000, '22': 41000, '23': 50000, '24': 62000, '25': 75000,
+    '26': 90000, '27': 105000, '28': 120000, '29': 135000, '30': 155000
+  };
+
+  var roster = []; // {name, cr, count, source_key, image_url}
+  var currentEncounterId = null;
+  var searchTimer = null;
+
+  // Initialize party level inputs
+  function initLevelInputs() {
+    var size = parseInt(document.getElementById('party-size').value, 10) || 4;
+    var container = document.getElementById('party-levels-container');
+    var existing = container.querySelectorAll('input');
+    var vals = [];
+    existing.forEach(function(inp) { vals.push(parseInt(inp.value, 10) || 5); });
+
+    container.innerHTML = '';
+    for (var i = 0; i < size; i++) {
+      var inp = document.createElement('input');
+      inp.type = 'number';
+      inp.min = '1';
+      inp.max = '20';
+      inp.value = vals[i] || 5;
+      inp.className = 'encounter-level-input';
+      inp.addEventListener('change', recalculate);
+      container.appendChild(inp);
+    }
+    recalculate();
+  }
+
+  document.getElementById('party-size').addEventListener('change', initLevelInputs);
+  initLevelInputs();
+
+  // Get party levels array
+  function getPartyLevels() {
+    var inputs = document.getElementById('party-levels-container').querySelectorAll('input');
+    var levels = [];
+    inputs.forEach(function(inp) { levels.push(Math.max(1, Math.min(20, parseInt(inp.value, 10) || 1))); });
+    return levels;
+  }
+
+  // Recalculate XP budgets and difficulty
+  function recalculate() {
+    var levels = getPartyLevels();
+    var budgets = [0, 0, 0, 0]; // easy, medium, hard, deadly
+    levels.forEach(function(lv) {
+      var t = xpThresholds[lv] || xpThresholds[1];
+      budgets[0] += t[0]; budgets[1] += t[1]; budgets[2] += t[2]; budgets[3] += t[3];
+    });
+
+    document.getElementById('xp-easy').textContent = budgets[0].toLocaleString();
+    document.getElementById('xp-medium').textContent = budgets[1].toLocaleString();
+    document.getElementById('xp-hard').textContent = budgets[2].toLocaleString();
+    document.getElementById('xp-deadly').textContent = budgets[3].toLocaleString();
+
+    updateRoster(budgets);
+  }
+
+  // Encounter multiplier based on number of monsters
+  function getMultiplier(monsterCount) {
+    if (monsterCount <= 0) return 1;
+    if (monsterCount === 1) return 1;
+    if (monsterCount === 2) return 1.5;
+    if (monsterCount <= 6) return 2;
+    if (monsterCount <= 10) return 2.5;
+    if (monsterCount <= 14) return 3;
+    return 4;
+  }
+
+  // Update roster display and difficulty
+  function updateRoster(budgets) {
+    var rosterEl = document.getElementById('encounter-roster');
+    var summaryEl = document.getElementById('encounter-summary');
+    var emptyEl = document.getElementById('roster-empty');
+
+    if (roster.length === 0) {
+      emptyEl.style.display = '';
+      summaryEl.style.display = 'none';
+      // Clear monster items but keep empty message
+      var items = rosterEl.querySelectorAll('.encounter-monster-item');
+      items.forEach(function(el) { el.remove(); });
+      return;
+    }
+
+    emptyEl.style.display = 'none';
+    summaryEl.style.display = '';
+
+    // Clear existing items
+    var items = rosterEl.querySelectorAll('.encounter-monster-item');
+    items.forEach(function(el) { el.remove(); });
+
+    var totalXP = 0;
+    var totalCount = 0;
+
+    roster.forEach(function(m, idx) {
+      var xp = xpByCr[m.cr] || 0;
+      var lineXP = xp * m.count;
+      totalXP += lineXP;
+      totalCount += m.count;
+
+      var div = document.createElement('div');
+      div.className = 'encounter-monster-item';
+      div.innerHTML = '<div class="encounter-monster-info">' +
+        '<span class="encounter-monster-count">' + m.count + '&times;</span> ' +
+        '<strong>' + escHtml(m.name) + '</strong> ' +
+        '<span class="text-muted">(CR ' + escHtml(m.cr) + ')</span> ' +
+        '<span class="encounter-monster-xp">' + lineXP.toLocaleString() + ' XP</span>' +
+        '</div>' +
+        '<div class="encounter-monster-actions">' +
+        '<button type="button" class="btn-icon" onclick="window._encounterAddCount(' + idx + ')" title="Add one">+</button>' +
+        '<button type="button" class="btn-icon" onclick="window._encounterSubCount(' + idx + ')" title="Remove one">&minus;</button>' +
+        '</div>';
+      rosterEl.insertBefore(div, summaryEl.parentNode ? emptyEl : null);
+      rosterEl.appendChild(div);
+    });
+
+    var multiplier = getMultiplier(totalCount);
+    var adjXP = Math.round(totalXP * multiplier);
+
+    document.getElementById('raw-xp').textContent = totalXP.toLocaleString();
+    document.getElementById('adj-xp').textContent = adjXP.toLocaleString();
+    document.getElementById('xp-multiplier').textContent = 'x' + multiplier;
+
+    // Determine difficulty
+    if (!budgets) {
+      var levels = getPartyLevels();
+      budgets = [0, 0, 0, 0];
+      levels.forEach(function(lv) {
+        var t = xpThresholds[lv] || xpThresholds[1];
+        budgets[0] += t[0]; budgets[1] += t[1]; budgets[2] += t[2]; budgets[3] += t[3];
+      });
+    }
+
+    var difficulty = 'Trivial';
+    var diffClass = 'trivial';
+    var pct = 0;
+    if (adjXP >= budgets[3]) { difficulty = 'DEADLY'; diffClass = 'deadly'; pct = 100; }
+    else if (adjXP >= budgets[2]) { difficulty = 'Hard'; diffClass = 'hard'; pct = 75 + 25 * (adjXP - budgets[2]) / Math.max(budgets[3] - budgets[2], 1); }
+    else if (adjXP >= budgets[1]) { difficulty = 'Medium'; diffClass = 'medium'; pct = 50 + 25 * (adjXP - budgets[1]) / Math.max(budgets[2] - budgets[1], 1); }
+    else if (adjXP >= budgets[0]) { difficulty = 'Easy'; diffClass = 'easy'; pct = 25 + 25 * (adjXP - budgets[0]) / Math.max(budgets[1] - budgets[0], 1); }
+    else if (adjXP > 0) { pct = 25 * adjXP / Math.max(budgets[0], 1); }
+
+    pct = Math.min(100, Math.max(0, pct));
+
+    var fill = document.getElementById('difficulty-fill');
+    fill.style.width = pct + '%';
+    fill.className = 'encounter-difficulty-fill ' + diffClass;
+    document.getElementById('difficulty-label').textContent = difficulty;
+    document.getElementById('difficulty-label').className = 'encounter-difficulty-label ' + diffClass;
+  }
+
+  // Add monster to roster
+  window._encounterAddMonster = function(name, cr, source_key, image_url) {
+    var existing = roster.find(function(m) { return m.name === name && m.cr === cr; });
+    if (existing) {
+      existing.count++;
+    } else {
+      roster.push({ name: name, cr: cr, count: 1, source_key: source_key || '', image_url: image_url || '' });
+    }
+    recalculate();
+  };
+
+  window._encounterAddCount = function(idx) {
+    if (roster[idx]) { roster[idx].count++; recalculate(); }
+  };
+
+  window._encounterSubCount = function(idx) {
+    if (roster[idx]) {
+      roster[idx].count--;
+      if (roster[idx].count <= 0) roster.splice(idx, 1);
+      recalculate();
+    }
+  };
+
+  // Monster search
+  var searchInput = document.getElementById('monster-search');
+  var crFilter = document.getElementById('monster-cr-filter');
+  var typeFilter = document.getElementById('monster-type-filter');
+  var sizeFilter = document.getElementById('monster-size-filter');
+
+  function searchMonsters() {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(function() {
+      var query = searchInput.value.trim();
+      var cr = crFilter.value;
+      var type = typeFilter.value;
+      var size = sizeFilter.value;
+
+      if (!query && !cr && !type && !size) {
+        document.getElementById('monster-results').innerHTML = '<p class="text-muted" style="padding:1rem;text-align:center;">Search for monsters to add to your encounter.</p>';
+        return;
+      }
+
+      var url = '/vault/monsters?search=' + encodeURIComponent(query) + '&cr=' + encodeURIComponent(cr) + '&type=' + encodeURIComponent(type) + '&size=' + encodeURIComponent(size);
+      fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+        var results = data.results || [];
+        var html = '';
+        if (results.length === 0) {
+          html = '<p class="text-muted" style="padding:1rem;text-align:center;">No monsters found.</p>';
+        } else {
+          results.forEach(function(m) {
+            html += '<div class="encounter-browser-item">' +
+              '<div class="encounter-browser-info">' +
+              '<strong>' + escHtml(m.name) + '</strong> ' +
+              '<span class="text-muted">(CR ' + escHtml(m.cr) + ', ' + escHtml(m.type) + ', ' + escHtml(m.size) + ')</span>' +
+              '</div>' +
+              '<button type="button" class="btn btn-small btn-outline" onclick="window._encounterAddMonster(\'' +
+                escAttr(m.name) + "','" + escAttr(m.cr) + "','" + escAttr(m.key) + "','')" + '">+ Add</button>' +
+              '</div>';
+          });
+        }
+        document.getElementById('monster-results').innerHTML = html;
+      }).catch(function() {
+        document.getElementById('monster-results').innerHTML = '<p class="text-muted" style="padding:1rem;text-align:center;">Search failed.</p>';
+      });
+    }, 300);
+  }
+
+  searchInput.addEventListener('input', searchMonsters);
+  crFilter.addEventListener('change', searchMonsters);
+  typeFilter.addEventListener('change', searchMonsters);
+  sizeFilter.addEventListener('change', searchMonsters);
+
+  // Load monster types for filter
+  fetch('/vault/monsters/types').then(function(r) { return r.json(); }).then(function(data) {
+    var types = data.types || [];
+    types.forEach(function(t) {
+      var opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = t;
+      typeFilter.appendChild(opt);
+    });
+  }).catch(function() {});
+
+  // Quick templates — pick diverse monsters
+  function shuffleArray(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    return arr;
+  }
+
+  function pickDiverseMonsters(results, totalCount, maxTypes) {
+    // Pick up to maxTypes different monster types, distribute totalCount among them
+    if (results.length === 0) return [];
+    var shuffled = shuffleArray(results.slice());
+    var types = shuffled.slice(0, Math.min(maxTypes, shuffled.length));
+    var picks = [];
+    var remaining = totalCount;
+    for (var i = 0; i < types.length; i++) {
+      var isLast = (i === types.length - 1);
+      var count = isLast ? remaining : Math.max(1, Math.floor(remaining / (types.length - i)));
+      if (count <= 0) continue;
+      picks.push({ name: types[i].name, cr: types[i].cr, count: count, source_key: types[i].key, image_url: '' });
+      remaining -= count;
+    }
+    return picks;
+  }
+
+  window.applyTemplate = function(type) {
+    roster = [];
+    var levels = getPartyLevels();
+    var avgLevel = levels.reduce(function(a, b) { return a + b; }, 0) / levels.length;
+
+    if (type === 'ambush') {
+      // 3-6 monsters, mix of 2-3 types, CR ~ half party level
+      var crTarget = Math.max(1, Math.floor(avgLevel / 2));
+      var totalCount = Math.floor(Math.random() * 4) + 3;
+      var crStr = String(crTarget);
+      // Also fetch adjacent CR for more variety
+      var crAlt = Math.max(1, crTarget - 1);
+      Promise.all([
+        fetch('/vault/monsters?cr=' + encodeURIComponent(crStr) + '&search=').then(function(r) { return r.json(); }),
+        fetch('/vault/monsters?cr=' + encodeURIComponent(String(crAlt)) + '&search=').then(function(r) { return r.json(); })
+      ]).then(function(responses) {
+        var pool = (responses[0].results || []).concat(responses[1].results || []);
+        // Deduplicate by name
+        var seen = {};
+        pool = pool.filter(function(m) { if (seen[m.name]) return false; seen[m.name] = true; return true; });
+        if (pool.length === 0) { alert('No monsters found. Import the bestiary from the Vault first.'); return; }
+        roster = pickDiverseMonsters(pool, totalCount, 3);
+        recalculate();
+      }).catch(function() { alert('Failed to load monsters. Is the bestiary imported?'); });
+
+    } else if (type === 'boss') {
+      // 1 boss + 2-3 minions of a different type
+      var bossCr = Math.floor(avgLevel + 2);
+      var minionCr = Math.max(1, bossCr - 3);
+      Promise.all([
+        fetch('/vault/monsters?cr=' + encodeURIComponent(String(bossCr)) + '&search=').then(function(r) { return r.json(); }),
+        fetch('/vault/monsters?cr=' + encodeURIComponent(String(minionCr)) + '&search=').then(function(r) { return r.json(); })
+      ]).then(function(responses) {
+        var bosses = responses[0].results || [];
+        var minions = responses[1].results || [];
+        if (bosses.length === 0) { alert('No boss monsters found for CR ' + bossCr + '.'); return; }
+        var boss = bosses[Math.floor(Math.random() * bosses.length)];
+        roster.push({ name: boss.name, cr: boss.cr, count: 1, source_key: boss.key, image_url: '' });
+        if (minions.length > 0) {
+          var shuffled = shuffleArray(minions.slice());
+          // Pick 1-2 different minion types
+          var minionTypes = shuffled.slice(0, Math.min(2, shuffled.length));
+          var minionTotal = Math.floor(Math.random() * 2) + 2; // 2-3
+          for (var i = 0; i < minionTypes.length; i++) {
+            var c = (i === minionTypes.length - 1) ? minionTotal : Math.max(1, Math.floor(minionTotal / minionTypes.length));
+            roster.push({ name: minionTypes[i].name, cr: minionTypes[i].cr, count: c, source_key: minionTypes[i].key, image_url: '' });
+            minionTotal -= c;
+          }
+        }
+        recalculate();
+      }).catch(function() { alert('Failed to load monsters.'); });
+
+    } else if (type === 'horde') {
+      // 8-12 monsters, mix of 2-4 types, low CR
+      var hordeCr = Math.max(0, Math.floor(avgLevel / 4));
+      var totalHorde = Math.floor(Math.random() * 5) + 8;
+      var crStr1 = hordeCr === 0 ? '1/4' : String(hordeCr);
+      var crStr2 = hordeCr <= 1 ? '1/8' : String(Math.max(1, hordeCr - 1));
+      Promise.all([
+        fetch('/vault/monsters?cr=' + encodeURIComponent(crStr1) + '&search=').then(function(r) { return r.json(); }),
+        fetch('/vault/monsters?cr=' + encodeURIComponent(crStr2) + '&search=').then(function(r) { return r.json(); })
+      ]).then(function(responses) {
+        var pool = (responses[0].results || []).concat(responses[1].results || []);
+        var seen = {};
+        pool = pool.filter(function(m) { if (seen[m.name]) return false; seen[m.name] = true; return true; });
+        if (pool.length === 0) { alert('No monsters found. Import the bestiary from the Vault first.'); return; }
+        roster = pickDiverseMonsters(pool, totalHorde, 4);
+        recalculate();
+      }).catch(function() { alert('Failed to load monsters.'); });
+    }
+  };
+
+  // Save encounter
+  window.saveEncounter = function() {
+    var name = document.getElementById('encounter-name').value.trim();
+    if (!name) { alert('Enter an encounter name first.'); return; }
+
+    var body = {
+      name: name,
+      party_size: parseInt(document.getElementById('party-size').value, 10) || 4,
+      party_levels: JSON.stringify(getPartyLevels()),
+      monsters: JSON.stringify(roster)
+    };
+
+    var url = currentEncounterId ? '/encounters/' + currentEncounterId : '/encounters';
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify(body)
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      if (data.success) {
+        if (!currentEncounterId && data.id) currentEncounterId = data.id;
+        // Refresh saved encounters dropdown
+        var sel = document.getElementById('encounter-load-select');
+        var exists = false;
+        for (var i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].value == currentEncounterId) {
+            sel.options[i].textContent = name + ' (just saved)';
+            exists = true;
+            break;
+          }
+        }
+        if (!exists) {
+          var opt = document.createElement('option');
+          opt.value = currentEncounterId;
+          opt.textContent = name + ' (just saved)';
+          sel.appendChild(opt);
+        }
+        sel.value = currentEncounterId;
+        document.getElementById('delete-encounter-btn').style.display = '';
+        alert('Encounter saved!');
+      } else {
+        alert(data.error || 'Failed to save');
+      }
+    }).catch(function() { alert('Failed to save encounter.'); });
+  };
+
+  // Load encounter
+  window.loadEncounter = function(id) {
+    if (!id) {
+      currentEncounterId = null;
+      document.getElementById('delete-encounter-btn').style.display = 'none';
+      return;
+    }
+
+    // Find the saved encounter data
+    var savedEncounters = <%- JSON.stringify(encounters) %>;
+    var enc = savedEncounters.find(function(e) { return e.id == id; });
+    if (!enc) return;
+
+    currentEncounterId = enc.id;
+    document.getElementById('encounter-name').value = enc.name;
+    document.getElementById('party-size').value = enc.party_size || 4;
+    document.getElementById('delete-encounter-btn').style.display = '';
+
+    var levels = [];
+    try { levels = JSON.parse(enc.party_levels); } catch(e) {}
+    if (levels.length > 0) {
+      document.getElementById('party-size').value = levels.length;
+      initLevelInputs();
+      var inputs = document.getElementById('party-levels-container').querySelectorAll('input');
+      levels.forEach(function(lv, i) { if (inputs[i]) inputs[i].value = lv; });
+    }
+
+    roster = [];
+    try { roster = JSON.parse(enc.monsters); } catch(e) {}
+    recalculate();
+  };
+
+  // Delete encounter
+  window.deleteEncounter = function() {
+    if (!currentEncounterId) return;
+    if (!confirm('Delete this saved encounter?')) return;
+
+    fetch('/encounters/' + currentEncounterId + '/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: '{}'
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      if (data.success) {
+        var sel = document.getElementById('encounter-load-select');
+        for (var i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].value == currentEncounterId) { sel.remove(i); break; }
+        }
+        currentEncounterId = null;
+        sel.value = '';
+        document.getElementById('delete-encounter-btn').style.display = 'none';
+        document.getElementById('encounter-name').value = '';
+        roster = [];
+        recalculate();
+      }
+    }).catch(function() { alert('Failed to delete encounter.'); });
+  };
+
+  // Add to map
+  window.addToMap = function() {
+    if (roster.length === 0) { alert('Add monsters to the encounter first.'); return; }
+    if (!currentEncounterId) {
+      // Save first
+      var name = document.getElementById('encounter-name').value.trim() || 'Unsaved Encounter';
+      document.getElementById('encounter-name').value = name;
+
+      var body = {
+        name: name,
+        party_size: parseInt(document.getElementById('party-size').value, 10) || 4,
+        party_levels: JSON.stringify(getPartyLevels()),
+        monsters: JSON.stringify(roster)
+      };
+
+      fetch('/encounters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify(body)
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.success && data.id) {
+          currentEncounterId = data.id;
+          doAddToMap();
+        }
+      }).catch(function() { alert('Failed to save encounter before adding to map.'); });
+      return;
+    }
+    doAddToMap();
+  };
+
+  function doAddToMap() {
+    var mapId = document.getElementById('encounter-map-select').value;
+    if (!mapId) { alert('Select a map first.'); return; }
+
+    fetch('/encounters/' + currentEncounterId + '/add-to-map', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify({ map_id: parseInt(mapId, 10) })
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      if (data.success) {
+        alert(data.placed + ' NPC token(s) placed on map!');
+      } else {
+        alert(data.error || 'Failed to add to map');
+      }
+    }).catch(function() { alert('Failed to add to map.'); });
+  }
+
+  function escHtml(str) { var d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+  function escAttr(str) { return str.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+})();
+</script>
+
+<%- include('partials/foot') %>

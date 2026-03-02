@@ -1,0 +1,136 @@
+<%- include('partials/head', { pageTitle: 'DM Generators' }) %>
+
+<div class="page-header">
+  <h1>DM Generators</h1>
+  <a href="/" class="btn btn-outline">Back to Chamber</a>
+</div>
+
+<div class="vault-tabs generator-tabs">
+  <button class="vault-tab active" data-tab="npc">NPC Generator</button>
+  <button class="vault-tab" data-tab="loot">Loot Table</button>
+  <button class="vault-tab" data-tab="names">Name Generator</button>
+</div>
+
+<!-- NPC Generator -->
+<div class="vault-tab-content active" id="tab-npc">
+  <div class="card">
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:end;margin-bottom:1rem;">
+      <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px;">
+        <label>Race</label>
+        <select id="npc-race">
+          <option value="random">Random</option>
+          <option value="human">Human</option>
+          <option value="elf">Elf</option>
+          <option value="dwarf">Dwarf</option>
+          <option value="halfling">Halfling</option>
+          <option value="gnome">Gnome</option>
+          <option value="half-elf">Half-Elf</option>
+          <option value="half-orc">Half-Orc</option>
+          <option value="tiefling">Tiefling</option>
+          <option value="dragonborn">Dragonborn</option>
+        </select>
+      </div>
+      <button type="button" class="btn btn-primary" id="gen-npc-btn">Generate NPC</button>
+    </div>
+    <div id="npc-result" style="display:none;">
+      <div class="card" style="border-left:3px solid var(--gold);">
+        <h3 id="npc-name"></h3>
+        <p id="npc-details"></p>
+        <p id="npc-traits"></p>
+        <p id="npc-motivation"></p>
+        <p id="npc-secret"></p>
+        <div style="display:flex;gap:0.5rem;margin-top:0.75rem;flex-wrap:wrap;">
+          <button type="button" class="btn btn-small btn-outline" id="npc-copy-btn">Copy to Clipboard</button>
+          <button type="button" class="btn btn-small btn-primary" id="npc-save-btn">Save as NPC Token</button>
+        </div>
+        <div id="npc-save-status" style="margin-top:0.5rem;font-size:0.85rem;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Loot Table -->
+<div class="vault-tab-content" id="tab-loot">
+  <div class="card">
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:end;margin-bottom:1rem;">
+      <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px;">
+        <label>Challenge Tier</label>
+        <select id="loot-tier">
+          <option value="0-4">CR 0-4</option>
+          <option value="5-10">CR 5-10</option>
+          <option value="11-16">CR 11-16</option>
+          <option value="17+">CR 17+</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px;">
+        <label>Type</label>
+        <select id="loot-type">
+          <option value="individual">Individual</option>
+          <option value="hoard">Hoard</option>
+        </select>
+      </div>
+      <button type="button" class="btn btn-primary" id="gen-loot-btn">Roll Loot</button>
+    </div>
+    <div id="loot-result" style="display:none;">
+      <div class="card" style="border-left:3px solid var(--gold);">
+        <h3>Rolled Loot</h3>
+        <div id="loot-coins"></div>
+        <div id="loot-items-list"></div>
+        <div style="display:flex;gap:0.5rem;margin-top:0.75rem;flex-wrap:wrap;align-items:end;">
+          <button type="button" class="btn btn-small btn-primary" id="loot-add-btn">Add to Party Loot</button>
+          <div class="form-group" style="margin-bottom:0;flex:1;min-width:150px;">
+            <label style="font-size:0.8rem;">Assign to NPC (optional)</label>
+            <select id="loot-npc-select" style="font-size:0.85rem;">
+              <option value="">-- None --</option>
+              <% if (typeof npcs !== 'undefined' && npcs.length) { %>
+                <% npcs.forEach(n => { %>
+                  <option value="<%= n.id %>"><%= n.name %></option>
+                <% }); %>
+              <% } %>
+            </select>
+          </div>
+          <button type="button" class="btn btn-small btn-outline" id="loot-add-npc-btn" style="display:none;">Add to NPC Loot</button>
+        </div>
+        <div id="loot-add-status" style="margin-top:0.5rem;font-size:0.85rem;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Name Generator -->
+<div class="vault-tab-content" id="tab-names">
+  <div class="card">
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:end;margin-bottom:1rem;">
+      <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px;">
+        <label>Race</label>
+        <select id="name-race">
+          <option value="human">Human</option>
+          <option value="elf">Elf</option>
+          <option value="dwarf">Dwarf</option>
+          <option value="halfling">Halfling</option>
+          <option value="gnome">Gnome</option>
+          <option value="half-orc">Half-Orc</option>
+          <option value="tiefling">Tiefling</option>
+          <option value="dragonborn">Dragonborn</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px;">
+        <label>Gender</label>
+        <select id="name-gender">
+          <option value="any">Any</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+        </select>
+      </div>
+      <button type="button" class="btn btn-primary" id="gen-names-btn">Generate 10 Names</button>
+    </div>
+    <div id="names-result" style="display:none;">
+      <div class="name-grid" id="name-list"></div>
+    </div>
+  </div>
+</div>
+
+<input type="hidden" id="csrf-token" value="<%= csrfToken %>">
+<script src="/js/generators.js?v=<%= appVersion %>"></script>
+
+<%- include('partials/foot') %>

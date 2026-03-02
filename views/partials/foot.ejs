@@ -1,7 +1,57 @@
   </main>
 
+  <!-- Gallery Lightbox -->
+  <script>
+  function openLightbox(src) {
+    var overlay = document.createElement('div');
+    overlay.className = 'gallery-lightbox';
+    overlay.innerHTML = '<button class="gallery-lightbox-close">&times;</button><img src="' + src + '" alt="">';
+    overlay.addEventListener('click', function(e) { if (e.target !== overlay.querySelector('img')) overlay.remove(); });
+    document.body.appendChild(overlay);
+  }
+  </script>
+
   <!-- Toast Notification Container (Phase 3) -->
   <div class="toast-container" id="toast-container"></div>
+
+  <% if (typeof user !== 'undefined' && user) { %>
+  <!-- Sound Panel -->
+  <div id="sound-panel" class="sound-panel" style="display:none;">
+    <div class="sound-panel-header" id="sound-panel-drag">
+      <span>Sound Board</span>
+      <button type="button" class="sound-panel-close" id="sound-panel-close">&times;</button>
+    </div>
+    <div class="sound-panel-body" id="sound-panel-body">
+      <div class="sound-panel-sites">
+        <p style="margin:0 0 0.5rem;font-size:0.75rem;color:var(--text-secondary);">Open in popup window (audio persists across tabs):</p>
+        <button type="button" class="btn btn-small sound-site-btn" data-url="https://tabletopy.com" data-name="Tabletopy">
+          <span style="font-size:1.1rem;">🎵</span> Tabletopy
+        </button>
+        <button type="button" class="btn btn-small sound-site-btn" data-url="https://tabletopaudio.com" data-name="Tabletop Audio">
+          <span style="font-size:1.1rem;">🎶</span> Tabletop Audio
+        </button>
+        <button type="button" class="btn btn-small sound-site-btn" data-url="https://rpg.ambient-mixer.com" data-name="Ambient Mixer">
+          <span style="font-size:1.1rem;">🌲</span> Ambient Mixer
+        </button>
+        <button type="button" class="btn btn-small sound-site-btn" data-url="https://mynoise.net" data-name="myNoise">
+          <span style="font-size:1.1rem;">🔊</span> myNoise
+        </button>
+      </div>
+      <div class="sound-panel-divider"></div>
+      <div class="sound-panel-custom">
+        <label style="font-size:0.75rem;color:var(--text-secondary);display:block;margin-bottom:0.3rem;">Custom URL:</label>
+        <div style="display:flex;gap:0.3rem;">
+          <input type="url" id="sound-custom-url" placeholder="https://..." style="flex:1;font-size:0.75rem;">
+          <button type="button" class="btn btn-small btn-primary" id="sound-custom-open">Open</button>
+        </div>
+      </div>
+      <div class="sound-panel-divider"></div>
+      <p style="margin:0;font-size:0.65rem;color:var(--text-secondary);text-align:center;">
+        Audio plays in a separate window and<br>persists across Quest Planner pages.
+      </p>
+    </div>
+  </div>
+  <% } %>
 
   <footer class="app-footer">
     <div class="container">
@@ -29,35 +79,27 @@
   <% if (typeof showWhatsNew !== 'undefined' && showWhatsNew) { %>
     <div class="welcome-overlay" id="whatsnew-overlay">
       <div class="welcome-modal whatsnew-modal">
-        <h2>What's New in v<%= appVersion %> 🗺️</h2>
+        <h2>What's New in v<%= appVersion %> 📋</h2>
         <div class="whatsnew-content">
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">NPC Delegation & Token Scale <span style="color:var(--text-secondary);font-size:0.8rem;">(v2.0.12)</span></h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Quest Board, Grid & Sound <span style="color:var(--text-secondary);font-size:0.8rem;">(v2.1.0)</span></h3>
+          <ul class="whatsnew-list">
+            <li><strong>📋 Quest Board</strong> &mdash; Tavern bulletin board for campaign quests &mdash; objectives, rewards, NPC quest givers, map links, story arcs, DM staging with reveal/hide</li>
+            <li><strong>📐 Grid Overlay</strong> &mdash; Square/hex grid on maps with size, offset, opacity, color controls &mdash; saved per-map, visible to all players</li>
+            <li><strong>🔊 Sound Board</strong> &mdash; Floating panel with Tabletopy, Tabletop Audio, Ambient Mixer, myNoise launchers &mdash; audio persists in popup windows</li>
+            <li><strong>🎯 Quest Map Pins</strong> &mdash; Quests linked to maps appear as scroll markers with popup details</li>
+            <li><strong>📊 Active Quests Widget</strong> &mdash; Dashboard widget showing top active quests for DM and players</li>
+          </ul>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">NPC Delegation & Token Scale <span style="color:var(--text-secondary);font-size:0.8rem;">(v2.0.12)</span></h3>
           <ul class="whatsnew-list">
             <li><strong>🎭 NPC Move Delegation</strong> &mdash; DM can assign NPC tokens to players (familiars, summons, mounts) &mdash; assigned players can drag them in real-time</li>
             <li><strong>🔍 Token Scale 20x</strong> &mdash; Individual token sliders now go up to 20.0 for huge/gargantuan creatures</li>
             <li><strong>📐 Scale Step Size</strong> &mdash; Global scale +/- now has selectable step sizes: 0.1, 0.5, or 1.0</li>
-            <li><strong>🌫️ FoW Ctrl+A Fix</strong> &mdash; Ctrl+A no longer makes fog transparent (prevented browser select-all on map)</li>
           </ul>
           <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">NPC Sidebar & Alignment <span style="color:var(--text-secondary);font-size:0.8rem;">(v2.0.9)</span></h3>
           <ul class="whatsnew-list">
             <li><strong>📋 NPC Sidebar</strong> &mdash; Persistent sidebar with categories, search, and click-to-place NPCs on the map</li>
             <li><strong>⚔️ Alignment System</strong> &mdash; Per-NPC hostile/friendly/neutral with colored borders (red/green/white)</li>
             <li><strong>☑️ Multi-Category NPCs</strong> &mdash; NPCs can belong to multiple categories via checkboxes</li>
-            <li><strong>🖼️ Open5e Avatars</strong> &mdash; Auto-fetch monster images from Open5e when creating NPCs from Bestiary</li>
-          </ul>
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Map Links & Tokens</h3>
-          <ul class="whatsnew-list">
-            <li><strong>🔗 Map Hyperlinks</strong> &mdash; Link any map to any other without parent-child restrictions</li>
-            <li><strong>➕➖ Global Scale Offset</strong> &mdash; +/- buttons to scale all tokens (player + NPC) relatively</li>
-            <li><strong>✅ Multi-Select</strong> &mdash; Ctrl+Click tokens to select and move as a group (DM only)</li>
-            <li><strong>🎯 Fog Brush Cursor</strong> &mdash; Visual circle cursor showing brush size and reveal/hide mode</li>
-          </ul>
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">NPC Tokens & Fog of War <span style="color:var(--text-secondary);font-size:0.8rem;">(v2.0.8)</span></h3>
-          <ul class="whatsnew-list">
-            <li><strong>👹 NPC Library</strong> &mdash; Create NPCs with categories, HP, avatars, and Bestiary import (2200+ monsters)</li>
-            <li><strong>🌫️ Fog of War</strong> &mdash; Full-map fog with reveal/hide brush, draft &amp; publish workflow</li>
-            <li><strong>📡 Real-Time Sync</strong> &mdash; Token moves, NPC changes, HP updates sync instantly via SSE</li>
-            <li><strong>🖥️ Fullscreen Toolbar</strong> &mdash; All map controls available in fullscreen mode</li>
           </ul>
         </div>
         <div class="whatsnew-links">

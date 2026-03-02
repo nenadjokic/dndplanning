@@ -1,0 +1,47 @@
+<%- include('partials/head', { pageTitle: 'Missed Sessions' }) %>
+
+<div class="page-header">
+  <h1>Missed a Session?</h1>
+  <a href="/journal" class="btn btn-outline">Back to Journal</a>
+</div>
+
+<p class="text-muted" style="margin-bottom:1.5rem">Catch up on sessions you missed. Read the recaps below to stay up to date with the story.</p>
+
+<% if (sessions.length === 0) { %>
+  <div class="card">
+    <%- include('partials/empty-state', {
+      icon: '🎯',
+      title: 'All Caught Up!',
+      description: "You haven't missed any sessions, or attendance hasn't been tracked yet.",
+      cta: ''
+    }) %>
+  </div>
+<% } else { %>
+  <div class="journal-timeline">
+    <% for (const s of sessions) { %>
+      <div class="journal-entry">
+        <div class="card journal-card">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem">
+            <span class="attendance-badge missed">Missed</span>
+            <% if (s.confirmed_date) { %>
+              <span class="journal-date-marker" style="margin:0"><%= formatDate(s.confirmed_date, { weekday: 'short', month: 'short', day: 'numeric' }) %></span>
+            <% } %>
+          </div>
+          <h2><a href="/sessions/<%= s.id %>"><%= s.title %></a></h2>
+          <div class="journal-meta">
+            <span>DM: <%= s.dm_name %></span>
+          </div>
+          <% if (s.summary) { %>
+            <div class="journal-summary" style="margin-top:0.5rem">
+              <div class="recap-rendered"><%- renderMarkdown(s.summary) %></div>
+            </div>
+          <% } else { %>
+            <p class="text-muted" style="font-size:0.85rem;margin:0.5rem 0 0">No recap available for this session.</p>
+          <% } %>
+        </div>
+      </div>
+    <% } %>
+  </div>
+<% } %>
+
+<%- include('partials/foot') %>

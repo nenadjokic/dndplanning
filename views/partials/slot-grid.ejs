@@ -53,6 +53,24 @@
           </td>
         <% } %>
       </tr>
+      <% if (typeof quorumData !== 'undefined' && quorumData && Object.keys(quorumData).length > 0) { %>
+        <tr class="summary-row quorum-row">
+          <td class="grid-player"><strong>Quorum</strong></td>
+          <% for (const slot of slots) { %>
+            <td class="grid-cell summary-cell">
+              <% if (quorumData[slot.id]) { %>
+                <% if (quorumData[slot.id].met) { %>
+                  <span class="quorum-status quorum-met" title="Quorum met">&#10003;</span>
+                <% } else { %>
+                  <span class="quorum-status quorum-unmet" title="Need <%= quorumData[slot.id].needed %> more">-<%= quorumData[slot.id].needed %></span>
+                <% } %>
+              <% } else { %>
+                &mdash;
+              <% } %>
+            </td>
+          <% } %>
+        </tr>
+      <% } %>
       <% if (typeof preferenceMap !== 'undefined' && Object.keys(preferenceMap).length > 0) { %>
         <tr class="summary-row">
           <td class="grid-player"><strong>DM Pref</strong></td>

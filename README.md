@@ -1,6 +1,6 @@
-# Quest Planner v2.0.12 — D&D Session Scheduler
+# Quest Planner v2.1.0 — D&D Session Scheduler
 
-> **Latest release:** v2.0.12 (2026-02-28)
+> **Latest release:** v2.1.0 (2026-03-02)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -856,6 +856,20 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v2.1.0 (2026-03-02) 📋 Quest Board, Grid Overlay & Sound Board
+
+**New Features:**
+- **📋 Quest Board** — Tavern bulletin board at `/quests` for managing campaign quests with parchment-style cards, objectives checklist, difficulty/status badges, NPC quest givers, map links, story arc assignments, DM staging (reveal/hide), and SSE real-time sync
+- **📐 Grid Overlay** — Square and hex grid on maps with DM-configurable size, offset X/Y, opacity, color; saved per-map in DB; visible to all players at any zoom level
+- **🔊 Sound Board** — Floating draggable panel with launcher buttons for Tabletopy, Tabletop Audio, Ambient Mixer, and myNoise; opens in popup windows so audio persists across page navigation; custom URL support
+- **🎯 Quest Map Pins** — Quests linked to a map appear as scroll (📜) markers with popup details
+- **📊 Active Quests Widget** — Dashboard widget on both DM and Player dashboards showing top 3 active/available quests
+
+**Improvements:**
+- Grid overlay uses direct canvas rendering (not Leaflet tiles) for reliable display at all zoom levels
+- Quest objectives with checkbox toggle for DM (auto-save via fetch)
+- Sound panel position and state persisted in localStorage
 
 ### v2.0.12 (2026-02-28) 🗺️ NPC Move Delegation, Token Scale & FoW Fix
 

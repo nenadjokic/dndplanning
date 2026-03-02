@@ -1,0 +1,177 @@
+<%- include('partials/head', { pageTitle: 'Quest Journal' }) %>
+
+<div class="page-header">
+  <h1>Quest Journal</h1>
+  <div>
+    <a href="/journal/missed" class="btn btn-outline btn-small">Missed a Session?</a>
+    <a href="/" class="btn btn-outline">Back</a>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card journal-filters" style="margin-bottom:1rem;">
+  <form action="/journal" method="GET" style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:end;">
+    <div class="form-group" style="margin-bottom:0;flex:1;min-width:140px;">
+      <label for="arc-filter">Arc</label>
+      <select name="arc" id="arc-filter">
+        <option value="">All Arcs</option>
+        <% for (const a of arcs) { %>
+          <option value="<%= a.id %>" <%= arcFilter == a.id ? 'selected' : '' %>><%= a.name %></option>
+        <% } %>
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:0;flex:1;min-width:140px;">
+      <label for="player-filter">Player</label>
+      <select name="player" id="player-filter">
+        <option value="">All Players</option>
+        <% for (const p of allPlayers) { %>
+          <option value="<%= p.id %>" <%= playerFilter == p.id ? 'selected' : '' %>><%= p.username %></option>
+        <% } %>
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:0;flex:1;min-width:140px;">
+      <label for="location-filter">Location</label>
+      <select name="location" id="location-filter">
+        <option value="">All Locations</option>
+        <% for (const l of locations) { %>
+          <option value="<%= l.id %>" <%= locationFilter == l.id ? 'selected' : '' %>><%= l.name %></option>
+        <% } %>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-small btn-primary">Filter</button>
+    <% if (arcFilter || playerFilter || locationFilter) { %>
+      <a href="/journal" class="btn btn-small btn-outline">Clear</a>
+    <% } %>
+  </form>
+</div>
+
+<!-- DM: Manage Arcs -->
+<% if (isDM) { %>
+<details class="card manage-arcs-card" style="margin-bottom:1rem;">
+  <summary style="cursor:pointer;font-weight:bold;">Manage Story Arcs (<%= arcs.length %>)</summary>
+  <div style="margin-top:1rem;">
+    <form action="/journal/arcs" method="POST" style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:end;margin-bottom:1rem;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="form-group" style="margin-bottom:0;flex:1;min-width:150px;">
+        <label>New Arc Name</label>
+        <input type="text" name="name" required placeholder="The Dragon's Shadow">
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label>Color</label>
+        <input type="color" name="color" value="#d4a843" style="width:3rem;height:2.2rem;padding:0.15rem;">
+      </div>
+      <button type="submit" class="btn btn-small btn-primary">Create Arc</button>
+    </form>
+
+    <% if (arcs.length > 0) { %>
+      <% for (const a of arcs) { %>
+        <div class="arc-manage-row" style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.5rem;padding:0.5rem;border-left:3px solid <%= a.color || '#d4a843' %>;background:rgba(0,0,0,0.2);border-radius:4px;">
+          <form action="/journal/arcs/<%= a.id %>" method="POST" style="display:flex;gap:0.5rem;align-items:center;flex:1;">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <input type="text" name="name" value="<%= a.name %>" style="flex:1;">
+            <input type="color" name="color" value="<%= a.color || '#d4a843' %>" style="width:2.5rem;height:2rem;padding:0.1rem;">
+            <button type="submit" class="btn btn-small btn-outline">Save</button>
+          </form>
+          <form action="/journal/arcs/<%= a.id %>/delete" method="POST" class="inline-form">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete arc? Sessions will be unassigned.')">&times;</button>
+          </form>
+        </div>
+      <% } %>
+    <% } %>
+  </div>
+</details>
+<% } %>
+
+<% if (sessions.length === 0) { %>
+  <div class="card">
+    <%- include('partials/empty-state', {
+      icon: '\uD83D\uDCD6',
+      title: 'No Tales Yet',
+      description: 'Complete sessions and write recaps to fill the Quest Journal.',
+      cta: ''
+    }) %>
+  </div>
+<% } else { %>
+  <div class="journal-timeline">
+    <% let lastMonth = ''; let lastArc = null; %>
+    <% for (const s of sessions) { %>
+      <%
+        const dateStr = s.confirmed_date || s.created_at;
+        const d = new Date(dateStr);
+        const monthKey = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+        const monthLabel = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      %>
+
+      <% if (s.arc_id && s.arc_id !== lastArc) { lastArc = s.arc_id; %>
+        <div class="journal-arc-divider" style="border-color: <%= s.arc_color || '#d4a843' %>;">
+          <span class="journal-arc-label" style="background: <%= s.arc_color || '#d4a843' %>;"><%= s.arc_name || 'Unknown Arc' %></span>
+        </div>
+      <% } %>
+
+      <% if (monthKey !== lastMonth) { lastMonth = monthKey; %>
+        <div class="journal-date-marker"><%= monthLabel %></div>
+      <% } %>
+
+      <div class="journal-entry">
+        <div class="card journal-card">
+          <div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:0.5rem;">
+            <h2 style="margin:0;"><a href="/sessions/<%= s.id %>"><%= s.title %></a></h2>
+            <% if (s.arc_name) { %>
+              <span class="arc-badge" style="background:<%= s.arc_color || '#d4a843' %>;"><%= s.arc_name %></span>
+            <% } %>
+          </div>
+          <div class="journal-meta">
+            <% if (s.confirmed_date) { %>
+              <span><%= formatDate(s.confirmed_date, { weekday: 'short', month: 'short', day: 'numeric' }) %></span>
+            <% } %>
+            <span>DM: <%= s.dm_name %></span>
+            <% if (s.attendee_count > 0) { %>
+              <span><%= s.attendee_count %> attended</span>
+            <% } %>
+            <% if (s.image_count > 0) { %>
+              <span><%= s.image_count %> photo<%= s.image_count !== 1 ? 's' : '' %></span>
+            <% } %>
+          </div>
+
+          <% if (isDM) { %>
+            <form action="/journal/sessions/<%= s.id %>/arc" method="POST" style="display:inline-flex;gap:0.25rem;align-items:center;margin-top:0.25rem;">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <select name="arc_id" class="role-select" style="font-size:0.8rem;" onchange="this.form.submit()">
+                <option value="">No Arc</option>
+                <% for (const a of arcs) { %>
+                  <option value="<%= a.id %>" <%= s.arc_id === a.id ? 'selected' : '' %>><%= a.name %></option>
+                <% } %>
+              </select>
+            </form>
+          <% } %>
+
+          <% if (s.summary) { %>
+            <div class="journal-summary collapsed" id="journal-sum-<%= s.id %>">
+              <div class="recap-rendered"><%- renderMarkdown(s.summary) %></div>
+            </div>
+            <button type="button" class="journal-expand-btn" onclick="toggleJournalEntry(<%= s.id %>)">Read more</button>
+          <% } else { %>
+            <p class="text-muted" style="font-size:0.85rem;margin:0">No recap written.</p>
+          <% } %>
+        </div>
+      </div>
+    <% } %>
+  </div>
+<% } %>
+
+<script>
+function toggleJournalEntry(id) {
+  var el = document.getElementById('journal-sum-' + id);
+  var btn = el.parentElement.querySelector('.journal-expand-btn');
+  if (el.classList.contains('collapsed')) {
+    el.classList.remove('collapsed');
+    btn.textContent = 'Show less';
+  } else {
+    el.classList.add('collapsed');
+    btn.textContent = 'Read more';
+  }
+}
+</script>
+
+<%- include('partials/foot') %>

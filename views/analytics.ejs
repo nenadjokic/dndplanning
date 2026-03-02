@@ -216,6 +216,33 @@
 </div>
 <% } %>
 
+<!-- ============== SECTION 8: Attendance Report ============== -->
+<% if (data.realAttendance && data.realAttendance.length > 0) { %>
+<h2 class="analytics-section-title">Attendance Report</h2>
+<div class="card" style="padding: 1.5rem;">
+  <p class="form-hint" style="margin-bottom: 1rem;">Based on DM-tracked attendance for completed sessions.</p>
+  <% for (const a of data.realAttendance) { %>
+    <div class="attendance-report-row">
+      <div class="attendance-report-user">
+        <% if (a.avatar) { %>
+          <img src="/avatars/<%= a.avatar %>" alt="" class="avatar-tiny">
+        <% } else { %>
+          <span class="avatar-letter avatar-letter-sm"><%= a.username.charAt(0).toUpperCase() %></span>
+        <% } %>
+        <span><%= a.username %></span>
+      </div>
+      <div class="attendance-bar">
+        <div class="attendance-fill" style="width: <%= a.pct %>%;"></div>
+      </div>
+      <div class="attendance-report-stats">
+        <span><%= a.attended %>/<%= a.total %></span>
+        <strong><%= a.pct %>%</strong>
+      </div>
+    </div>
+  <% } %>
+</div>
+<% } %>
+
 <script>
 (function() {
   var data = <%- JSON.stringify(analyticsData) %>;

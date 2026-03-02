@@ -24,6 +24,16 @@ router.get('/', requireLogin, (req, res) => {
     AND substr(birthday, 6) = strftime('%m-%d', 'now', 'localtime')
   `).all();
 
+  // Latest completed session with recap for "Previously On..." banner
+  const latestRecap = db.prepare(`
+    SELECT s.id, s.title, s.summary, sl.date_time as confirmed_date, u.username as dm_name
+    FROM sessions s
+    JOIN users u ON s.created_by = u.id
+    LEFT JOIN slots sl ON s.confirmed_slot_id = sl.id
+    WHERE s.status = 'completed' AND s.summary IS NOT NULL AND s.summary != ''
+    ORDER BY COALESCE(sl.date_time, s.created_at) DESC LIMIT 1
+  `).get();
+
   if (req.user.role === 'dm' || req.user.role === 'admin') {
     const sessions = db.prepare(`
       SELECT s.*, sl.date_time as confirmed_date, sl.label as confirmed_label
@@ -52,7 +62,16 @@ router.get('/', requireLogin, (req, res) => {
       LIMIT 5
     `).all();
 
-    return res.render('dm/dashboard', { sessions, firstLogin, birthdayUsers, showWhatsNew, boardPosts });
+    // Active quests for dashboard widget
+    let activeQuests = [];
+    try {
+      activeQuests = db.prepare(`SELECT id, title, status, difficulty FROM quests
+        WHERE status IN ('available', 'active')
+        ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END, created_at DESC
+        LIMIT 3`).all();
+    } catch (e) { /* table may not exist yet */ }
+
+    return res.render('dm/dashboard', { sessions, firstLogin, birthdayUsers, showWhatsNew, boardPosts, latestRecap, activeQuests });
   }
 
   // Player dashboard
@@ -93,7 +112,16 @@ router.get('/', requireLogin, (req, res) => {
     LIMIT 5
   `).all();
 
-  res.render('player/dashboard', { sessions, votedSessionIds, firstLogin, birthdayUsers, showWhatsNew, boardPosts });
+  // Active quests for dashboard widget
+  let activeQuests = [];
+  try {
+    activeQuests = db.prepare(`SELECT id, title, status, difficulty FROM quests
+      WHERE revealed = 1 AND status IN ('available', 'active')
+      ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END, created_at DESC
+      LIMIT 3`).all();
+  } catch (e) { /* table may not exist yet */ }
+
+  res.render('player/dashboard', { sessions, votedSessionIds, firstLogin, birthdayUsers, showWhatsNew, boardPosts, latestRecap, activeQuests });
 });
 
 module.exports = router;

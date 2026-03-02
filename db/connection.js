@@ -152,7 +152,14 @@ for (const sql of [
   "ALTER TABLE maps ADD COLUMN fog_enabled INTEGER DEFAULT 0",
   "ALTER TABLE maps ADD COLUMN fog_data TEXT",
   "ALTER TABLE maps ADD COLUMN fog_draft TEXT",
-  "ALTER TABLE maps ADD COLUMN fog_explored TEXT"
+  "ALTER TABLE maps ADD COLUMN fog_explored TEXT",
+  "ALTER TABLE maps ADD COLUMN grid_enabled INTEGER DEFAULT 0",
+  "ALTER TABLE maps ADD COLUMN grid_size REAL DEFAULT 50",
+  "ALTER TABLE maps ADD COLUMN grid_offset_x REAL DEFAULT 0",
+  "ALTER TABLE maps ADD COLUMN grid_offset_y REAL DEFAULT 0",
+  "ALTER TABLE maps ADD COLUMN grid_color TEXT DEFAULT '#ffffff'",
+  "ALTER TABLE maps ADD COLUMN grid_opacity REAL DEFAULT 0.3",
+  "ALTER TABLE maps ADD COLUMN grid_type TEXT DEFAULT 'square'"
 ]) {
   try { db.exec(sql); } catch (e) { /* already exists */ }
 }
@@ -265,6 +272,71 @@ try {
     } catch (e) { /* ignore */ }
   }
 } catch (e) { /* ignore */ }
+
+// Combat encounter tracker
+db.exec(`
+  CREATE TABLE IF NOT EXISTS combat_encounters (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    map_id INTEGER NOT NULL UNIQUE REFERENCES maps(id) ON DELETE CASCADE,
+    round_number INTEGER NOT NULL DEFAULT 1,
+    current_turn_index INTEGER NOT NULL DEFAULT 0,
+    visibility TEXT NOT NULL DEFAULT 'full' CHECK(visibility IN ('full', 'order_only', 'hidden')),
+    started_by INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS combat_participants (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    encounter_id INTEGER NOT NULL REFERENCES combat_encounters(id) ON DELETE CASCADE,
+    token_id INTEGER REFERENCES map_tokens(id) ON DELETE CASCADE,
+    npc_map_token_id INTEGER REFERENCES map_npc_tokens(id) ON DELETE CASCADE,
+    initiative INTEGER NOT NULL DEFAULT 0,
+    initiative_modifier INTEGER NOT NULL DEFAULT 0,
+    legendary_actions_max INTEGER NOT NULL DEFAULT 0,
+    legendary_actions_used INTEGER NOT NULL DEFAULT 0,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    CHECK(
+      (token_id IS NOT NULL AND npc_map_token_id IS NULL) OR
+      (token_id IS NULL AND npc_map_token_id IS NOT NULL)
+    )
+  );
+`);
+
+// Condition duration tracking columns (idempotent)
+for (const sql of [
+  "ALTER TABLE token_conditions ADD COLUMN duration_rounds INTEGER",
+  "ALTER TABLE token_conditions ADD COLUMN duration_type TEXT DEFAULT 'indefinite'",
+  "ALTER TABLE npc_token_conditions ADD COLUMN duration_rounds INTEGER",
+  "ALTER TABLE npc_token_conditions ADD COLUMN duration_type TEXT DEFAULT 'indefinite'"
+]) {
+  try { db.exec(sql); } catch (e) { /* already exists */ }
+}
+
+// Encounter builder table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS encounters (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    party_size INTEGER NOT NULL DEFAULT 4,
+    party_levels TEXT NOT NULL DEFAULT '[]',
+    monsters TEXT NOT NULL DEFAULT '[]',
+    template TEXT,
+    created_by INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+// Session scheduling enhancements (idempotent)
+for (const sql of [
+  "ALTER TABLE sessions ADD COLUMN recurrence_rule TEXT",
+  "ALTER TABLE sessions ADD COLUMN parent_session_id INTEGER REFERENCES sessions(id)",
+  "ALTER TABLE sessions ADD COLUMN min_players INTEGER"
+]) {
+  try { db.exec(sql); } catch (e) { /* already exists */ }
+}
 
 // Map links (non-hierarchical hyperlinks between maps)
 db.exec(`
@@ -512,6 +584,187 @@ for (const sql of [
   "ALTER TABLE dnd_data_meta ADD COLUMN monster_count INTEGER DEFAULT 0",
   "ALTER TABLE dnd_data_meta ADD COLUMN condition_count INTEGER DEFAULT 0",
   "ALTER TABLE dnd_data_meta ADD COLUMN rule_count INTEGER DEFAULT 0"
+]) {
+  try { db.exec(sql); } catch (e) { /* already exists */ }
+}
+
+// Session notes (DM live notes + player personal notes)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS session_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    content TEXT NOT NULL DEFAULT '',
+    note_type TEXT NOT NULL DEFAULT 'player' CHECK(note_type IN ('dm', 'player')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(session_id, user_id, note_type)
+  );
+`);
+
+// Session gallery images
+db.exec(`
+  CREATE TABLE IF NOT EXISTS session_images (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    image_path TEXT NOT NULL,
+    caption TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+// Attendance tracking (DM marks who attended)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS session_attendance (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    attended INTEGER NOT NULL DEFAULT 1,
+    UNIQUE(session_id, user_id)
+  );
+`);
+
+// === P1 FEATURES: New tables ===
+
+// Party treasury (single row)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS party_currency (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    pp INTEGER NOT NULL DEFAULT 0,
+    gp INTEGER NOT NULL DEFAULT 0,
+    sp INTEGER NOT NULL DEFAULT 0,
+    cp INTEGER NOT NULL DEFAULT 0
+  );
+  INSERT OR IGNORE INTO party_currency (id) VALUES (1);
+`);
+
+// Per-user wallet
+db.exec(`
+  CREATE TABLE IF NOT EXISTS character_currency (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    pp INTEGER NOT NULL DEFAULT 0,
+    gp INTEGER NOT NULL DEFAULT 0,
+    sp INTEGER NOT NULL DEFAULT 0,
+    cp INTEGER NOT NULL DEFAULT 0,
+    UNIQUE(user_id)
+  );
+`);
+
+// Currency audit trail
+db.exec(`
+  CREATE TABLE IF NOT EXISTS currency_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    target TEXT NOT NULL DEFAULT 'party',
+    user_id INTEGER REFERENCES users(id),
+    pp_change INTEGER NOT NULL DEFAULT 0,
+    gp_change INTEGER NOT NULL DEFAULT 0,
+    sp_change INTEGER NOT NULL DEFAULT 0,
+    cp_change INTEGER NOT NULL DEFAULT 0,
+    reason TEXT,
+    created_by INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+// DM handout library
+db.exec(`
+  CREATE TABLE IF NOT EXISTS handouts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'image',
+    content TEXT,
+    image_path TEXT,
+    linked_npc_id INTEGER REFERENCES npc_tokens(id) ON DELETE SET NULL,
+    linked_location_id INTEGER REFERENCES map_locations(id) ON DELETE SET NULL,
+    revealed INTEGER NOT NULL DEFAULT 0,
+    created_by INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+// Story arcs for campaign timeline
+db.exec(`
+  CREATE TABLE IF NOT EXISTS campaign_arcs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    color TEXT DEFAULT '#d4a843',
+    created_by INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+// Map loot chests (auto-drop from dead NPCs + manual DM placement)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS map_loot_chests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    map_id INTEGER NOT NULL REFERENCES maps(id) ON DELETE CASCADE,
+    x REAL NOT NULL DEFAULT 50,
+    y REAL NOT NULL DEFAULT 50,
+    label TEXT DEFAULT 'Loot Chest',
+    notes TEXT,
+    pp INTEGER NOT NULL DEFAULT 0,
+    gp INTEGER NOT NULL DEFAULT 0,
+    sp INTEGER NOT NULL DEFAULT 0,
+    cp INTEGER NOT NULL DEFAULT 0,
+    hidden INTEGER NOT NULL DEFAULT 0,
+    linked_npc_name TEXT,
+    created_by INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE TABLE IF NOT EXISTS chest_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chest_id INTEGER NOT NULL REFERENCES map_loot_chests(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    quantity INTEGER NOT NULL DEFAULT 1
+  );
+`);
+
+// Quest Board tables
+db.exec(`
+  CREATE TABLE IF NOT EXISTS quests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT,
+    status TEXT NOT NULL DEFAULT 'available',
+    difficulty TEXT,
+    reward TEXT,
+    quest_giver_npc_id INTEGER REFERENCES npc_tokens(id),
+    quest_giver_name TEXT,
+    linked_map_id INTEGER REFERENCES maps(id),
+    linked_location_id INTEGER REFERENCES map_locations(id),
+    arc_id INTEGER REFERENCES campaign_arcs(id),
+    revealed INTEGER DEFAULT 1,
+    dm_notes TEXT,
+    sort_order INTEGER DEFAULT 0,
+    created_by INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    completed_at TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS quest_objectives (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    quest_id INTEGER NOT NULL REFERENCES quests(id) ON DELETE CASCADE,
+    text TEXT NOT NULL,
+    completed INTEGER DEFAULT 0,
+    sort_order INTEGER DEFAULT 0
+  );
+`);
+
+// Loot enhancements + session arcs + reminder flags (idempotent)
+for (const sql of [
+  "ALTER TABLE loot_items ADD COLUMN hidden INTEGER DEFAULT 0",
+  "ALTER TABLE loot_items ADD COLUMN attuned_to INTEGER REFERENCES characters(id)",
+  "ALTER TABLE loot_items ADD COLUMN vault_item_name TEXT",
+  "ALTER TABLE loot_items ADD COLUMN rarity TEXT",
+  "ALTER TABLE loot_items ADD COLUMN linked_npc_id INTEGER REFERENCES npc_tokens(id) ON DELETE SET NULL",
+  "ALTER TABLE sessions ADD COLUMN arc_id INTEGER REFERENCES campaign_arcs(id)",
+  "ALTER TABLE sessions ADD COLUMN reminder_24h_sent INTEGER DEFAULT 0",
+  "ALTER TABLE sessions ADD COLUMN reminder_1h_sent INTEGER DEFAULT 0"
 ]) {
   try { db.exec(sql); } catch (e) { /* already exists */ }
 }

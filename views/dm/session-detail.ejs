@@ -35,6 +35,13 @@
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
     </button>
   </div>
+  <% if (session.recurrence_rule) { %>
+    <% const rule = JSON.parse(session.recurrence_rule); %>
+    <span class="session-recurring-badge">Every <%= rule.day.charAt(0).toUpperCase() + rule.day.slice(1) %> at <%= rule.time || '19:00' %></span>
+  <% } %>
+  <% if (session.min_players) { %>
+    <span class="session-recurring-badge" style="background: var(--accent-2);">Quorum: <%= session.min_players %> players</span>
+  <% } %>
   <% if (session.description) { %>
     <p class="session-desc"><%= session.description %></p>
   <% } %>
@@ -117,7 +124,7 @@
   <% if (players.length === 0) { %>
     <p class="empty-state-text">No adventurers have joined the guild yet.</p>
   <% } else { %>
-    <%- include('../partials/slot-grid', { slots, players, voteMap, slotSummary, preferenceMap, allUsersMap: typeof allUsersMap !== 'undefined' ? allUsersMap : {}, unavailabilityMap: typeof unavailabilityMap !== 'undefined' ? unavailabilityMap : undefined }) %>
+    <%- include('../partials/slot-grid', { slots, players, voteMap, slotSummary, preferenceMap, allUsersMap: typeof allUsersMap !== 'undefined' ? allUsersMap : {}, unavailabilityMap: typeof unavailabilityMap !== 'undefined' ? unavailabilityMap : undefined, quorumData: typeof quorumData !== 'undefined' ? quorumData : {} }) %>
   <% } %>
 
   <% if (session.status === 'open') { %>
@@ -179,7 +186,38 @@
             <% if (completedSlot.label) { %> &mdash; <%= completedSlot.label %><% } %>
           </p>
         <% } %>
+        <% if (typeof arcs !== 'undefined' && arcs && arcs.length > 0) { %>
+          <form action="/journal/sessions/<%= session.id %>/arc" method="POST" style="display:inline-flex;gap:0.35rem;align-items:center;margin-top:0.5rem;">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <label style="font-size:0.85rem;color:var(--text-secondary);">Story Arc:</label>
+            <select name="arc_id" class="role-select" style="font-size:0.85rem;" onchange="this.form.submit()">
+              <option value="">No Arc</option>
+              <% for (const a of arcs) { %>
+                <option value="<%= a.id %>" <%= session.arc_id === a.id ? 'selected' : '' %>><%= a.name %></option>
+              <% } %>
+            </select>
+          </form>
+        <% } %>
       <% } %>
+      <% if (session.recurrence_rule) { %>
+        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <form action="/sessions/<%= session.id %>/generate-next" method="POST" class="inline-form">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button type="submit" class="btn btn-primary">Generate Next Session</button>
+          </form>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
+
+  <% if (session.status === 'open' && session.recurrence_rule) { %>
+    <div class="dm-actions">
+      <h3>Recurring Session</h3>
+      <p class="text-muted" style="font-size: 0.9rem;">Skip this week and auto-create next week's session.</p>
+      <form action="/sessions/<%= session.id %>/skip" method="POST" class="inline-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" class="btn btn-outline" onclick="return confirm('Cancel this session and create the next one?')">Skip This Week</button>
+      </form>
     </div>
   <% } %>
 
@@ -213,6 +251,98 @@
           <button type="button" class="btn btn-outline" onclick="document.getElementById('recap-edit').style.display='none';document.getElementById('recap-display').style.display='block';">Cancel</button>
         </form>
       </div>
+    </div>
+  <% } %>
+
+  <% if (session.status === 'confirmed' || session.status === 'completed') { %>
+    <div class="dm-actions session-notes-section">
+      <h3>DM Notes <span style="font-size:0.8rem;color:var(--text-muted);font-weight:normal">(private, only you can see)</span></h3>
+      <textarea id="dm-notes-textarea" rows="5" placeholder="Write your session prep or notes here... Auto-saves as you type."><%= typeof myNotes !== 'undefined' && myNotes ? myNotes.content : '' %></textarea>
+      <div class="notes-save-status" id="dm-notes-status"></div>
+    </div>
+    <script>
+    (function(){
+      var textarea = document.getElementById('dm-notes-textarea');
+      var status = document.getElementById('dm-notes-status');
+      var timer = null;
+      var csrfToken = '<%= csrfToken %>';
+      textarea.addEventListener('input', function(){
+        clearTimeout(timer);
+        status.textContent = '';
+        timer = setTimeout(function(){
+          status.textContent = 'Saving...';
+          status.className = 'notes-save-status saving';
+          fetch('/sessions/<%= session.id %>/notes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            body: JSON.stringify({ content: textarea.value })
+          }).then(function(r){ return r.json(); }).then(function(d){
+            if (d.success) { status.textContent = 'Saved'; status.className = 'notes-save-status saved'; }
+            else { status.textContent = 'Error saving'; status.className = 'notes-save-status error'; }
+          }).catch(function(){ status.textContent = 'Error saving'; status.className = 'notes-save-status error'; });
+        }, 800);
+      });
+    })();
+    </script>
+  <% } %>
+
+  <% if (session.status === 'confirmed' || session.status === 'completed') { %>
+    <div class="dm-actions attendance-section">
+      <h3>Attendance</h3>
+      <form action="/sessions/<%= session.id %>/attendance" method="POST">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="attendance-list">
+          <% const attendPlayers = players.filter(p => { const u = allUsersMap[p.id]; return p.id !== user.id; }); %>
+          <% for (const p of attendPlayers) { %>
+            <div class="attendance-item">
+              <label>
+                <input type="checkbox" name="attendees" value="<%= p.id %>" <%= typeof attendanceMap !== 'undefined' && attendanceMap[p.id] === 1 ? 'checked' : '' %>>
+                <% if (allUsersMap[p.id] && allUsersMap[p.id].avatar) { %>
+                  <img src="/avatars/<%= allUsersMap[p.id].avatar %>" alt="" class="avatar-tiny">
+                <% } %>
+                <%= p.username %>
+              </label>
+            </div>
+          <% } %>
+        </div>
+        <button type="submit" class="btn btn-outline btn-small">Save Attendance</button>
+      </form>
+    </div>
+  <% } %>
+
+  <% if (typeof sessionImages !== 'undefined' && sessionImages.length > 0) { %>
+    <div class="dm-actions">
+      <h3>Session Gallery</h3>
+      <div class="session-gallery-grid">
+        <% for (const img of sessionImages) { %>
+          <div class="gallery-thumb" onclick="openLightbox('/uploads/sessions/<%= img.image_path %>')">
+            <img src="/uploads/sessions/<%= img.image_path %>" alt="<%= img.caption || '' %>" loading="lazy">
+            <% if (img.user_id === user.id || user.role === 'admin' || user.role === 'dm') { %>
+              <form action="/sessions/<%= session.id %>/gallery/<%= img.id %>/delete" method="POST" onclick="event.stopPropagation()" style="display:inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="gallery-delete-btn" onclick="return confirm('Delete this image?')">&times;</button>
+              </form>
+            <% } %>
+            <% if (img.caption) { %><div class="gallery-caption"><%= img.caption %></div><% } %>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  <% } %>
+
+  <% if (session.status === 'confirmed' || session.status === 'completed') { %>
+    <div class="dm-actions">
+      <h3>Upload to Gallery</h3>
+      <form action="/sessions/<%= session.id %>/gallery" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="form-group">
+          <input type="file" name="image" accept="image/*" required>
+        </div>
+        <div class="form-group">
+          <input type="text" name="caption" placeholder="Caption (optional)" maxlength="200">
+        </div>
+        <button type="submit" class="btn btn-outline btn-small">Upload Image</button>
+      </form>
     </div>
   <% } %>
 

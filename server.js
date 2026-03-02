@@ -53,6 +53,7 @@ const calendarRoutes = require('./routes/calendar');
 const boardRoutes = require('./routes/board');
 const notificationRoutes = require('./routes/notifications');
 const historyRoutes = require('./routes/history');
+const journalRoutes = require('./routes/journal');
 const profileRoutes = require('./routes/profile');
 const playersRoutes = require('./routes/players');
 const mapRoutes = require('./routes/map');
@@ -62,6 +63,10 @@ const dmToolsRoutes = require('./routes/dm-tools');
 const diceRoutes = require('./routes/dice');
 const dndDataRoutes = require('./routes/dnd-data');
 const vaultRoutes = require('./routes/vault');
+const encounterRoutes = require('./routes/encounters');
+const generatorsRoutes = require('./routes/generators');
+const handoutsRoutes = require('./routes/handouts');
+const questsRoutes = require('./routes/quests');
 const adminUpdatesRoutes = require('./routes/admin-updates');
 
 const app = express();
@@ -97,6 +102,7 @@ app.use('/avatars', express.static(path.join(__dirname, 'data', 'avatars')));
 app.use('/maps', express.static(path.join(__dirname, 'data', 'maps')));
 app.use('/thumbnails', express.static(path.join(__dirname, 'data', 'thumbnails')));
 app.use('/uploads', express.static(path.join(__dirname, 'data', 'uploads')));
+app.use('/uploads/handouts', express.static(path.join(__dirname, 'data', 'uploads', 'handouts')));
 
 app.use(session({
   store: new SQLiteStore({
@@ -240,6 +246,7 @@ app.use('/calendar', calendarRoutes);
 app.use('/board', boardRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/history', historyRoutes);
+app.use('/journal', journalRoutes);
 app.use('/profile', profileRoutes);
 app.use('/players', playersRoutes);
 app.use('/map', mapRoutes);
@@ -249,6 +256,10 @@ app.use('/dm-tools', dmToolsRoutes);
 app.use('/api/dice', diceRoutes);
 app.use('/api/dnd', dndDataRoutes);
 app.use('/vault', vaultRoutes);
+app.use('/encounters', encounterRoutes);
+app.use('/generators', generatorsRoutes);
+app.use('/handouts', handoutsRoutes);
+app.use('/quests', questsRoutes);
 app.use('/admin', adminUpdatesRoutes);
 
 // PWA install page
@@ -423,6 +434,9 @@ app.post('/api/push/unsubscribe', (req, res) => {
   if (endpoint) pushService.unsubscribe(endpoint);
   res.json({ success: true });
 });
+
+// Start auto-reminder scheduler
+require('./helpers/scheduler');
 
 app.listen(PORT, () => {
   console.log(`Quest Planner running at http://localhost:${PORT}`);

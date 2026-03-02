@@ -8,6 +8,13 @@
 <div class="card">
   <span class="session-category"><%= session.category === 'gamenight' ? 'Game Night' : session.category === 'rpg' ? 'RPG' : session.category === 'casual' ? 'Casual' : 'D&D' %></span>
   <div class="session-status-badge session-status-badge-lg"><%= session.status %></div>
+  <% if (session.recurrence_rule) { %>
+    <% const rule = JSON.parse(session.recurrence_rule); %>
+    <span class="session-recurring-badge">Every <%= rule.day.charAt(0).toUpperCase() + rule.day.slice(1) %> at <%= rule.time || '19:00' %></span>
+  <% } %>
+  <% if (session.min_players) { %>
+    <span class="session-recurring-badge" style="background: var(--accent-2);">Quorum: <%= session.min_players %> players</span>
+  <% } %>
 
   <!-- Share Button -->
   <button class="share-main-btn" id="share-btn-<%= session.id %>" onclick="toggleShareMenu('<%= session.id %>')" title="Share Session" aria-label="Share Session">
@@ -62,6 +69,74 @@
     <div class="recap-card">
       <h3>Session Recap</h3>
       <div class="recap-text recap-rendered"><%- renderMarkdown(session.summary) %></div>
+    </div>
+  <% } %>
+
+  <% if (session.status === 'confirmed' || session.status === 'completed') { %>
+    <div class="session-notes-section" style="margin-top:1.5rem">
+      <h3>My Notes <span style="font-size:0.8rem;color:var(--text-muted);font-weight:normal">(private, only you can see)</span></h3>
+      <textarea id="player-notes-textarea" rows="4" placeholder="Write your personal session notes here... Auto-saves as you type."><%= typeof myNotes !== 'undefined' && myNotes ? myNotes.content : '' %></textarea>
+      <div class="notes-save-status" id="player-notes-status"></div>
+    </div>
+    <script>
+    (function(){
+      var textarea = document.getElementById('player-notes-textarea');
+      var status = document.getElementById('player-notes-status');
+      var timer = null;
+      var csrfToken = '<%= csrfToken %>';
+      textarea.addEventListener('input', function(){
+        clearTimeout(timer);
+        status.textContent = '';
+        timer = setTimeout(function(){
+          status.textContent = 'Saving...';
+          status.className = 'notes-save-status saving';
+          fetch('/sessions/<%= session.id %>/notes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            body: JSON.stringify({ content: textarea.value })
+          }).then(function(r){ return r.json(); }).then(function(d){
+            if (d.success) { status.textContent = 'Saved'; status.className = 'notes-save-status saved'; }
+            else { status.textContent = 'Error saving'; status.className = 'notes-save-status error'; }
+          }).catch(function(){ status.textContent = 'Error saving'; status.className = 'notes-save-status error'; });
+        }, 800);
+      });
+    })();
+    </script>
+  <% } %>
+
+  <% if (typeof sessionImages !== 'undefined' && sessionImages.length > 0) { %>
+    <div style="margin-top:1.5rem">
+      <h3>Session Gallery</h3>
+      <div class="session-gallery-grid">
+        <% for (const img of sessionImages) { %>
+          <div class="gallery-thumb" onclick="openLightbox('/uploads/sessions/<%= img.image_path %>')">
+            <img src="/uploads/sessions/<%= img.image_path %>" alt="<%= img.caption || '' %>" loading="lazy">
+            <% if (img.user_id === user.id) { %>
+              <form action="/sessions/<%= session.id %>/gallery/<%= img.id %>/delete" method="POST" onclick="event.stopPropagation()" style="display:inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="gallery-delete-btn" onclick="return confirm('Delete this image?')">&times;</button>
+              </form>
+            <% } %>
+            <% if (img.caption) { %><div class="gallery-caption"><%= img.caption %></div><% } %>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  <% } %>
+
+  <% if (session.status === 'confirmed' || session.status === 'completed') { %>
+    <div style="margin-top:1rem">
+      <h3>Upload to Gallery</h3>
+      <form action="/sessions/<%= session.id %>/gallery" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="form-group">
+          <input type="file" name="image" accept="image/*" required>
+        </div>
+        <div class="form-group">
+          <input type="text" name="caption" placeholder="Caption (optional)" maxlength="200">
+        </div>
+        <button type="submit" class="btn btn-outline btn-small">Upload Image</button>
+      </form>
     </div>
   <% } %>
 
@@ -126,7 +201,7 @@
 <% if (typeof players !== 'undefined' && players.length > 0) { %>
 <div class="card">
   <h2>Party Availability</h2>
-  <%- include('../partials/slot-grid', { slots, players, voteMap, slotSummary, preferenceMap: {}, allUsersMap: typeof allUsersMap !== 'undefined' ? allUsersMap : {}, unavailabilityMap: typeof unavailabilityMap !== 'undefined' ? unavailabilityMap : {} }) %>
+  <%- include('../partials/slot-grid', { slots, players, voteMap, slotSummary, preferenceMap: {}, allUsersMap: typeof allUsersMap !== 'undefined' ? allUsersMap : {}, unavailabilityMap: typeof unavailabilityMap !== 'undefined' ? unavailabilityMap : {}, quorumData: typeof quorumData !== 'undefined' ? quorumData : {} }) %>
 </div>
 <% } %>
 

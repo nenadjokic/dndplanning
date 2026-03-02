@@ -5,15 +5,103 @@
   <a href="/" class="btn btn-outline">Back to Chamber</a>
 </div>
 
+<%
+  const categoryEmoji = { weapon: '\u2694\uFE0F', armor: '\uD83D\uDEE1\uFE0F', potion: '\uD83E\uDDEA', quest: '\uD83D\uDCDC', gold: '\uD83D\uDCB0', item: '\uD83D\uDC8E', scroll: '\uD83D\uDCDC', wondrous: '\u2728' };
+  const rarityColors = { common: '#a8a5a0', uncommon: '#2ecc71', rare: '#3498db', 'very rare': '#bb86fc', legendary: '#f0c850', artifact: '#e74c3c' };
+  const questItems = items.filter(i => i.category === 'quest');
+  const stagedItems = items.filter(i => i.hidden === 1);
+  const otherItems = items.filter(i => i.category !== 'quest' && i.hidden !== 1);
+%>
+
+<!-- Currency Dashboard -->
+<div class="card currency-dashboard">
+  <h2>Treasury</h2>
+  <div class="currency-grid">
+    <div class="currency-section">
+      <h3>Party Treasury</h3>
+      <form action="/loot/currency" method="POST" class="currency-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="target" value="party">
+        <div class="coin-inputs">
+          <label><span class="coin coin-pp">PP</span><input type="number" name="pp" value="<%= partyCurrency.pp %>" min="0" <%= !isDM ? 'disabled' : '' %>></label>
+          <label><span class="coin coin-gp">GP</span><input type="number" name="gp" value="<%= partyCurrency.gp %>" min="0" <%= !isDM ? 'disabled' : '' %>></label>
+          <label><span class="coin coin-sp">SP</span><input type="number" name="sp" value="<%= partyCurrency.sp %>" min="0" <%= !isDM ? 'disabled' : '' %>></label>
+          <label><span class="coin coin-cp">CP</span><input type="number" name="cp" value="<%= partyCurrency.cp %>" min="0" <%= !isDM ? 'disabled' : '' %>></label>
+        </div>
+        <% if (isDM) { %>
+          <input type="text" name="reason" placeholder="Reason (optional)" class="currency-reason">
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+            <button type="submit" class="btn btn-small btn-outline">Update Treasury</button>
+            <form action="/loot/currency/split" method="POST" style="display:inline">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button type="submit" class="btn btn-small btn-primary" onclick="return confirm('Split all party gold equally among players?')">Split Gold</button>
+            </form>
+          </div>
+        <% } %>
+      </form>
+    </div>
+    <div class="currency-section">
+      <h3>My Wallet</h3>
+      <form action="/loot/currency" method="POST" class="currency-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="target" value="personal">
+        <div class="coin-inputs">
+          <label><span class="coin coin-pp">PP</span><input type="number" name="pp" value="<%= myCurrency.pp %>" min="0"></label>
+          <label><span class="coin coin-gp">GP</span><input type="number" name="gp" value="<%= myCurrency.gp %>" min="0"></label>
+          <label><span class="coin coin-sp">SP</span><input type="number" name="sp" value="<%= myCurrency.sp %>" min="0"></label>
+          <label><span class="coin coin-cp">CP</span><input type="number" name="cp" value="<%= myCurrency.cp %>" min="0"></label>
+        </div>
+        <input type="text" name="reason" placeholder="Reason (optional)" class="currency-reason">
+        <button type="submit" class="btn btn-small btn-outline">Update Wallet</button>
+      </form>
+    </div>
+  </div>
+
+  <% if (isDM && allWallets.length > 0) { %>
+    <details class="currency-wallets-toggle">
+      <summary>All Player Wallets (<%= allWallets.length %>)</summary>
+      <div class="wallets-list">
+        <% for (const w of allWallets) { %>
+          <div class="wallet-row"><strong><%= w.username %></strong>: <%= w.pp %>pp / <%= w.gp %>gp / <%= w.sp %>sp / <%= w.cp %>cp</div>
+        <% } %>
+      </div>
+    </details>
+  <% } %>
+
+  <% if (currencyLog.length > 0) { %>
+    <details class="currency-log-toggle">
+      <summary>Currency Log (last 20)</summary>
+      <div class="currency-log-list">
+        <% for (const log of currencyLog) { %>
+          <div class="currency-log-entry">
+            <span class="text-muted" style="font-size:0.8rem"><%= new Date(log.created_at).toLocaleDateString() %></span>
+            <strong><%= log.actor_name %></strong>
+            <% if (log.target === 'party') { %>treasury<% } else { %><%= log.target_name || 'self' %><% } %>:
+            <% const parts = []; %>
+            <% if (log.pp_change) parts.push((log.pp_change > 0 ? '+' : '') + log.pp_change + 'pp'); %>
+            <% if (log.gp_change) parts.push((log.gp_change > 0 ? '+' : '') + log.gp_change + 'gp'); %>
+            <% if (log.sp_change) parts.push((log.sp_change > 0 ? '+' : '') + log.sp_change + 'sp'); %>
+            <% if (log.cp_change) parts.push((log.cp_change > 0 ? '+' : '') + log.cp_change + 'cp'); %>
+            <%= parts.join(', ') %>
+            <% if (log.reason) { %><span class="text-muted">(<%= log.reason %>)</span><% } %>
+          </div>
+        <% } %>
+      </div>
+    </details>
+  <% } %>
+</div>
+
 <% if (isDM) { %>
+<!-- Add Loot Form -->
 <div class="card loot-add-form" style="margin-bottom: 1.5rem;">
   <h2>Add Loot</h2>
   <form action="/loot" method="POST">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
       <div class="form-group">
         <label for="loot-name">Item Name</label>
-        <input type="text" name="name" id="loot-name" required placeholder="Sword of Truth">
+        <input type="text" name="name" id="loot-name" required placeholder="Sword of Truth" autocomplete="off">
+        <div id="vault-suggest" class="vault-suggestions" style="display:none"></div>
       </div>
       <div class="form-group">
         <label for="loot-category">Category</label>
@@ -22,6 +110,8 @@
           <option value="weapon">Weapon</option>
           <option value="armor">Armor</option>
           <option value="potion">Potion</option>
+          <option value="scroll">Scroll</option>
+          <option value="wondrous">Wondrous</option>
           <option value="quest">Quest Item</option>
           <option value="gold">Gold</option>
         </select>
@@ -31,10 +121,10 @@
       <label for="loot-desc">Description (optional)</label>
       <textarea name="description" id="loot-desc" rows="2" placeholder="A finely crafted blade..."></textarea>
     </div>
-    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0.75rem;">
       <div class="form-group">
         <label for="loot-qty">Quantity</label>
-        <input type="text" name="quantity" id="loot-qty" value="1" placeholder="1">
+        <input type="text" name="quantity" id="loot-qty" value="1">
       </div>
       <div class="form-group">
         <label for="loot-held">Assign To</label>
@@ -54,64 +144,109 @@
           <% } %>
         </select>
       </div>
+      <div class="form-group">
+        <label for="loot-rarity">Rarity</label>
+        <select name="rarity" id="loot-rarity">
+          <option value="">None</option>
+          <option value="common">Common</option>
+          <option value="uncommon">Uncommon</option>
+          <option value="rare">Rare</option>
+          <option value="very rare">Very Rare</option>
+          <option value="legendary">Legendary</option>
+          <option value="artifact">Artifact</option>
+        </select>
+      </div>
+    </div>
+    <input type="hidden" name="vault_item_name" id="vault-item-name" value="">
+    <div style="display:flex;gap:1rem;align-items:center;margin-bottom:0.5rem;">
+      <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;">
+        <input type="checkbox" name="hidden" value="on"> Stage as hidden (reveal later)
+      </label>
     </div>
     <button type="submit" class="btn btn-primary">Add to Inventory</button>
   </form>
 </div>
 <% } %>
 
-<%
-  const questItems = items.filter(i => i.category === 'quest');
-  const otherItems = items.filter(i => i.category !== 'quest');
-  const categoryEmoji = { weapon: '\u2694\uFE0F', armor: '\uD83D\uDEE1\uFE0F', potion: '\uD83E\uDDEA', quest: '\uD83D\uDCDC', gold: '\uD83D\uDCB0', item: '\uD83D\uDC8E' };
-%>
-
-<% if (questItems.length > 0) { %>
-<div style="margin-bottom: 1.5rem;">
-  <h2>Quest Items</h2>
+<!-- Staged Items (DM only) -->
+<% if (isDM && stagedItems.length > 0) { %>
+<div class="card staged-items-card" style="margin-bottom: 1.5rem;">
+  <h2>Staged Items <span class="text-muted" style="font-size:0.85rem;">(hidden from players)</span></h2>
   <div class="session-grid">
-    <% for (const item of questItems) { %>
-      <div class="card loot-quest-card">
-        <div style="display: flex; justify-content: space-between; align-items: start;">
+    <% for (const item of stagedItems) { %>
+      <div class="card loot-staged-card">
+        <div style="display:flex;justify-content:space-between;align-items:start;">
           <div>
             <strong><%= categoryEmoji[item.category] || '' %> <%= item.name %></strong>
-            <% if (item.quantity > 1) { %><span class="text-muted"> x<%= item.quantity %></span><% } %>
+            <% if (item.rarity) { %><span class="rarity-badge" style="background:<%= rarityColors[item.rarity] || '#666' %>"><%= item.rarity %></span><% } %>
           </div>
-          <span class="loot-category-badge loot-cat-<%= item.category %>"><%= item.category %></span>
+          <span class="staged-badge">Hidden</span>
         </div>
-        <% if (item.description) { %>
-          <p class="text-muted" style="margin: 0.5rem 0; font-size: 0.9rem;"><%= item.description %></p>
-        <% } %>
-        <div class="loot-holder">
-          Held by: <strong><%= item.holder_name || 'Party Bag' %></strong>
+        <% if (item.description) { %><p class="text-muted" style="margin:0.5rem 0;font-size:0.9rem;"><%= item.description %></p><% } %>
+        <div style="display:flex;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap;">
+          <form action="/loot/<%= item.id %>/reveal" method="POST" class="inline-form">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button type="submit" class="btn btn-small btn-primary">Reveal</button>
+          </form>
+          <form action="/loot/<%= item.id %>/delete" method="POST" class="inline-form">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete?')">&times;</button>
+          </form>
         </div>
-        <% if (item.session_title) { %>
-          <div class="text-muted" style="font-size: 0.8rem;">Found in: <%= item.session_title %></div>
-        <% } %>
-        <% if (isDM) { %>
-          <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
-            <form action="/loot/<%= item.id %>/assign" method="POST" style="display:flex; gap:0.25rem; align-items:center;">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-              <select name="held_by" class="role-select" style="font-size:0.8rem;">
-                <option value="">Party Bag</option>
-                <% for (const p of players) { %>
-                  <option value="<%= p.id %>" <%= item.held_by === p.id ? 'selected' : '' %>><%= p.username %></option>
-                <% } %>
-              </select>
-              <button type="submit" class="btn btn-small btn-outline">Assign</button>
-            </form>
-            <form action="/loot/<%= item.id %>/delete" method="POST" class="inline-form">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-              <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Remove this item?')">&times;</button>
-            </form>
-          </div>
-        <% } %>
       </div>
     <% } %>
   </div>
 </div>
 <% } %>
 
+<!-- Quest Items -->
+<% if (questItems.length > 0) { %>
+<div style="margin-bottom: 1.5rem;">
+  <h2>Quest Items</h2>
+  <div class="session-grid">
+    <% for (const item of questItems) { %>
+      <div class="card loot-quest-card">
+        <div style="display:flex;justify-content:space-between;align-items:start;">
+          <div>
+            <strong><%= categoryEmoji[item.category] || '' %> <%= item.name %></strong>
+            <% if (item.quantity > 1) { %><span class="text-muted"> x<%= item.quantity %></span><% } %>
+            <% if (item.rarity) { %><span class="rarity-badge" style="background:<%= rarityColors[item.rarity] || '#666' %>"><%= item.rarity %></span><% } %>
+          </div>
+          <span class="loot-category-badge loot-cat-<%= item.category %>"><%= item.category %></span>
+        </div>
+        <% if (item.description) { %><p class="text-muted" style="margin:0.5rem 0;font-size:0.9rem;"><%= item.description %></p><% } %>
+        <div class="loot-holder">Held by: <strong><%= item.holder_name || 'Party Bag' %></strong></div>
+        <% if (item.attuned_char_name) { %><div class="attunement-badge">Attuned: <%= item.attuned_char_name %></div><% } %>
+        <% if (item.session_title) { %><div class="text-muted" style="font-size:0.8rem;">Found in: <%= item.session_title %></div><% } %>
+        <% if (item.vault_item_name) { %><button type="button" class="btn btn-small btn-outline vault-detail-btn" data-name="<%= item.vault_item_name %>" style="margin-top:0.5rem;">Stat Block</button><% } %>
+
+        <div style="display:flex;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap;">
+          <% if (isDM || item.held_by === user.id) { %>
+            <form action="/loot/<%= item.id %>/assign" method="POST" style="display:flex;gap:0.25rem;align-items:center;">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <select name="held_by" class="role-select" style="font-size:0.8rem;">
+                <option value="">Party Bag</option>
+                <% for (const p of players) { %>
+                  <option value="<%= p.id %>" <%= item.held_by === p.id ? 'selected' : '' %>><%= p.username %></option>
+                <% } %>
+              </select>
+              <button type="submit" class="btn btn-small btn-outline">Give</button>
+            </form>
+          <% } %>
+          <% if (isDM) { %>
+            <form action="/loot/<%= item.id %>/delete" method="POST" class="inline-form">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Remove?')">&times;</button>
+            </form>
+          <% } %>
+        </div>
+      </div>
+    <% } %>
+  </div>
+</div>
+<% } %>
+
+<!-- Bag of Holding -->
 <% if (otherItems.length > 0) { %>
 <div class="card">
   <h2>Bag of Holding</h2>
@@ -120,10 +255,12 @@
       <thead>
         <tr>
           <th>Item</th>
-          <th>Category</th>
+          <th>Rarity</th>
+          <th>Cat</th>
           <th>Qty</th>
           <th>Held By</th>
-          <% if (isDM) { %><th>Actions</th><% } %>
+          <th>Attuned</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -131,31 +268,60 @@
           <tr>
             <td>
               <strong><%= categoryEmoji[item.category] || '' %> <%= item.name %></strong>
-              <% if (item.description) { %><br><span class="text-muted" style="font-size: 0.85rem;"><%= item.description %></span><% } %>
+              <% if (item.description) { %><br><span class="text-muted" style="font-size:0.85rem;"><%= item.description %></span><% } %>
+              <% if (item.vault_item_name) { %><br><button type="button" class="btn btn-small btn-outline vault-detail-btn" data-name="<%= item.vault_item_name %>" style="font-size:0.7rem;padding:0.1rem 0.4rem;">Stat Block</button><% } %>
             </td>
+            <td><% if (item.rarity) { %><span class="rarity-badge" style="background:<%= rarityColors[item.rarity] || '#666' %>"><%= item.rarity %></span><% } else { %>-<% } %></td>
             <td><span class="loot-category-badge loot-cat-<%= item.category %>"><%= item.category %></span></td>
             <td><%= item.quantity %></td>
             <td class="loot-holder"><%= item.holder_name || 'Party Bag' %></td>
-            <% if (isDM) { %>
-              <td>
-                <div style="display: flex; gap: 0.25rem; align-items: center; flex-wrap: wrap;">
-                  <form action="/loot/<%= item.id %>/assign" method="POST" style="display:flex; gap:0.25rem; align-items:center;">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <td>
+              <% if (item.attuned_char_name) { %>
+                <span class="attunement-badge"><%= item.attuned_char_name %> (<%= (attunementCounts[item.attuned_to] || 0) %>/3)</span>
+              <% } else { %>
+                -
+              <% } %>
+            </td>
+            <td>
+              <div style="display:flex;gap:0.25rem;align-items:center;flex-wrap:wrap;">
+                <% if (isDM || item.held_by === user.id) { %>
+                  <form action="/loot/<%= item.id %>/assign" method="POST" style="display:flex;gap:0.25rem;align-items:center;">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <select name="held_by" class="role-select" style="font-size:0.8rem;">
                       <option value="">Party Bag</option>
                       <% for (const p of players) { %>
                         <option value="<%= p.id %>" <%= item.held_by === p.id ? 'selected' : '' %>><%= p.username %></option>
                       <% } %>
                     </select>
-                    <button type="submit" class="btn btn-small btn-outline">Assign</button>
+                    <button type="submit" class="btn btn-small btn-outline">Give</button>
                   </form>
+                <% } %>
+                <% if (isDM || item.held_by === user.id) { %>
+                  <form action="/loot/<%= item.id %>/attune" method="POST" style="display:flex;gap:0.25rem;align-items:center;">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <% if (item.attuned_to) { %>
+                      <button type="submit" class="btn btn-small btn-outline" title="Break attunement">Unattune</button>
+                    <% } else { %>
+                      <select name="character_id" class="role-select" style="font-size:0.8rem;">
+                        <option value="">Attune to...</option>
+                        <% for (const ch of characters) { %>
+                          <% if (isDM || ch.user_id === user.id) { %>
+                            <option value="<%= ch.id %>"><%= ch.name %> (<%= ch.username %>)</option>
+                          <% } %>
+                        <% } %>
+                      </select>
+                      <button type="submit" class="btn btn-small btn-outline">Attune</button>
+                    <% } %>
+                  </form>
+                <% } %>
+                <% if (isDM) { %>
                   <form action="/loot/<%= item.id %>/delete" method="POST" class="inline-form">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                    <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Remove this item?')">&times;</button>
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Remove?')">&times;</button>
                   </form>
-                </div>
-              </td>
-            <% } %>
+                <% } %>
+              </div>
+            </td>
           </tr>
         <% } %>
       </tbody>
@@ -164,12 +330,99 @@
 </div>
 <% } %>
 
-<% if (items.length === 0) { %>
+<% if (items.filter(i => !i.hidden).length === 0) { %>
 <div class="card">
   <div class="empty-state">
     <p class="empty-state-text">The party inventory is empty. <% if (isDM) { %>Add some loot above!<% } else { %>The DM will add items as you find them.<% } %></p>
   </div>
 </div>
 <% } %>
+
+<!-- Vault Detail Modal -->
+<div class="vault-detail-modal" id="vault-detail-modal" style="display:none">
+  <div class="vault-detail-content">
+    <button type="button" class="vault-detail-close" id="vault-detail-close">&times;</button>
+    <div id="vault-detail-body">Loading...</div>
+  </div>
+</div>
+
+<script>
+// Vault autocomplete
+(function() {
+  var nameInput = document.getElementById('loot-name');
+  var suggest = document.getElementById('vault-suggest');
+  var vaultNameInput = document.getElementById('vault-item-name');
+  var raritySelect = document.getElementById('loot-rarity');
+  if (!nameInput || !suggest) return;
+
+  var timer = null;
+  nameInput.addEventListener('input', function() {
+    clearTimeout(timer);
+    var q = nameInput.value.trim();
+    if (q.length < 2) { suggest.style.display = 'none'; return; }
+    timer = setTimeout(function() {
+      fetch('/loot/api/vault-items?q=' + encodeURIComponent(q))
+        .then(function(r) { return r.json(); })
+        .then(function(items) {
+          if (!items.length) { suggest.style.display = 'none'; return; }
+          suggest.innerHTML = items.map(function(i) {
+            return '<div class="vault-suggest-item" data-name="' + i.name + '" data-rarity="' + (i.rarity || '') + '">' +
+              '<strong>' + i.name + '</strong>' +
+              (i.rarity ? ' <span class="rarity-badge" style="font-size:0.7rem;">' + i.rarity + '</span>' : '') +
+              '</div>';
+          }).join('');
+          suggest.style.display = 'block';
+          suggest.querySelectorAll('.vault-suggest-item').forEach(function(el) {
+            el.addEventListener('click', function() {
+              nameInput.value = el.dataset.name;
+              if (vaultNameInput) vaultNameInput.value = el.dataset.name;
+              if (raritySelect && el.dataset.rarity) {
+                for (var i = 0; i < raritySelect.options.length; i++) {
+                  if (raritySelect.options[i].value === el.dataset.rarity) {
+                    raritySelect.selectedIndex = i; break;
+                  }
+                }
+              }
+              suggest.style.display = 'none';
+            });
+          });
+        });
+    }, 300);
+  });
+  document.addEventListener('click', function(e) {
+    if (!suggest.contains(e.target) && e.target !== nameInput) suggest.style.display = 'none';
+  });
+})();
+
+// Vault detail modal
+(function() {
+  var modal = document.getElementById('vault-detail-modal');
+  var body = document.getElementById('vault-detail-body');
+  var closeBtn = document.getElementById('vault-detail-close');
+  if (!modal) return;
+
+  document.querySelectorAll('.vault-detail-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var name = btn.dataset.name;
+      body.innerHTML = 'Loading...';
+      modal.style.display = 'flex';
+      fetch('/loot/api/vault-item-details?name=' + encodeURIComponent(name))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) { body.innerHTML = '<p>' + data.error + '</p>'; return; }
+          body.innerHTML = '<h3>' + data.name + '</h3>' +
+            (data.rarity ? '<p><strong>Rarity:</strong> ' + data.rarity + '</p>' : '') +
+            (data.category ? '<p><strong>Type:</strong> ' + data.category + '</p>' : '') +
+            (data.requiresAttunement ? '<p><strong>Requires Attunement</strong></p>' : '') +
+            (data.desc ? '<div class="vault-desc">' + data.desc + '</div>' : '');
+        })
+        .catch(function() { body.innerHTML = '<p>Failed to load details.</p>'; });
+    });
+  });
+
+  closeBtn.addEventListener('click', function() { modal.style.display = 'none'; });
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.style.display = 'none'; });
+})();
+</script>
 
 <%- include('partials/foot') %>

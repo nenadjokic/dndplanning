@@ -51,7 +51,23 @@
       <button type="button" class="btn btn-outline btn-small" id="fog-toggle-btn" style="border-color: #2c3e50;" title="Fog of War">
         🌫️ Fog
       </button>
+      <button type="button" class="btn btn-outline btn-small" id="grid-toggle-btn" style="border-color: #2980b9;" title="Grid Overlay">
+        📐 Grid
+      </button>
+      <button type="button" class="btn btn-outline btn-small" id="combat-toggle-btn" style="border-color: #c0392b; color: #e74c3c;" title="Combat Tracker">
+        ⚔️ Combat
+      </button>
+      <button type="button" class="btn btn-outline btn-small" id="place-chest-btn" style="border-color: var(--gold-dim); color: var(--gold);" title="Place Loot Chest">
+        <span class="chest-btn-icon"></span> Chest
+      </button>
+      <button type="button" class="btn btn-outline btn-small" id="encounter-map-btn" style="border-color: #8e44ad; color: #9b59b6;" title="Load Encounter">
+        ⚔️ Encounters
+      </button>
     <% } %>
+    <button type="button" class="btn btn-outline btn-small" id="map-sound-btn" style="border-color: #2ecc71;" title="Sound Board">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+      Sound
+    </button>
     <% if (map.parent_id) { %>
       <a href="/map/<%= map.parent_id %>" class="btn btn-outline btn-small">Back to Parent</a>
     <% } %>
@@ -78,6 +94,8 @@
   <button type="button" class="map-fullscreen-close" id="map-fullscreen-close" title="Exit fullscreen">&times;</button>
   <!-- Fullscreen floating toolbar -->
   <div class="map-fs-toolbar" id="map-fs-toolbar">
+    <button type="button" class="map-fs-collapse-btn" id="fs-collapse-btn" title="Collapse toolbar">&#x25C0;</button>
+    <div class="map-fs-toolbar-inner" id="map-fs-toolbar-inner">
     <button type="button" class="map-fs-btn" id="fs-token-btn" title="Tokens">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
       <span>Tokens</span>
@@ -95,7 +113,28 @@
       <span style="font-size:16px;">🌫️</span>
       <span>Fog</span>
     </button>
+    <button type="button" class="map-fs-btn" id="fs-grid-btn" title="Grid Overlay">
+      <span style="font-size:16px;">📐</span>
+      <span>Grid</span>
+    </button>
+    <button type="button" class="map-fs-btn" id="fs-combat-btn" title="Combat Tracker" style="color: #e74c3c;">
+      <span style="font-size:16px;">⚔️</span>
+      <span>Combat</span>
+    </button>
+    <button type="button" class="map-fs-btn" id="fs-chest-btn" title="Place Loot Chest" style="color: var(--gold);">
+      <span class="chest-btn-icon fs-chest-icon"></span>
+      <span>Chest</span>
+    </button>
+    <button type="button" class="map-fs-btn" id="fs-encounter-btn" title="Encounters" style="color: #9b59b6;">
+      <span style="font-size:16px;">⚔️</span>
+      <span>Encounters</span>
+    </button>
     <% } %>
+    <button type="button" class="map-fs-btn" id="fs-sound-btn" title="Sound Board" style="color: #2ecc71;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+      <span>Sound</span>
+    </button>
+    </div>
   </div>
   <div class="map-container" id="map-container"></div>
   <% if (isDM) { %>
@@ -269,6 +308,102 @@
 </div>
 <% } %>
 
+<% if (isDM) { %>
+<!-- Grid Overlay Toolbar -->
+<div id="grid-toolbar" class="grid-toolbar" style="display:none;">
+  <div class="grid-toolbar-header">
+    <span>📐 Grid Overlay</span>
+    <button type="button" class="token-scale-panel-close" id="grid-toolbar-close">&times;</button>
+  </div>
+  <div class="grid-toolbar-body">
+    <label style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.4rem;">
+      <input type="checkbox" id="grid-enable" <%= map.grid_enabled ? 'checked' : '' %>> Enable Grid
+    </label>
+    <div id="grid-controls" style="<%= map.grid_enabled ? '' : 'display:none;' %>">
+      <label style="font-size:0.7rem;color:var(--text-secondary);display:block;margin-bottom:0.3rem;">
+        Type:
+        <select id="grid-type" style="font-size:0.7rem;padding:0.15rem;background:var(--bg-darker);color:var(--text-primary);border:1px solid var(--border);border-radius:3px;">
+          <option value="square" <%= map.grid_type === 'square' ? 'selected' : '' %>>Square</option>
+          <option value="hex" <%= map.grid_type === 'hex' ? 'selected' : '' %>>Hex</option>
+        </select>
+      </label>
+      <label style="font-size:0.7rem;color:var(--text-secondary);display:block;margin-bottom:0.3rem;">
+        Size: <span id="grid-size-val"><%= map.grid_size || 50 %></span>px
+        <input type="range" id="grid-size" min="10" max="500" step="1" value="<%= map.grid_size || 50 %>" style="width:100%;">
+      </label>
+      <label style="font-size:0.7rem;color:var(--text-secondary);display:block;margin-bottom:0.3rem;">
+        Offset X: <span id="grid-ox-val"><%= map.grid_offset_x || 0 %></span>px
+        <input type="range" id="grid-ox" min="-100" max="100" step="1" value="<%= map.grid_offset_x || 0 %>" style="width:100%;">
+      </label>
+      <label style="font-size:0.7rem;color:var(--text-secondary);display:block;margin-bottom:0.3rem;">
+        Offset Y: <span id="grid-oy-val"><%= map.grid_offset_y || 0 %></span>px
+        <input type="range" id="grid-oy" min="-100" max="100" step="1" value="<%= map.grid_offset_y || 0 %>" style="width:100%;">
+      </label>
+      <label style="font-size:0.7rem;color:var(--text-secondary);display:block;margin-bottom:0.3rem;">
+        Opacity: <span id="grid-opacity-val"><%= map.grid_opacity || 0.3 %></span>
+        <input type="range" id="grid-opacity" min="0.05" max="1" step="0.05" value="<%= map.grid_opacity || 0.3 %>" style="width:100%;">
+      </label>
+      <label style="font-size:0.7rem;color:var(--text-secondary);display:flex;align-items:center;gap:0.3rem;margin-bottom:0.4rem;">
+        Color: <input type="color" id="grid-color" value="<%= map.grid_color || '#ffffff' %>" style="width:28px;height:22px;padding:0;border:1px solid var(--border);border-radius:3px;cursor:pointer;">
+      </label>
+      <button type="button" class="btn btn-small btn-primary" id="grid-save">Save Grid</button>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<!-- Combat Selection Panel (DM picks combatants) -->
+<% if (isDM) { %>
+<div id="combat-selection-panel" class="combat-panel" style="display:none;">
+  <div class="combat-panel-header" id="combat-selection-drag">
+    ⚔️ Select Combatants
+    <div class="combat-panel-controls">
+      <select id="combat-start-visibility" title="Player visibility" style="font-size:0.7rem;padding:0.15rem;background:var(--bg-darker);color:var(--text-primary);border:1px solid var(--border);border-radius:3px;">
+        <option value="full">Full Visible</option>
+        <option value="order_only">Order Only</option>
+        <option value="hidden">Hidden</option>
+      </select>
+      <button type="button" class="combat-panel-close-btn" id="combat-selection-cancel">&times;</button>
+    </div>
+  </div>
+  <div class="combat-panel-body" id="combat-selection-list">
+    <p class="form-hint" style="margin:0;font-size:0.75rem;">Click tokens on the map to add/remove.</p>
+  </div>
+  <div class="combat-panel-footer">
+    <button type="button" class="btn btn-primary btn-small" id="combat-start-btn" disabled>Start Combat</button>
+    <button type="button" class="btn btn-outline btn-small" id="combat-selection-cancel-btn">Cancel</button>
+  </div>
+</div>
+<% } %>
+
+<!-- Combat Tracker Panel (active combat) -->
+<div id="combat-panel" class="combat-panel" style="display:none;">
+  <div class="combat-panel-header" id="combat-panel-drag">
+    ⚔️ Combat — Round <span id="combat-round">1</span>
+    <div class="combat-panel-controls">
+      <% if (isDM) { %>
+      <select id="combat-visibility" title="Player visibility" style="font-size:0.7rem;padding:0.15rem;background:var(--bg-darker);color:var(--text-primary);border:1px solid var(--border);border-radius:3px;">
+        <option value="full">Full</option>
+        <option value="order_only">Order Only</option>
+        <option value="hidden">Hidden</option>
+      </select>
+      <button type="button" class="combat-panel-close-btn" id="combat-end-btn" title="End Combat">&times;</button>
+      <% } else { %>
+      <button type="button" class="combat-panel-close-btn" id="combat-hide-btn" title="Hide Panel">&times;</button>
+      <% } %>
+    </div>
+  </div>
+  <div class="combat-panel-body" id="combat-panel-body">
+    <!-- Participant rows rendered by JS -->
+  </div>
+  <% if (isDM) { %>
+  <div class="combat-panel-footer">
+    <button type="button" class="btn btn-outline btn-small" id="combat-prev-btn">◀ Prev</button>
+    <button type="button" class="btn btn-outline btn-small" id="combat-add-btn" title="Add token to combat">+ Add</button>
+    <button type="button" class="btn btn-primary btn-small" id="combat-next-btn">Next ▶</button>
+  </div>
+  <% } %>
+</div>
 
 <% if (isDM) { %>
 <!-- NPC Picker Modal -->
@@ -529,6 +664,7 @@
   var mapLinksData = <%- JSON.stringify(typeof mapLinks !== 'undefined' ? mapLinks : []) %>;
   var tokensData = <%- JSON.stringify(tokens) %>;
   var npcTokensData = <%- JSON.stringify(typeof npcTokens !== 'undefined' ? npcTokens : []) %>;
+  var lootChestsData = <%- JSON.stringify(typeof lootChests !== 'undefined' ? lootChests : []) %>;
   var allPlayers = <%- JSON.stringify(typeof allPlayers !== 'undefined' ? allPlayers : []) %>;
   var isDM = <%= isDM ? 'true' : 'false' %>;
   var showPartyMarker = <%= showPartyMarker ? 'true' : 'false' %>;
@@ -591,6 +727,18 @@
     var d = document.createElement('div');
     d.textContent = s;
     return d.innerHTML;
+  }
+
+  function showMapToast(msg) {
+    var toast = document.createElement('div');
+    toast.className = 'map-loot-toast';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    requestAnimationFrame(function() { toast.classList.add('show'); });
+    setTimeout(function() {
+      toast.classList.remove('show');
+      setTimeout(function() { toast.remove(); }, 400);
+    }, 6000);
   }
 
   // ---- Location markers ----
@@ -683,6 +831,32 @@
         });
       });
     }
+  });
+
+  // ---- Quest Pins on Map ----
+  var mapQuestsData = <%- JSON.stringify(typeof mapQuests !== 'undefined' ? mapQuests : []) %>;
+  mapQuestsData.forEach(function(quest) {
+    // Place quest pins at map center (they're linked to the whole map, not a specific location)
+    var ll = pctToLatLng(50, 50);
+    var statusColors = { available: '#3498db', active: '#27ae60', completed: '#7f8c8d', failed: '#e74c3c' };
+    var statusColor = statusColors[quest.status] || '#3498db';
+    var questIcon = L.divIcon({
+      className: 'map-quest-pin',
+      html: '<div class="map-quest-pin-icon" style="border-color:' + statusColor + ';">📜</div>',
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
+    });
+    var questMarker = L.marker(ll, { icon: questIcon }).addTo(leafletMap);
+    var desc = quest.description ? '<br><span style="font-size:0.7rem;color:var(--text-secondary);">' + escHtml(quest.description.substring(0, 80)) + (quest.description.length > 80 ? '...' : '') + '</span>' : '';
+    var questPopup = '<div style="text-align:center;min-width:140px;">'
+      + '<strong style="font-size:0.85rem;">' + escHtml(quest.title) + '</strong>'
+      + '<br><span class="quest-status-badge quest-status-' + quest.status + '" style="font-size:0.6rem;padding:0.1rem 0.3rem;">' + quest.status + '</span>'
+      + (quest.difficulty ? ' <span class="quest-difficulty-badge quest-diff-' + quest.difficulty + '" style="font-size:0.55rem;padding:0.1rem 0.3rem;">' + quest.difficulty + '</span>' : '')
+      + desc
+      + (quest.reward ? '<br><span style="font-size:0.7rem;color:#b8860b;">Reward: ' + escHtml(quest.reward) + '</span>' : '')
+      + '<br><a href="/quests" class="btn btn-outline btn-small" style="margin-top:0.4rem;font-size:0.7rem;">View Quest Board</a>'
+      + '</div>';
+    questMarker.bindPopup(questPopup);
   });
 
   // ---- Party marker (top-level only) ----
@@ -858,7 +1032,17 @@
   function bindTokenPopup(marker, token) {
     marker.bindPopup(buildTokenPopup(token), { maxWidth: 250 });
 
+    // Combat selection mode intercept
+    marker.on('click', function(e) {
+      if (combatSelectionMode) {
+        e.originalEvent.stopPropagation();
+        marker.closePopup();
+        handleCombatTokenClick('pc', token.id);
+      }
+    });
+
     marker.on('popupopen', function() {
+      if (combatSelectionMode) { marker.closePopup(); return; }
       // Remove token button
       var removeBtn = document.querySelector('[data-remove-token="' + token.id + '"]');
       if (removeBtn) {
@@ -1180,6 +1364,91 @@
   if (fsFogBtn) fsFogBtn.addEventListener('click', function() {
     document.getElementById('fog-toggle-btn').click();
   });
+  var fsChestBtn = document.getElementById('fs-chest-btn');
+  if (fsChestBtn) fsChestBtn.addEventListener('click', function() {
+    document.getElementById('place-chest-btn').click();
+  });
+
+  // ---- Fullscreen toolbar: collapse & drag ----
+  (function() {
+    var fsToolbar = document.getElementById('map-fs-toolbar');
+    var collapseBtn = document.getElementById('fs-collapse-btn');
+    if (!fsToolbar || !collapseBtn) return;
+
+    // Collapse toggle
+    collapseBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var collapsed = fsToolbar.classList.toggle('collapsed');
+      collapseBtn.innerHTML = collapsed ? '&#x2630;' : '&#x25C0;';
+      collapseBtn.title = collapsed ? 'Expand toolbar' : 'Collapse toolbar';
+    });
+
+    // Drag behavior
+    var isDragging = false, dragOffX = 0, dragOffY = 0;
+
+    collapseBtn.addEventListener('mousedown', function(e) {
+      // Only start drag on left button, and the toolbar must be in the map wrapper
+      if (e.button !== 0) return;
+      isDragging = true;
+      var rect = fsToolbar.getBoundingClientRect();
+      dragOffX = e.clientX - rect.left;
+      dragOffY = e.clientY - rect.top;
+      fsToolbar.classList.add('dragging');
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', function(e) {
+      if (!isDragging) return;
+      var wrapper = document.getElementById('map-wrapper');
+      var wrapRect = wrapper.getBoundingClientRect();
+      var x = e.clientX - wrapRect.left - dragOffX;
+      var y = e.clientY - wrapRect.top - dragOffY;
+      // Clamp within wrapper
+      x = Math.max(0, Math.min(wrapRect.width - fsToolbar.offsetWidth, x));
+      y = Math.max(0, Math.min(wrapRect.height - fsToolbar.offsetHeight, y));
+      fsToolbar.style.left = x + 'px';
+      fsToolbar.style.top = y + 'px';
+      fsToolbar.style.transform = 'none';
+    });
+
+    document.addEventListener('mouseup', function() {
+      if (isDragging) {
+        isDragging = false;
+        fsToolbar.classList.remove('dragging');
+      }
+    });
+
+    // Touch support for mobile
+    collapseBtn.addEventListener('touchstart', function(e) {
+      var touch = e.touches[0];
+      isDragging = true;
+      var rect = fsToolbar.getBoundingClientRect();
+      dragOffX = touch.clientX - rect.left;
+      dragOffY = touch.clientY - rect.top;
+      fsToolbar.classList.add('dragging');
+    }, { passive: true });
+
+    document.addEventListener('touchmove', function(e) {
+      if (!isDragging) return;
+      var touch = e.touches[0];
+      var wrapper = document.getElementById('map-wrapper');
+      var wrapRect = wrapper.getBoundingClientRect();
+      var x = touch.clientX - wrapRect.left - dragOffX;
+      var y = touch.clientY - wrapRect.top - dragOffY;
+      x = Math.max(0, Math.min(wrapRect.width - fsToolbar.offsetWidth, x));
+      y = Math.max(0, Math.min(wrapRect.height - fsToolbar.offsetHeight, y));
+      fsToolbar.style.left = x + 'px';
+      fsToolbar.style.top = y + 'px';
+      fsToolbar.style.transform = 'none';
+    }, { passive: true });
+
+    document.addEventListener('touchend', function() {
+      if (isDragging) {
+        isDragging = false;
+        fsToolbar.classList.remove('dragging');
+      }
+    });
+  })();
 
   document.addEventListener('keydown', function(e) {
     // Prevent Ctrl+A / Cmd+A from creating selection that bleeds through fog canvas
@@ -1763,6 +2032,182 @@
     } catch(e) {}
   }
 
+  // ---- Grid Overlay ----
+  var gridEnabled = <%= map.grid_enabled ? 'true' : 'false' %>;
+  var gridSize = <%= map.grid_size || 50 %>;
+  var gridOffsetX = <%= map.grid_offset_x || 0 %>;
+  var gridOffsetY = <%= map.grid_offset_y || 0 %>;
+  var gridColor = '<%= map.grid_color || "#ffffff" %>';
+  var gridOpacity = <%= map.grid_opacity || 0.3 %>;
+  var gridType = '<%= map.grid_type || "square" %>';
+  // Grid canvas overlay — draws directly on a canvas over the map container
+  var gridCanvas = document.createElement('canvas');
+  gridCanvas.id = 'grid-canvas';
+  gridCanvas.style.cssText = 'position:absolute;top:0;left:0;z-index:435;pointer-events:none;';
+  document.getElementById('map-container').appendChild(gridCanvas);
+
+  var gridRAF = null;
+  function drawGrid() {
+    if (!gridEnabled) { gridCanvas.style.display = 'none'; return; }
+    gridCanvas.style.display = '';
+    var container = document.getElementById('map-container');
+    var w = container.clientWidth;
+    var h = container.clientHeight;
+    gridCanvas.width = w;
+    gridCanvas.height = h;
+    gridCanvas.style.width = w + 'px';
+    gridCanvas.style.height = h + 'px';
+
+    var ctx = gridCanvas.getContext('2d');
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = gridColor;
+    ctx.globalAlpha = gridOpacity;
+    ctx.lineWidth = 1;
+
+    var bounds = leafletMap.getBounds();
+    var west = bounds.getWest();
+    var east = bounds.getEast();
+    var south = bounds.getSouth();
+    var north = bounds.getNorth();
+
+    if (gridType === 'hex') {
+      var hexH = gridSize;
+      var hexW = hexH * Math.sqrt(3) / 2;
+      var firstCol = Math.floor((west - gridOffsetX) / hexW) - 1;
+      var lastCol = Math.ceil((east - gridOffsetX) / hexW) + 1;
+      var firstRow = Math.floor((south - gridOffsetY) / (hexH * 0.75)) - 1;
+      var lastRow = Math.ceil((north - gridOffsetY) / (hexH * 0.75)) + 1;
+      // Safety cap
+      if ((lastCol - firstCol) * (lastRow - firstRow) > 50000) return;
+      ctx.beginPath();
+      for (var row = firstRow; row <= lastRow; row++) {
+        for (var col = firstCol; col <= lastCol; col++) {
+          var cx = col * hexW + (row % 2 !== 0 ? hexW / 2 : 0) + gridOffsetX;
+          var cy = row * hexH * 0.75 + gridOffsetY;
+          for (var k = 0; k < 6; k++) {
+            var angle = Math.PI / 180 * (60 * k - 30);
+            var hx = cx + (hexH / 2) * Math.cos(angle);
+            var hy = cy + (hexH / 2) * Math.sin(angle);
+            var p = leafletMap.latLngToContainerPoint([hy, hx]);
+            if (k === 0) ctx.moveTo(p.x, p.y);
+            else ctx.lineTo(p.x, p.y);
+          }
+          ctx.closePath();
+        }
+      }
+      ctx.stroke();
+    } else {
+      // Square grid — vertical lines
+      ctx.beginPath();
+      var firstX = Math.ceil((west - gridOffsetX) / gridSize) * gridSize + gridOffsetX;
+      for (var gx = firstX; gx <= east; gx += gridSize) {
+        var p = leafletMap.latLngToContainerPoint([south, gx]);
+        ctx.moveTo(Math.round(p.x) + 0.5, 0);
+        ctx.lineTo(Math.round(p.x) + 0.5, h);
+      }
+      // Horizontal lines
+      var firstY = Math.ceil((south - gridOffsetY) / gridSize) * gridSize + gridOffsetY;
+      for (var gy = firstY; gy <= north; gy += gridSize) {
+        var p = leafletMap.latLngToContainerPoint([gy, west]);
+        ctx.moveTo(0, Math.round(p.y) + 0.5);
+        ctx.lineTo(w, Math.round(p.y) + 0.5);
+      }
+      ctx.stroke();
+    }
+  }
+
+  function requestGridRedraw() {
+    if (gridRAF) return;
+    gridRAF = requestAnimationFrame(function() { gridRAF = null; drawGrid(); });
+  }
+
+  function addGridLayer() {
+    requestGridRedraw();
+  }
+
+  leafletMap.on('move zoom viewreset resize', requestGridRedraw);
+  drawGrid();
+
+  <% if (isDM) { %>
+  // Grid toolbar toggle
+  var gridToggleBtn = document.getElementById('grid-toggle-btn');
+  var gridToolbar = document.getElementById('grid-toolbar');
+  if (gridToggleBtn && gridToolbar) {
+    gridToggleBtn.addEventListener('click', function() {
+      gridToolbar.style.display = gridToolbar.style.display === 'none' ? '' : 'none';
+    });
+    document.getElementById('grid-toolbar-close').addEventListener('click', function() {
+      gridToolbar.style.display = 'none';
+    });
+  }
+  var fsGridBtn = document.getElementById('fs-grid-btn');
+  if (fsGridBtn) fsGridBtn.addEventListener('click', function() {
+    if (gridToggleBtn) gridToggleBtn.click();
+  });
+
+  var gridEnableCb = document.getElementById('grid-enable');
+  var gridControls = document.getElementById('grid-controls');
+  if (gridEnableCb) {
+    gridEnableCb.addEventListener('change', function() {
+      gridEnabled = this.checked;
+      gridControls.style.display = gridEnabled ? '' : 'none';
+      addGridLayer();
+    });
+  }
+
+  ['grid-size', 'grid-ox', 'grid-oy', 'grid-opacity'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', function() {
+      var val = parseFloat(el.value);
+      var valEl = document.getElementById(id + '-val');
+      if (valEl) valEl.textContent = val;
+      if (id === 'grid-size') gridSize = val;
+      else if (id === 'grid-ox') gridOffsetX = val;
+      else if (id === 'grid-oy') gridOffsetY = val;
+      else if (id === 'grid-opacity') gridOpacity = val;
+      addGridLayer();
+    });
+  });
+
+  var gridTypeEl = document.getElementById('grid-type');
+  if (gridTypeEl) {
+    gridTypeEl.addEventListener('change', function() {
+      gridType = this.value;
+      addGridLayer();
+    });
+  }
+
+  var gridColorEl = document.getElementById('grid-color');
+  if (gridColorEl) {
+    gridColorEl.addEventListener('input', function() {
+      gridColor = this.value;
+      addGridLayer();
+    });
+  }
+
+  document.getElementById('grid-save').addEventListener('click', function() {
+    var btn = this;
+    btn.textContent = 'Saving...';
+    fetch('/map/<%= map.id %>/grid', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify({
+        grid_enabled: gridEnabled,
+        grid_size: gridSize,
+        grid_offset_x: gridOffsetX,
+        grid_offset_y: gridOffsetY,
+        grid_color: gridColor,
+        grid_opacity: gridOpacity,
+        grid_type: gridType
+      })
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      btn.textContent = d.success ? 'Saved!' : 'Error';
+      setTimeout(function() { btn.textContent = 'Save Grid'; }, 2000);
+    });
+  });
+  <% } %>
+
   // ---- NPC Tokens on Map ----
   var npcMarkers = {};
 
@@ -1808,21 +2253,34 @@
       hiddenBadge = '<div class="npc-hidden-badge" title="Hidden from players">👁️‍🗨️</div>';
     }
 
+    // Dead indicator (skull overlay when HP = 0)
+    var deadOverlay = '';
+    var isDead = nt.max_hp > 0 && (nt.current_hp || 0) === 0;
+    if (isDead) {
+      deadOverlay = '<div class="npc-dead-overlay" title="Dead">💀</div>';
+    }
+
     var labelHtml = '<div class="map-token-label npc-token-label">' + escHtml(nt.npc_name) + '</div>';
     var iconW = Math.max(40, avatarSize + 12);
     var iconH = Math.round(avatarSize + 30);
 
     return L.divIcon({
-      className: 'map-token' + (nt.hidden ? ' npc-hidden' : ''),
-      html: '<div class="map-token-wrapper">' + hiddenBadge + avatarHtml + condHtml + hpHtml + labelHtml + '</div>',
+      className: 'map-token' + (nt.hidden ? ' npc-hidden' : '') + (isDead ? ' npc-dead' : ''),
+      html: '<div class="map-token-wrapper">' + hiddenBadge + deadOverlay + avatarHtml + condHtml + hpHtml + labelHtml + '</div>',
       iconSize: [iconW, iconH],
       iconAnchor: [iconW / 2, iconH / 2]
     });
   }
 
   function buildNpcPopup(nt) {
+    var nameHtml;
+    if (nt.source_type === 'bestiary' && nt.source_key) {
+      nameHtml = '<a href="#" data-npc-creature-detail="' + escHtml(nt.source_key) + '" style="color:#e74c3c;text-decoration:underline;cursor:pointer;font-weight:bold;">' + escHtml(nt.npc_name) + '</a>';
+    } else {
+      nameHtml = '<strong style="color:#e74c3c;">' + escHtml(nt.npc_name) + '</strong>';
+    }
     var html = '<div style="text-align:center;">'
-      + '<strong style="color:#e74c3c;">' + escHtml(nt.npc_name) + '</strong>';
+      + nameHtml;
 
     if (nt.max_hp > 0 && (isDM || nt.hp_visible)) {
       html += '<br><span id="npc-hp-label-' + nt.id + '" class="text-muted" style="font-size:0.8rem;">HP: ' + (nt.current_hp || 0) + ' / ' + nt.max_hp + '</span>';
@@ -1907,7 +2365,21 @@
     marker.unbindPopup();
     marker.bindPopup(buildNpcPopup(nt), { maxWidth: 280 });
 
+    // Combat selection mode intercept — remove old handler to prevent stacking
+    if (marker._combatClickHandler) {
+      marker.off('click', marker._combatClickHandler);
+    }
+    marker._combatClickHandler = function(e) {
+      if (combatSelectionMode) {
+        e.originalEvent.stopPropagation();
+        marker.closePopup();
+        handleCombatTokenClick('npc', nt.id);
+      }
+    };
+    marker.on('click', marker._combatClickHandler);
+
     marker.off('popupopen').on('popupopen', function() {
+      if (combatSelectionMode) { marker.closePopup(); return; }
       setupNpcPopupHandlers(marker, nt);
     });
   }
@@ -1953,6 +2425,11 @@
               var hpLabel = document.getElementById('npc-hp-label-' + nt.id);
               if (hpLabel) hpLabel.textContent = 'HP: ' + d.current_hp + ' / ' + (d.max_hp || nt.max_hp);
               input.value = '';
+              // Chest drop when NPC dies
+              if (d.chest) {
+                addChestMarker(d.chest);
+                showMapToast('💀 ' + nt.npc_name + ' defeated! Loot chest dropped.');
+              }
             }
           });
         });
@@ -2176,6 +2653,572 @@
       })(nt);
     }
   });
+
+  // ---- Loot Chests on Map ----
+  var chestMarkers = {};
+
+  // Reusable fantasy treasure chest SVG
+  var chestSvg = '<svg viewBox="0 0 64 48" xmlns="http://www.w3.org/2000/svg">'
+    // Chest body (bottom half) - dark oak wood
+    + '<rect x="6" y="22" width="52" height="24" rx="2" fill="#5C2E0E" stroke="#3A1A06" stroke-width="1.5"/>'
+    // Wood grain lines on body
+    + '<line x1="10" y1="28" x2="54" y2="28" stroke="#4A2508" stroke-width="0.5" opacity="0.5"/>'
+    + '<line x1="10" y1="34" x2="54" y2="34" stroke="#4A2508" stroke-width="0.5" opacity="0.5"/>'
+    + '<line x1="10" y1="40" x2="54" y2="40" stroke="#4A2508" stroke-width="0.5" opacity="0.5"/>'
+    // Wood plank highlight
+    + '<rect x="8" y="23" width="48" height="22" rx="1" fill="url(#chest-wood)" opacity="0.3"/>'
+    // Lid (curved top) - lighter wood
+    + '<path d="M6 22 Q6 8 32 6 Q58 8 58 22 Z" fill="#7B3F19" stroke="#3A1A06" stroke-width="1.5"/>'
+    // Lid wood grain
+    + '<path d="M12 18 Q32 11 52 18" fill="none" stroke="#6B3414" stroke-width="0.5" opacity="0.5"/>'
+    + '<path d="M10 20 Q32 14 54 20" fill="none" stroke="#6B3414" stroke-width="0.5" opacity="0.5"/>'
+    // Lid highlight
+    + '<path d="M10 20 Q32 10 54 20 Q32 13 10 20 Z" fill="#9B5A2D" opacity="0.2"/>'
+    // Gold band across middle (where lid meets body)
+    + '<rect x="4" y="20" width="56" height="5" rx="1" fill="#C5952B" stroke="#8B6914" stroke-width="0.8"/>'
+    // Gold band rivets
+    + '<circle cx="12" cy="22.5" r="1.2" fill="#E8C252"/><circle cx="22" cy="22.5" r="1.2" fill="#E8C252"/>'
+    + '<circle cx="42" cy="22.5" r="1.2" fill="#E8C252"/><circle cx="52" cy="22.5" r="1.2" fill="#E8C252"/>'
+    // Gold band bottom
+    + '<rect x="4" y="38" width="56" height="4" rx="1" fill="#C5952B" stroke="#8B6914" stroke-width="0.6"/>'
+    // Gold corner brackets
+    + '<path d="M6 22 L6 30 L10 30 L10 24 L14 24 L14 22 Z" fill="#C5952B" opacity="0.7"/>'
+    + '<path d="M58 22 L58 30 L54 30 L54 24 L50 24 L50 22 Z" fill="#C5952B" opacity="0.7"/>'
+    // Lock plate (ornate)
+    + '<rect x="26" y="19" width="12" height="14" rx="2" fill="#C5952B" stroke="#8B6914" stroke-width="0.8"/>'
+    + '<rect x="28" y="21" width="8" height="10" rx="1.5" fill="#E8C252" opacity="0.4"/>'
+    // Keyhole
+    + '<circle cx="32" cy="26" r="2" fill="#3A1A06"/>'
+    + '<rect x="31" y="27" width="2" height="3" rx="0.5" fill="#3A1A06"/>'
+    // Gradient defs
+    + '<defs><linearGradient id="chest-wood" x1="0" y1="0" x2="0" y2="1">'
+    + '<stop offset="0%" stop-color="#8B5E3C"/><stop offset="100%" stop-color="#4A2810"/>'
+    + '</linearGradient></defs></svg>';
+
+  function makeChestIcon(chest) {
+    var hiddenClass = chest.hidden ? ' chest-hidden' : '';
+    var label = escHtml(chest.label || 'Loot');
+    var html = '<div class="chest-marker-wrapper">'
+      + (chest.hidden && isDM ? '<div class="chest-hidden-badge" title="Hidden from players">👁️‍🗨️</div>' : '')
+      + '<div class="chest-icon">' + chestSvg + '</div>'
+      + '<div class="chest-label">' + label + '</div>'
+      + '</div>';
+    return L.divIcon({
+      className: 'map-chest-token' + hiddenClass,
+      html: html,
+      iconSize: [50, 40],
+      iconAnchor: [25, 20]
+    });
+  }
+
+  function buildChestPopup(chest) {
+    var html = '<div style="text-align:center;min-width:160px;">'
+      + '<strong style="color:var(--gold);">' + escHtml(chest.label || 'Loot Chest') + '</strong>';
+    if (chest.linked_npc_name) {
+      html += '<br><span class="text-muted" style="font-size:0.8rem;">Dropped by: ' + escHtml(chest.linked_npc_name) + '</span>';
+    }
+    // Coins
+    var coinParts = [];
+    if (chest.pp) coinParts.push(chest.pp + ' PP');
+    if (chest.gp) coinParts.push(chest.gp + ' GP');
+    if (chest.sp) coinParts.push(chest.sp + ' SP');
+    if (chest.cp) coinParts.push(chest.cp + ' CP');
+    if (coinParts.length) {
+      html += '<div style="margin-top:0.4rem;font-size:0.85rem;"><strong>Coins:</strong> ' + coinParts.join(', ') + '</div>';
+    }
+    // Items
+    var items = chest.items || [];
+    if (items.length) {
+      html += '<div style="margin-top:0.3rem;font-size:0.85rem;text-align:left;"><strong>Items:</strong><ul style="margin:0.2rem 0 0 1rem;padding:0;">';
+      items.forEach(function(item) {
+        html += '<li><a href="#" data-chest-item-detail="' + escHtml(item.name) + '" style="color:var(--gold);text-decoration:underline;cursor:pointer;">' + escHtml(item.name) + '</a>'
+          + (item.quantity > 1 ? ' (x' + item.quantity + ')' : '')
+          + '</li>';
+      });
+      html += '</ul></div>';
+    }
+    // Notes
+    if (chest.notes) {
+      html += '<div style="margin-top:0.3rem;font-size:0.8rem;font-style:italic;color:var(--text-muted);">' + escHtml(chest.notes) + '</div>';
+    }
+    // DM controls
+    if (isDM) {
+      html += '<div style="margin-top:0.5rem;display:flex;gap:0.25rem;justify-content:center;flex-wrap:wrap;">';
+      html += '<button type="button" class="btn btn-small btn-primary" data-chest-collect="' + chest.id + '" style="font-size:0.65rem;padding:0.1rem 0.3rem;">Collect Loot</button>';
+      html += '<button type="button" class="btn btn-small btn-outline" data-chest-toggle-hidden="' + chest.id + '" style="font-size:0.65rem;padding:0.1rem 0.3rem;">' + (chest.hidden ? 'Reveal' : 'Hide') + '</button>';
+      html += '<button type="button" class="btn btn-small btn-outline" data-chest-edit="' + chest.id + '" style="font-size:0.65rem;padding:0.1rem 0.3rem;">Edit</button>';
+      html += '<button type="button" class="btn btn-small" data-chest-delete="' + chest.id + '" style="font-size:0.65rem;padding:0.1rem 0.3rem;color:#e74c3c;">Delete</button>';
+      html += '</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function bindChestPopup(marker, chest) {
+    marker.bindPopup(buildChestPopup(chest), { maxWidth: 250 });
+    marker.on('popupopen', function() {
+      // Collect
+      var collectBtn = document.querySelector('[data-chest-collect="' + chest.id + '"]');
+      if (collectBtn) collectBtn.addEventListener('click', function() {
+        if (!confirm('Collect all loot from this chest into party treasury?')) return;
+        fetch('/map/<%= map.id %>/loot-chests/' + chest.id + '/collect', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }
+        }).then(function(r) { return r.json(); }).then(function(d) {
+          if (d.success) {
+            marker.closePopup();
+            leafletMap.removeLayer(marker);
+            delete chestMarkers[chest.id];
+            showMapToast('Loot collected into party treasury!');
+          }
+        });
+      });
+      // Toggle hidden
+      var hideBtn = document.querySelector('[data-chest-toggle-hidden="' + chest.id + '"]');
+      if (hideBtn) hideBtn.addEventListener('click', function() {
+        fetch('/map/<%= map.id %>/loot-chests/' + chest.id + '/toggle-hidden', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }
+        }).then(function(r) { return r.json(); }).then(function(d) {
+          if (d.success) {
+            chest.hidden = d.hidden;
+            marker.setIcon(makeChestIcon(chest));
+            marker.closePopup();
+            marker.bindPopup(buildChestPopup(chest), { maxWidth: 250 });
+          }
+        });
+      });
+      // Edit
+      var editBtn = document.querySelector('[data-chest-edit="' + chest.id + '"]');
+      if (editBtn) editBtn.addEventListener('click', function() {
+        marker.closePopup();
+        openChestEditor(chest);
+      });
+      // Delete
+      var delBtn = document.querySelector('[data-chest-delete="' + chest.id + '"]');
+      if (delBtn) delBtn.addEventListener('click', function() {
+        if (!confirm('Delete this chest? Contents will be lost.')) return;
+        fetch('/map/<%= map.id %>/loot-chests/' + chest.id + '/delete', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }
+        }).then(function(r) { return r.json(); }).then(function(d) {
+          if (d.success) {
+            marker.closePopup();
+            leafletMap.removeLayer(marker);
+            delete chestMarkers[chest.id];
+          }
+        });
+      });
+    });
+  }
+
+  function addChestMarker(chest) {
+    if (chestMarkers[chest.id]) {
+      leafletMap.removeLayer(chestMarkers[chest.id]);
+    }
+    var ll = pctToLatLng(chest.x, chest.y);
+    var marker = L.marker(ll, { icon: makeChestIcon(chest), draggable: isDM }).addTo(leafletMap);
+    chestMarkers[chest.id] = marker;
+    bindChestPopup(marker, chest);
+    if (isDM) {
+      marker.on('dragend', function() {
+        var pct = latLngToPct(marker.getLatLng());
+        fetch('/map/<%= map.id %>/loot-chests/' + chest.id + '/move', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({ x: pct.x, y: pct.y })
+        });
+      });
+    }
+  }
+
+  // Render existing loot chests
+  lootChestsData.forEach(function(chest) {
+    addChestMarker(chest);
+  });
+
+  // ---- Chest Editor Modal ----
+  function openChestEditor(chest) {
+    var isNew = !chest.id;
+    var html = '<div class="chest-editor-overlay" id="chest-editor-overlay">'
+      + '<div class="chest-editor">'
+      + '<h3>' + (isNew ? 'Place Loot Chest' : 'Edit Loot Chest') + '</h3>'
+      + '<div class="form-group"><label>Label</label><input type="text" id="ce-label" value="' + escHtml(chest.label || 'Loot Chest') + '"></div>'
+      + '<div class="form-group"><label>Notes (optional)</label><textarea id="ce-notes" rows="2">' + escHtml(chest.notes || '') + '</textarea></div>'
+      + '<div class="form-group"><label>Coins</label><div style="display:flex;gap:0.4rem;flex-wrap:wrap;">'
+      + '<input type="number" id="ce-pp" min="0" value="' + (chest.pp || 0) + '" style="width:60px;" placeholder="PP">'
+      + '<input type="number" id="ce-gp" min="0" value="' + (chest.gp || 0) + '" style="width:60px;" placeholder="GP">'
+      + '<input type="number" id="ce-sp" min="0" value="' + (chest.sp || 0) + '" style="width:60px;" placeholder="SP">'
+      + '<input type="number" id="ce-cp" min="0" value="' + (chest.cp || 0) + '" style="width:60px;" placeholder="CP">'
+      + '</div></div>'
+      + '<div class="form-group"><label>Items</label><div id="ce-items"></div>'
+      + '<button type="button" class="btn btn-small btn-outline" id="ce-add-item" style="margin-top:0.3rem;">+ Add Item</button></div>'
+      + '<div class="form-group" style="margin-top:0.5rem;">'
+      + '<label><input type="checkbox" id="ce-hidden"' + (chest.hidden ? ' checked' : '') + '> Hidden from players</label></div>'
+      + '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">'
+      + '<button type="button" class="btn btn-primary" id="ce-save">Save</button>'
+      + '<button type="button" class="btn btn-outline" id="ce-cancel">Cancel</button>'
+      + '</div></div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+
+    // Populate existing items
+    var itemsContainer = document.getElementById('ce-items');
+    function addItemRow(name, qty) {
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:0.3rem;margin-bottom:0.3rem;';
+      row.innerHTML = '<input type="text" class="ce-item-name" value="' + escHtml(name || '') + '" placeholder="Item name" style="flex:1;">'
+        + '<input type="number" class="ce-item-qty" value="' + (qty || 1) + '" min="1" style="width:50px;">'
+        + '<button type="button" class="btn btn-small" style="color:#e74c3c;padding:0.1rem 0.3rem;" onclick="this.parentElement.remove();">x</button>';
+      itemsContainer.appendChild(row);
+    }
+    (chest.items || []).forEach(function(item) { addItemRow(item.name, item.quantity); });
+    document.getElementById('ce-add-item').addEventListener('click', function() { addItemRow('', 1); });
+
+    document.getElementById('ce-cancel').addEventListener('click', function() {
+      document.getElementById('chest-editor-overlay').remove();
+    });
+    document.getElementById('ce-save').addEventListener('click', function() {
+      var data = {
+        label: document.getElementById('ce-label').value.trim() || 'Loot Chest',
+        notes: document.getElementById('ce-notes').value.trim() || null,
+        pp: parseInt(document.getElementById('ce-pp').value) || 0,
+        gp: parseInt(document.getElementById('ce-gp').value) || 0,
+        sp: parseInt(document.getElementById('ce-sp').value) || 0,
+        cp: parseInt(document.getElementById('ce-cp').value) || 0,
+        hidden: document.getElementById('ce-hidden').checked ? 1 : 0,
+        items: []
+      };
+      document.querySelectorAll('#ce-items > div').forEach(function(row) {
+        var n = row.querySelector('.ce-item-name').value.trim();
+        var q = parseInt(row.querySelector('.ce-item-qty').value) || 1;
+        if (n) data.items.push({ name: n, quantity: q });
+      });
+      if (isNew) {
+        data.x = chest.x;
+        data.y = chest.y;
+        fetch('/map/<%= map.id %>/loot-chests', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify(data)
+        }).then(function(r) { return r.json(); }).then(function(d) {
+          if (d.success) {
+            chest.id = d.id;
+            Object.assign(chest, data);
+            addChestMarker(chest);
+            document.getElementById('chest-editor-overlay').remove();
+          }
+        });
+      } else {
+        fetch('/map/<%= map.id %>/loot-chests/' + chest.id + '/edit', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify(data)
+        }).then(function(r) { return r.json(); }).then(function(d) {
+          if (d.success) {
+            Object.assign(chest, data);
+            var m = chestMarkers[chest.id];
+            if (m) {
+              m.setIcon(makeChestIcon(chest));
+              bindChestPopup(m, chest);
+            }
+            document.getElementById('chest-editor-overlay').remove();
+          }
+        });
+      }
+    });
+  }
+
+  // ---- Map Detail Modal (Items & Creatures) ----
+  function showMapDetailModal(title, html) {
+    closeMapDetailModal();
+    var modal = '<div class="map-detail-modal" id="map-detail-modal">'
+      + '<div class="map-detail-content">'
+      + '<button type="button" class="map-detail-close" id="map-detail-close">&times;</button>'
+      + html
+      + '</div></div>';
+    document.body.insertAdjacentHTML('beforeend', modal);
+    document.getElementById('map-detail-close').addEventListener('click', closeMapDetailModal);
+    document.getElementById('map-detail-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeMapDetailModal();
+    });
+  }
+  function closeMapDetailModal() {
+    var el = document.getElementById('map-detail-modal');
+    if (el) el.remove();
+  }
+
+  function getItemEmoji(category, isMagic) {
+    if (isMagic) return '✨';
+    var emojiMap = { 'Weapon': '⚔️', 'Armor': '🛡️', 'Potion': '🧪', 'Ring': '💍', 'Rod': '🪄', 'Scroll': '📜', 'Staff': '🪄', 'Wand': '🪄', 'Wondrous Item': '✨', 'Adventuring Gear': '🎒', 'Tools': '🔧', 'Ammunition': '🏹' };
+    return emojiMap[category] || '📦';
+  }
+
+  function showItemPopup(name) {
+    showMapDetailModal('Loading...', '<div class="map-detail-loading">Loading item...</div>');
+    fetch('/loot/api/vault-item-details?name=' + encodeURIComponent(name))
+      .then(function(r) { return r.json(); })
+      .then(function(i) {
+        if (i.error) { showMapDetailModal('Error', '<p style="color:var(--text-muted);">Item not found in vault.</p>'); return; }
+        var emoji = getItemEmoji(i.category, i.isMagic);
+        var html = '<div class="dnd-card">';
+        html += '<h2 class="dnd-title">' + emoji + ' ' + (i.name || name) + '</h2>';
+        var subtitle = i.category || '';
+        if (i.rarity && i.rarity !== 'none') subtitle += ' (' + i.rarity + ')';
+        html += '<p class="dnd-subtitle"><em>' + subtitle + '</em></p><hr class="dnd-divider">';
+        html += '<div class="dnd-stats">';
+        if (i.category) html += '<p><strong>Category</strong><br>' + i.category + '</p>';
+        if (i.rarity && i.rarity !== 'none') {
+          html += '<p><strong>Rarity</strong><br>';
+          if (i.isMagic) html += '<span class="dnd-tag">Magic</span> ';
+          html += i.rarity + '</p>';
+        }
+        if (i.cost) html += '<p><strong>Cost</strong><br>' + i.cost + ' gp</p>';
+        if (i.weight) html += '<p><strong>Weight</strong><br>' + i.weight + ' ' + (i.weightUnit || 'lb') + '</p>';
+        html += '</div>';
+        if (i.requiresAttunement) {
+          html += '<p class="dnd-tag">Requires Attunement';
+          if (i.attunementDetail) html += ' (' + i.attunementDetail + ')';
+          html += '</p>';
+        }
+        html += '<hr class="dnd-divider">';
+        if (i.desc) {
+          html += '<h3 class="dnd-section">Description</h3>';
+          html += '<div class="dnd-description">' + i.desc + '</div>';
+        }
+        if (i.weapon) {
+          html += '<hr class="dnd-divider"><h3 class="dnd-section">Weapon Properties</h3><div class="dnd-description">';
+          if (i.weapon.damage) html += '<p><strong>Damage:</strong> ' + i.weapon.damage + '</p>';
+          if (i.weapon.damageType) html += '<p><strong>Damage Type:</strong> ' + i.weapon.damageType + '</p>';
+          if (i.weapon.properties) html += '<p><strong>Properties:</strong> ' + i.weapon.properties.join(', ') + '</p>';
+          html += '</div>';
+        }
+        if (i.armor) {
+          html += '<hr class="dnd-divider"><h3 class="dnd-section">Armor Properties</h3><div class="dnd-description">';
+          if (i.armor.ac) html += '<p><strong>AC:</strong> ' + i.armor.ac + '</p>';
+          if (i.armor.type) html += '<p><strong>Armor Type:</strong> ' + i.armor.type + '</p>';
+          if (i.armor.stealthDisadvantage) html += '<p><span class="dnd-tag">Stealth Disadvantage</span></p>';
+          html += '</div>';
+        }
+        if (i.source) {
+          html += '<hr class="dnd-divider"><p class="dnd-source"><strong>Source:</strong> ' + i.source + '</p>';
+        }
+        html += '</div>';
+        showMapDetailModal(i.name || name, html);
+      })
+      .catch(function() { showMapDetailModal('Error', '<p style="color:var(--text-muted);">Failed to load item details.</p>'); });
+  }
+
+  function showCreaturePopup(key) {
+    showMapDetailModal('Loading...', '<div class="map-detail-loading">Loading creature...</div>');
+    fetch('/vault/monsters/' + encodeURIComponent(key))
+      .then(function(r) { return r.json(); })
+      .then(function(m) {
+        if (m.error) { showMapDetailModal('Error', '<p style="color:var(--text-muted);">Creature not found.</p>'); return; }
+        var html = '<div class="dnd-card">';
+        html += '<h2 class="dnd-title">🐉 ' + m.name + '</h2>';
+        html += '<p class="dnd-subtitle"><em>' + m.sizeStr + ' ' + m.typeStr + (m.alignment ? ', ' + m.alignment : '') + '</em></p>';
+        html += '<hr class="dnd-divider">';
+        html += '<div class="dnd-stats">';
+        html += '<p><strong>AC</strong><br>' + m.ac + '</p>';
+        html += '<p><strong>HP</strong><br>' + m.hp + '</p>';
+        html += '<p><strong>Speed</strong><br>' + m.speed + '</p>';
+        html += '</div><hr class="dnd-divider">';
+        if (m.abilities) {
+          html += '<table class="dnd-table"><tr><th>STR</th><th>DEX</th><th>CON</th><th>INT</th><th>WIS</th><th>CHA</th></tr><tr>';
+          ['str','dex','con','int','wis','cha'].forEach(function(ab) {
+            var a = m.abilities[ab];
+            html += '<td>' + a.score + ' (' + a.mod + ')</td>';
+          });
+          html += '</tr></table><hr class="dnd-divider">';
+        }
+        if (m.savingThrows) html += '<p><strong>Saving Throws:</strong> ' + m.savingThrows + '</p>';
+        if (m.skills) html += '<p><strong>Skills:</strong> ' + m.skills + '</p>';
+        if (m.damageResistances) html += '<p><strong>Damage Resistances:</strong> ' + m.damageResistances + '</p>';
+        if (m.damageImmunities) html += '<p><strong>Damage Immunities:</strong> ' + m.damageImmunities + '</p>';
+        if (m.conditionImmunities) html += '<p><strong>Condition Immunities:</strong> ' + m.conditionImmunities + '</p>';
+        if (m.senses) html += '<p><strong>Senses:</strong> ' + m.senses + '</p>';
+        if (m.languages) html += '<p><strong>Languages:</strong> ' + m.languages + '</p>';
+        html += '<p><strong>CR:</strong> ' + m.cr + (m.xp ? ' (' + m.xp + ' XP)' : '') + '</p>';
+        html += '<hr class="dnd-divider">';
+        if (m.traits) { html += '<h3 class="dnd-section">Traits</h3><div class="dnd-description">' + m.traits + '</div><hr class="dnd-divider">'; }
+        if (m.actions) { html += '<h3 class="dnd-section">Actions</h3><div class="dnd-description">' + m.actions + '</div>'; }
+        if (m.bonusActions) { html += '<hr class="dnd-divider"><h3 class="dnd-section">Bonus Actions</h3><div class="dnd-description">' + m.bonusActions + '</div>'; }
+        if (m.reactions) { html += '<hr class="dnd-divider"><h3 class="dnd-section">Reactions</h3><div class="dnd-description">' + m.reactions + '</div>'; }
+        if (m.legendaryActions) { html += '<hr class="dnd-divider"><h3 class="dnd-section">Legendary Actions</h3><div class="dnd-description">' + m.legendaryActions + '</div>'; }
+        html += '<hr class="dnd-divider"><p class="dnd-source"><strong>Source:</strong> ' + m.source + '</p></div>';
+        showMapDetailModal(m.name, html);
+      })
+      .catch(function() { showMapDetailModal('Error', '<p style="color:var(--text-muted);">Failed to load creature details.</p>'); });
+  }
+
+  // Event delegation for item detail and creature detail links
+  document.addEventListener('click', function(e) {
+    var itemLink = e.target.closest('[data-chest-item-detail]');
+    if (itemLink) {
+      e.preventDefault();
+      showItemPopup(itemLink.getAttribute('data-chest-item-detail'));
+      return;
+    }
+    var creatureLink = e.target.closest('[data-npc-creature-detail]');
+    if (creatureLink) {
+      e.preventDefault();
+      showCreaturePopup(creatureLink.getAttribute('data-npc-creature-detail'));
+      return;
+    }
+  });
+
+  // Close map detail modal on Escape
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeMapDetailModal();
+  });
+
+  // ---- Item Autocomplete in Chest Editor ----
+  var chestAutoTimer = null;
+  var activeAutoInput = null;
+  function removeSuggestDropdown() {
+    var old = document.querySelector('.chest-item-suggest');
+    if (old) old.remove();
+  }
+  function closeChestSuggest() {
+    removeSuggestDropdown();
+    activeAutoInput = null;
+  }
+  document.addEventListener('input', function(e) {
+    if (!e.target.classList.contains('ce-item-name')) return;
+    var input = e.target;
+    var q = input.value.trim();
+    if (q.length < 2) { closeChestSuggest(); return; }
+    activeAutoInput = input;
+    clearTimeout(chestAutoTimer);
+    chestAutoTimer = setTimeout(function() {
+      fetch('/loot/api/vault-items?q=' + encodeURIComponent(q))
+        .then(function(r) { return r.json(); })
+        .then(function(items) {
+          removeSuggestDropdown();
+          if (!items.length || activeAutoInput !== input) return;
+          var dd = document.createElement('div');
+          dd.className = 'chest-item-suggest';
+          var rect = input.getBoundingClientRect();
+          dd.style.position = 'fixed';
+          dd.style.top = (rect.bottom + 2) + 'px';
+          dd.style.left = rect.left + 'px';
+          dd.style.minWidth = rect.width + 'px';
+          items.forEach(function(item) {
+            var row = document.createElement('div');
+            row.className = 'chest-item-suggest-item';
+            row.innerHTML = '<span>' + escHtml(item.name) + '</span>'
+              + (item.rarity ? '<span class="chest-item-suggest-rarity">' + escHtml(item.rarity) + '</span>' : '');
+            row.addEventListener('mousedown', function(ev) {
+              ev.preventDefault();
+              input.value = item.name;
+              closeChestSuggest();
+            });
+            dd.appendChild(row);
+          });
+          document.body.appendChild(dd);
+        });
+    }, 300);
+  });
+  document.addEventListener('focusout', function(e) {
+    if (e.target.classList.contains('ce-item-name')) {
+      setTimeout(closeChestSuggest, 150);
+    }
+  });
+
+  // ---- DM: Place Chest Mode ----
+  var placeChestMode = false;
+  if (isDM) {
+    document.addEventListener('click', function(e) {
+      var btn = e.target.closest('#place-chest-btn');
+      if (btn) {
+        placeChestMode = !placeChestMode;
+        btn.classList.toggle('active', placeChestMode);
+        leafletMap.getContainer().style.cursor = placeChestMode ? 'crosshair' : '';
+      }
+    });
+    leafletMap.on('click', function(e) {
+      if (!placeChestMode) return;
+      placeChestMode = false;
+      var pcBtn = document.getElementById('place-chest-btn');
+      if (pcBtn) pcBtn.classList.remove('active');
+      leafletMap.getContainer().style.cursor = '';
+      var pct = latLngToPct(e.latlng);
+      openChestEditor({ x: pct.x, y: pct.y, label: 'Loot Chest', notes: '', pp: 0, gp: 0, sp: 0, cp: 0, hidden: 0, items: [] });
+    });
+  }
+
+  // ---- Encounter Loader (DM only) ----
+  if (isDM) {
+    var encounterMapBtn = document.getElementById('encounter-map-btn');
+    var fsEncounterBtn = document.getElementById('fs-encounter-btn');
+    var savedEncounters = <%- JSON.stringify(typeof encounters !== 'undefined' ? encounters : []) %>;
+
+    function openEncounterModal() {
+      // Remove existing if any
+      var existing = document.getElementById('encounter-modal-overlay');
+      if (existing) existing.remove();
+
+      var html = '<div class="chest-editor-overlay" id="encounter-modal-overlay">'
+        + '<div class="chest-editor" style="max-width:420px;">'
+        + '<h3 style="margin-bottom:0.75rem;">Load Encounter</h3>';
+
+      if (savedEncounters.length === 0) {
+        html += '<p class="text-muted">No saved encounters. Create encounters in the <a href="/encounters" style="color:var(--gold);">Encounter Builder</a>.</p>';
+      } else {
+        html += '<div style="max-height:350px;overflow-y:auto;">';
+        savedEncounters.forEach(function(enc) {
+          var monsters = [];
+          try { monsters = JSON.parse(enc.monsters || '[]'); } catch(e) {}
+          var summary = monsters.map(function(m) { return m.count + 'x ' + m.name; }).join(', ') || 'Empty';
+          var date = enc.updated_at ? new Date(enc.updated_at).toLocaleDateString() : '';
+          html += '<div class="encounter-load-item" data-enc-id="' + enc.id + '">'
+            + '<div><strong>' + escHtml(enc.name) + '</strong>'
+            + '<span class="text-muted" style="margin-left:0.5rem;font-size:0.8rem;">' + date + '</span></div>'
+            + '<div class="text-muted" style="font-size:0.82rem;">' + escHtml(summary) + '</div>'
+            + '</div>';
+        });
+        html += '</div>';
+      }
+
+      html += '<div style="display:flex;gap:0.5rem;margin-top:1rem;justify-content:flex-end;">'
+        + '<button type="button" class="btn btn-outline btn-small" id="encounter-modal-close">Cancel</button>'
+        + '</div></div></div>';
+
+      document.body.insertAdjacentHTML('beforeend', html);
+
+      document.getElementById('encounter-modal-close').addEventListener('click', function() {
+        document.getElementById('encounter-modal-overlay').remove();
+      });
+      document.getElementById('encounter-modal-overlay').addEventListener('click', function(e) {
+        if (e.target === this) this.remove();
+      });
+
+      // Click encounter to place it
+      var items = document.querySelectorAll('.encounter-load-item');
+      items.forEach(function(item) {
+        item.addEventListener('click', function() {
+          var encId = parseInt(item.getAttribute('data-enc-id'), 10);
+          placeEncounterOnMap(encId);
+          document.getElementById('encounter-modal-overlay').remove();
+        });
+      });
+    }
+
+    function placeEncounterOnMap(encId) {
+      fetch('/encounters/' + encId + '/add-to-map', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ map_id: <%= map.id %> })
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.success) {
+          showMapToast(data.placed + ' NPC token(s) placed from encounter!');
+          // Refresh map tokens
+          refreshMapTokens();
+        } else {
+          showMapToast(data.error || 'Failed to place encounter');
+        }
+      }).catch(function() {
+        showMapToast('Failed to place encounter on map');
+      });
+    }
+
+    if (encounterMapBtn) encounterMapBtn.addEventListener('click', openEncounterModal);
+    if (fsEncounterBtn) fsEncounterBtn.addEventListener('click', openEncounterModal);
+  }
 
   // ---- NPC Sidebar & Library (DM only) ----
   if (isDM) {
@@ -2714,6 +3757,11 @@
         try {
           var data = JSON.parse(e.data);
           if (data.mapId !== mapData.id) return;
+          // Chest drop from NPC death — SSE clients
+          if (data.chest) {
+            addChestMarker(data.chest);
+            showMapToast('💀 Loot chest dropped!');
+          }
           // Debounce rapid updates
           if (mapUpdatePending) return;
           mapUpdatePending = true;
@@ -2854,6 +3902,30 @@
             npcTokensData = npcTokensData.filter(function(nt) { return nt.id !== parseInt(nid); });
           }
         }
+
+        // --- Reconcile loot chests ---
+        var newChestIds = {};
+        (state.lootChests || []).forEach(function(chest) {
+          newChestIds[chest.id] = true;
+          addChestMarker(chest); // addChestMarker handles update if exists
+        });
+        for (var cid in chestMarkers) {
+          if (!newChestIds[cid]) {
+            leafletMap.removeLayer(chestMarkers[cid]);
+            delete chestMarkers[cid];
+          }
+        }
+        // Update grid overlay from SSE
+        if (state.grid) {
+          gridEnabled = !!state.grid.grid_enabled;
+          gridSize = state.grid.grid_size || 50;
+          gridOffsetX = state.grid.grid_offset_x || 0;
+          gridOffsetY = state.grid.grid_offset_y || 0;
+          gridColor = state.grid.grid_color || '#ffffff';
+          gridOpacity = state.grid.grid_opacity || 0.3;
+          gridType = state.grid.grid_type || 'square';
+          addGridLayer();
+        }
       }).catch(function() {});
   }
 
@@ -2950,6 +4022,543 @@
       if (npcMarkers[nt.id]) addMultiSelectToMarker(npcMarkers[nt.id], 'npc', nt.id, nt);
     });
   }
+
+  // ========================
+  // COMBAT TRACKER
+  // ========================
+  var combatSelectionMode = false;
+  var combatSelectedTokens = new Map(); // key -> { type, id, name, avatar }
+  var combatActive = false;
+  var combatState = null;
+  var activeTokenIndicator = null;
+  var combatAddMode = false;
+
+  // Make draggable helper
+  function makeDraggable(panel, handle) {
+    var offsetX = 0, offsetY = 0, isDragging = false;
+    handle.addEventListener('mousedown', function(e) {
+      if (e.target.tagName === 'SELECT' || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+      isDragging = true;
+      offsetX = e.clientX - panel.getBoundingClientRect().left;
+      offsetY = e.clientY - panel.getBoundingClientRect().top;
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!isDragging) return;
+      panel.style.left = (e.clientX - offsetX) + 'px';
+      panel.style.top = (e.clientY - offsetY) + 'px';
+      panel.style.right = 'auto';
+      panel.style.bottom = 'auto';
+    });
+    document.addEventListener('mouseup', function() { isDragging = false; });
+  }
+
+  var combatSelPanel = document.getElementById('combat-selection-panel');
+  var combatPanel = document.getElementById('combat-panel');
+  if (combatSelPanel) {
+    makeDraggable(combatSelPanel, document.getElementById('combat-selection-drag'));
+  }
+  makeDraggable(combatPanel, document.getElementById('combat-panel-drag'));
+
+  // --- Selection Mode ---
+  function enterCombatSelectionMode() {
+    combatSelectionMode = true;
+    combatSelectedTokens.clear();
+    if (combatSelPanel) {
+      combatSelPanel.style.display = 'flex';
+      renderCombatSelectionList();
+    }
+    document.getElementById('map-container').classList.add('combat-selection-mode');
+  }
+
+  function exitCombatSelectionMode() {
+    combatSelectionMode = false;
+    combatAddMode = false;
+    combatSelectedTokens.clear();
+    if (combatSelPanel) combatSelPanel.style.display = 'none';
+    document.getElementById('map-container').classList.remove('combat-selection-mode');
+    // Remove selection highlights
+    document.querySelectorAll('.combat-selected-token').forEach(function(el) {
+      el.classList.remove('combat-selected-token');
+    });
+  }
+
+  function toggleCombatTokenSelection(type, id, name, avatar) {
+    var key = type + '-' + id;
+    if (combatSelectedTokens.has(key)) {
+      combatSelectedTokens.delete(key);
+    } else {
+      combatSelectedTokens.set(key, { type: type, id: id, name: name, avatar: avatar });
+    }
+    // Update visual
+    var marker = type === 'pc' ? tokenMarkers[id] : npcMarkers[id];
+    if (marker) {
+      var el = marker.getElement();
+      if (el) {
+        if (combatSelectedTokens.has(key)) {
+          el.classList.add('combat-selected-token');
+        } else {
+          el.classList.remove('combat-selected-token');
+        }
+      }
+    }
+    renderCombatSelectionList();
+  }
+
+  function renderCombatSelectionList() {
+    var list = document.getElementById('combat-selection-list');
+    if (!list) return;
+    if (combatSelectedTokens.size === 0) {
+      list.innerHTML = '<p class="form-hint" style="margin:0;font-size:0.75rem;">Click tokens on the map to add/remove.</p>';
+      var startBtn = document.getElementById('combat-start-btn');
+      if (startBtn) startBtn.disabled = true;
+      return;
+    }
+    var html = '';
+    combatSelectedTokens.forEach(function(tok) {
+      var av = tok.avatar
+        ? '<img src="' + escHtml(tok.avatar) + '" style="width:22px;height:22px;border-radius:50%;object-fit:cover;">'
+        : '<div style="width:22px;height:22px;border-radius:50%;background:var(--bg-darker);display:flex;align-items:center;justify-content:center;font-size:0.6rem;color:var(--gold);">' + escHtml(tok.name.charAt(0)) + '</div>';
+      html += '<div class="combat-sel-item" data-key="' + tok.type + '-' + tok.id + '">'
+        + av + '<span style="flex:1;font-size:0.8rem;">' + escHtml(tok.name) + '</span>'
+        + '<span style="font-size:0.65rem;color:var(--text-secondary);">' + tok.type.toUpperCase() + '</span>'
+        + '</div>';
+    });
+    list.innerHTML = html;
+    var startBtn = document.getElementById('combat-start-btn');
+    if (startBtn) startBtn.disabled = false;
+  }
+
+  // Hook token clicks for selection mode
+  function handleCombatTokenClick(type, id) {
+    if (!combatSelectionMode) return false;
+    // Find name & avatar
+    var name = '', avatar = '';
+    if (type === 'pc') {
+      for (var i = 0; i < tokensData.length; i++) {
+        if (tokensData[i].id === id) { name = tokensData[i].char_name; avatar = tokensData[i].char_avatar; break; }
+      }
+    } else {
+      for (var i = 0; i < npcTokensData.length; i++) {
+        if (npcTokensData[i].id === id) { name = npcTokensData[i].npc_name; avatar = npcTokensData[i].npc_avatar; break; }
+      }
+    }
+    if (combatAddMode) {
+      // Adding mid-combat: immediately add via API
+      // Exit selection mode FIRST to prevent duplicate handler calls
+      combatSelectionMode = false;
+      combatAddMode = false;
+      var init = prompt('Initiative for ' + name + ':', '10');
+      if (init === null) { exitCombatSelectionMode(); resetAddBtn(); return true; }
+      document.getElementById('map-container').classList.remove('combat-selection-mode');
+      fetch('/map/<%= map.id %>/combat/add-participant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ type: type, tokenId: id, initiative: parseInt(init) || 0 })
+      }).then(function(r) { return r.json(); }).then(function() {
+        resetAddBtn();
+        fetchCombatState();
+      });
+      return true;
+    }
+    toggleCombatTokenSelection(type, id, name, avatar);
+    return true;
+  }
+
+  // DM: Combat button click
+  if (isDM) {
+    var combatToggleBtn = document.getElementById('combat-toggle-btn');
+    var fsCombatBtn = document.getElementById('fs-combat-btn');
+
+    function onCombatBtnClick() {
+      if (combatActive) {
+        // Toggle panel visibility
+        combatPanel.style.display = combatPanel.style.display === 'none' ? 'flex' : 'none';
+      } else {
+        enterCombatSelectionMode();
+      }
+    }
+
+    if (combatToggleBtn) combatToggleBtn.addEventListener('click', onCombatBtnClick);
+    if (fsCombatBtn) fsCombatBtn.addEventListener('click', onCombatBtnClick);
+
+    // Cancel selection
+    var selCancelBtn = document.getElementById('combat-selection-cancel');
+    var selCancelBtn2 = document.getElementById('combat-selection-cancel-btn');
+    if (selCancelBtn) selCancelBtn.addEventListener('click', function() { exitCombatSelectionMode(); });
+    if (selCancelBtn2) selCancelBtn2.addEventListener('click', function() { exitCombatSelectionMode(); });
+
+    // Start combat
+    var combatStartBtn = document.getElementById('combat-start-btn');
+    if (combatStartBtn) {
+      combatStartBtn.addEventListener('click', function() {
+        var parts = [];
+        combatSelectedTokens.forEach(function(tok) {
+          parts.push({ type: tok.type, tokenId: tok.id });
+        });
+        var vis = document.getElementById('combat-start-visibility').value;
+        fetch('/map/<%= map.id %>/combat/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({ participants: parts, visibility: vis })
+        }).then(function(r) { return r.json(); }).then(function(data) {
+          if (data.error) { alert(data.error); return; }
+          exitCombatSelectionMode();
+          fetchCombatState();
+        });
+      });
+    }
+
+    // End combat
+    var combatEndBtn = document.getElementById('combat-end-btn');
+    if (combatEndBtn) {
+      combatEndBtn.addEventListener('click', function() {
+        if (!confirm('End combat? Final HP and conditions are already saved.')) return;
+        fetch('/map/<%= map.id %>/combat/end', {
+          method: 'POST',
+          headers: { 'X-CSRF-Token': csrfToken }
+        }).then(function() {
+          closeCombatPanel();
+        });
+      });
+    }
+
+    // Next/Prev turn
+    var nextBtn = document.getElementById('combat-next-btn');
+    var prevBtn = document.getElementById('combat-prev-btn');
+    if (nextBtn) nextBtn.addEventListener('click', function() {
+      fetch('/map/<%= map.id %>/combat/next-turn', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken } })
+        .then(function() { fetchCombatState(); });
+    });
+    if (prevBtn) prevBtn.addEventListener('click', function() {
+      fetch('/map/<%= map.id %>/combat/prev-turn', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken } })
+        .then(function() { fetchCombatState(); });
+    });
+
+    // Add participant mid-combat
+    function resetAddBtn() {
+      var ab = document.getElementById('combat-add-btn');
+      if (ab) { ab.textContent = '+ Add'; ab.style.color = ''; }
+    }
+    var addBtn = document.getElementById('combat-add-btn');
+    if (addBtn) addBtn.addEventListener('click', function() {
+      combatAddMode = true;
+      combatSelectionMode = true;
+      document.getElementById('map-container').classList.add('combat-selection-mode');
+      addBtn.textContent = '⚔️ Click a token...';
+      addBtn.style.color = '#f1c40f';
+    });
+
+    // ESC key cancels add/selection mode
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && combatSelectionMode) {
+        exitCombatSelectionMode();
+        if (addBtn) { addBtn.textContent = '+ Add'; addBtn.style.color = ''; }
+      }
+    });
+
+    // Visibility change
+    var visSelect = document.getElementById('combat-visibility');
+    if (visSelect) visSelect.addEventListener('change', function() {
+      fetch('/map/<%= map.id %>/combat/visibility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ visibility: visSelect.value })
+      });
+    });
+  }
+
+  // Player: hide panel button
+  var hideBtn = document.getElementById('combat-hide-btn');
+  if (hideBtn) {
+    hideBtn.addEventListener('click', function() {
+      combatPanel.style.display = 'none';
+    });
+  }
+
+  // --- Combat Panel Rendering ---
+  function renderCombatPanel(state) {
+    if (!state || !state.active) {
+      combatPanel.style.display = 'none';
+      combatActive = false;
+      combatState = null;
+      return;
+    }
+    combatActive = true;
+    combatState = state;
+    combatPanel.style.display = 'flex';
+
+    document.getElementById('combat-round').textContent = state.encounter.round_number;
+    if (isDM && state.encounter.visibility) {
+      var visEl = document.getElementById('combat-visibility');
+      if (visEl) visEl.value = state.encounter.visibility;
+    }
+
+    var body = document.getElementById('combat-panel-body');
+    var html = '';
+    var parts = state.participants || [];
+
+    // Check if initiatives are all 0 (needs setup)
+    var needsInitSetup = isDM && parts.length > 0 && parts.every(function(p) { return p.initiative === 0; });
+
+    parts.forEach(function(p, idx) {
+      var isActive = idx === state.encounter.current_turn_index;
+      var rowClass = 'combat-panel-row' + (isActive ? ' active' : '');
+      var av = p.avatar
+        ? '<img src="' + escHtml(p.avatar) + '" class="combat-avatar">'
+        : '<div class="combat-avatar combat-avatar-placeholder">' + escHtml((p.name || '?').charAt(0)) + '</div>';
+
+      html += '<div class="' + rowClass + '" data-participant-id="' + p.id + '">';
+      html += '<div class="combat-row-left">';
+      if (isActive) html += '<span class="combat-turn-arrow">▶</span>';
+      html += av;
+      html += '<div class="combat-row-info">';
+      html += '<div class="combat-row-name">' + escHtml(p.name || '???') + '</div>';
+
+      // Initiative
+      if (isDM && needsInitSetup) {
+        html += '<input type="number" class="combat-initiative-input" data-pid="' + p.id + '" data-mod="' + (p.initiative_modifier || 0) + '" value="' + (p.initiative || 0) + '" placeholder="Init" title="Initiative (DEX mod: ' + (p.initiative_modifier >= 0 ? '+' : '') + (p.initiative_modifier || 0) + ')">';
+      } else {
+        html += '<span class="combat-init-display" title="Initiative">⚡' + p.initiative + '</span>';
+      }
+
+      html += '</div></div>'; // end combat-row-left
+
+      html += '<div class="combat-row-right">';
+
+      // HP (NPC or full view)
+      if (p.type === 'npc' && p.max_hp != null && p.current_hp != null) {
+        if (isDM) {
+          html += '<div class="combat-hp-inline">';
+          html += '<button type="button" class="combat-hp-btn" data-action="damage" data-pid="' + p.id + '" data-npc-id="' + p.npc_map_token_id + '">−</button>';
+          html += '<span class="combat-hp-val">' + p.current_hp + '/' + p.max_hp + '</span>';
+          html += '<button type="button" class="combat-hp-btn" data-action="heal" data-pid="' + p.id + '" data-npc-id="' + p.npc_map_token_id + '">+</button>';
+          html += '</div>';
+        } else {
+          html += '<span class="combat-hp-val">' + p.current_hp + '/' + p.max_hp + '</span>';
+        }
+      }
+
+      // Legendary actions
+      if (p.legendary_actions_max > 0) {
+        html += '<div class="combat-legendary">';
+        if (isDM) {
+          html += '<button type="button" class="combat-leg-btn" data-pid="' + p.id + '" data-leg-action="use" title="Use legendary action">⭐</button>';
+        }
+        html += '<span>' + (p.legendary_actions_max - p.legendary_actions_used) + '/' + p.legendary_actions_max + '</span>';
+        if (isDM) {
+          html += '<button type="button" class="combat-leg-btn" data-pid="' + p.id + '" data-leg-action="reset" title="Reset">↺</button>';
+        }
+        html += '</div>';
+      }
+
+      // Conditions
+      var conds = p.conditions || [];
+      if (conds.length > 0) {
+        html += '<div class="combat-conditions">';
+        conds.forEach(function(c) {
+          var durLabel = '';
+          if (c.duration_rounds != null) durLabel = ' (' + c.duration_rounds + ')';
+          html += '<span class="combat-condition-badge" title="' + escHtml(c.condition_name) + durLabel + '">'
+            + getCondIcon(c.condition_name);
+          if (c.duration_rounds != null) html += '<sub>' + c.duration_rounds + '</sub>';
+          html += '</span>';
+        });
+        html += '</div>';
+      }
+
+      // Remove button (DM)
+      if (isDM) {
+        html += '<button type="button" class="combat-remove-btn" data-pid="' + p.id + '" title="Remove from combat">✕</button>';
+      }
+
+      html += '</div>'; // end combat-row-right
+      html += '</div>'; // end row
+    });
+
+    // Initiative submit button
+    if (needsInitSetup) {
+      html += '<div style="padding:0.4rem;text-align:center;gap:0.35rem;display:flex;justify-content:center;">';
+      html += '<button type="button" class="btn btn-outline btn-small" id="combat-init-roll" title="Roll 1d20 + modifier for all">🎲 Roll All</button>';
+      html += '<button type="button" class="btn btn-primary btn-small" id="combat-init-submit">Set Initiative</button>';
+      html += '</div>';
+    }
+
+    body.innerHTML = html;
+
+    // Bind initiative auto-roll
+    var initRoll = document.getElementById('combat-init-roll');
+    if (initRoll) {
+      initRoll.addEventListener('click', function() {
+        var inputs = body.querySelectorAll('.combat-initiative-input');
+        inputs.forEach(function(inp) {
+          var mod = parseInt(inp.getAttribute('data-mod')) || 0;
+          var roll = Math.floor(Math.random() * 20) + 1 + mod;
+          inp.value = roll;
+          // Flash gold briefly
+          inp.style.borderColor = '#f1c40f';
+          setTimeout(function() { inp.style.borderColor = ''; }, 600);
+        });
+      });
+    }
+
+    // Bind initiative submit
+    var initSubmit = document.getElementById('combat-init-submit');
+    if (initSubmit) {
+      initSubmit.addEventListener('click', function() {
+        var inputs = body.querySelectorAll('.combat-initiative-input');
+        var inits = [];
+        inputs.forEach(function(inp) {
+          inits.push({ participantId: parseInt(inp.getAttribute('data-pid')), initiative: parseInt(inp.value) || 0 });
+        });
+        fetch('/map/<%= map.id %>/combat/initiative', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({ initiatives: inits })
+        }).then(function() { fetchCombatState(); });
+      });
+    }
+
+    // Bind HP buttons
+    body.querySelectorAll('.combat-hp-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var npcId = btn.getAttribute('data-npc-id');
+        var action = btn.getAttribute('data-action');
+        var amt = prompt((action === 'damage' ? 'Damage' : 'Heal') + ' amount:', '1');
+        if (!amt) return;
+        var delta = parseInt(amt) || 0;
+        if (action === 'damage') delta = -delta;
+        fetch('/map/<%= map.id %>/npc-tokens/' + npcId + '/hp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({ delta: delta })
+        }).then(function() { fetchCombatState(); });
+      });
+    });
+
+    // Bind legendary action buttons
+    body.querySelectorAll('.combat-leg-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var pid = btn.getAttribute('data-pid');
+        var legAction = btn.getAttribute('data-leg-action');
+        fetch('/map/<%= map.id %>/combat/legendary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({ participantId: parseInt(pid), action: legAction })
+        }).then(function() { fetchCombatState(); });
+      });
+    });
+
+    // Bind remove buttons
+    body.querySelectorAll('.combat-remove-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var pid = btn.getAttribute('data-pid');
+        if (!confirm('Remove this participant from combat?')) return;
+        fetch('/map/<%= map.id %>/combat/remove-participant', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({ participantId: parseInt(pid) })
+        }).then(function() { fetchCombatState(); });
+      });
+    });
+
+    // Update active token indicator on map
+    updateActiveTokenIndicator(parts, state.encounter.current_turn_index);
+  }
+
+  // --- Active Token Indicator ---
+  function updateActiveTokenIndicator(participants, turnIndex) {
+    if (activeTokenIndicator) {
+      leafletMap.removeLayer(activeTokenIndicator);
+      activeTokenIndicator = null;
+    }
+    if (!participants || participants.length === 0 || turnIndex < 0 || turnIndex >= participants.length) return;
+    var p = participants[turnIndex];
+    if (!p) return;
+
+    // Find the token's marker and its data for scale
+    var marker = null;
+    var tokenScale = 1.0;
+    if (p.type === 'pc' && tokenMarkers[p.token_id]) {
+      marker = tokenMarkers[p.token_id];
+      for (var i = 0; i < tokensData.length; i++) {
+        if (tokensData[i].id === p.token_id) { tokenScale = tokensData[i].scale || 1.0; break; }
+      }
+    } else if (p.type === 'npc' && npcMarkers[p.npc_map_token_id]) {
+      marker = npcMarkers[p.npc_map_token_id];
+      for (var i = 0; i < npcTokensData.length; i++) {
+        if (npcTokensData[i].id === p.npc_map_token_id) { tokenScale = npcTokensData[i].scale || 1.0; break; }
+      }
+    }
+    if (!marker) return;
+
+    // Ring size matches avatar (28 * scale + padding)
+    var avatarSize = Math.round(28 * tokenScale);
+    var ringSize = avatarSize + 16;
+    // The token iconAnchor is at center of (avatar + 22px label).
+    // We need to shift the ring UP by ~11px so it centers on the avatar, not avatar+label.
+    var labelOffset = 11;
+
+    var pos = marker.getLatLng();
+    activeTokenIndicator = L.marker(pos, {
+      icon: L.divIcon({
+        className: 'combat-active-indicator',
+        html: '<div class="combat-active-ring" style="width:' + ringSize + 'px;height:' + ringSize + 'px;"></div>',
+        iconSize: [ringSize, ringSize],
+        iconAnchor: [ringSize / 2, ringSize / 2 + labelOffset]
+      }),
+      interactive: false,
+      zIndexOffset: -1
+    }).addTo(leafletMap);
+  }
+
+  function removeActiveTokenIndicator() {
+    if (activeTokenIndicator) {
+      leafletMap.removeLayer(activeTokenIndicator);
+      activeTokenIndicator = null;
+    }
+  }
+
+  function closeCombatPanel() {
+    combatActive = false;
+    combatState = null;
+    combatPanel.style.display = 'none';
+    removeActiveTokenIndicator();
+  }
+
+  // --- Fetch Combat State ---
+  function fetchCombatState() {
+    fetch('/map/<%= map.id %>/combat/state')
+      .then(function(r) { return r.json(); })
+      .then(function(state) {
+        if (state.active) {
+          renderCombatPanel(state);
+        } else {
+          closeCombatPanel();
+        }
+      }).catch(function() {});
+  }
+
+  // SSE: combat updates
+  if (typeof EventSource !== 'undefined') {
+    try {
+      var combatSSE = new EventSource('/api/events');
+      combatSSE.addEventListener('combat-update', function(e) {
+        try {
+          var data = JSON.parse(e.data);
+          if (data.mapId !== mapData.id) return;
+          if (data.action === 'combat-end') {
+            closeCombatPanel();
+          } else {
+            fetchCombatState();
+          }
+        } catch(err) {}
+      });
+    } catch(e) {}
+  }
+
+  // Load combat state on page init
+  fetchCombatState();
 
   } // end initMap
 
