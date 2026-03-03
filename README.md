@@ -1,6 +1,6 @@
-# Quest Planner v2.1.2 — D&D Session Scheduler
+# Quest Planner v2.1.3 — D&D Session Scheduler
 
-> **Latest release:** v2.1.2 (2026-03-03)
+> **Latest release:** v2.1.3 (2026-03-03)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -856,6 +856,13 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v2.1.3 (2026-03-03) 🧹 Project Cleanup
+
+**Maintenance:**
+- Removed stale backup files and development artifacts from repository
+
+---
 
 ### v2.1.2 (2026-03-03) 📌 Draggable Quest Pins & UI Fix
 
