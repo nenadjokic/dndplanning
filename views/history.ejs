@@ -7,9 +7,12 @@
 
 <% if (sessions.length === 0) { %>
   <div class="card">
-    <div class="empty-state">
-      <p>No completed sessions yet. Adventures await!</p>
-    </div>
+    <%- include('partials/empty-state', {
+      icon: '\uD83D\uDCDC',
+      title: 'No Completed Sessions',
+      description: 'No completed sessions yet. Adventures await!',
+      cta: ''
+    }) %>
   </div>
 <% } else { %>
   <div class="history-list">

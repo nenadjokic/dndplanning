@@ -403,8 +403,8 @@ router.get('/:id', requireLogin, (req, res) => {
   let mapQuests = [];
   try {
     mapQuests = isDM
-      ? db.prepare('SELECT id, title, status, description, difficulty, reward FROM quests WHERE linked_map_id = ?').all(map.id)
-      : db.prepare('SELECT id, title, status, description, difficulty, reward FROM quests WHERE linked_map_id = ? AND revealed = 1').all(map.id);
+      ? db.prepare('SELECT id, title, status, description, difficulty, reward, pin_x, pin_y FROM quests WHERE linked_map_id = ?').all(map.id)
+      : db.prepare('SELECT id, title, status, description, difficulty, reward, pin_x, pin_y FROM quests WHERE linked_map_id = ? AND revealed = 1').all(map.id);
   } catch (e) { /* table may not exist yet */ }
 
   res.render('map', { map, locations, isDM, isAdmin, chain, children, tokens, npcTokens, lootChests, encounters, showPartyMarker, canAddChild, MARKER_TYPES, currentUserId: req.user.id, mapLinks, allPlayers, mapQuests });
@@ -455,6 +455,18 @@ router.post('/:id/children', requireLogin, requireDM, express.urlencoded({ exten
     .run(name.trim(), desc, type, parent.id, px, py, req.user.id);
   req.flash('success', 'Sub-map created.');
   res.redirect('/map/' + parent.id);
+});
+
+// Move quest pin on map
+router.post('/:id/quests/:questId/pin', requireLogin, requireDM, express.json(), (req, res) => {
+  const quest = db.prepare('SELECT id FROM quests WHERE id = ? AND linked_map_id = ?').get(req.params.questId, req.params.id);
+  if (!quest) return res.status(404).json({ error: 'Quest not found on this map' });
+  const { x, y } = req.body;
+  const px = Math.max(0, Math.min(100, parseFloat(x) || 50));
+  const py = Math.max(0, Math.min(100, parseFloat(y) || 50));
+  db.prepare('UPDATE quests SET pin_x = ?, pin_y = ? WHERE id = ?').run(px, py, quest.id);
+  sse.broadcast('map-update', { mapId: parseInt(req.params.id), action: 'quest-move', questId: quest.id, x: px, y: py });
+  res.json({ success: true });
 });
 
 // Move child map pin on parent

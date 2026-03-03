@@ -744,7 +744,9 @@ db.exec(`
     sort_order INTEGER DEFAULT 0,
     created_by INTEGER NOT NULL REFERENCES users(id),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    completed_at TEXT
+    completed_at TEXT,
+    pin_x REAL DEFAULT 50,
+    pin_y REAL DEFAULT 50
   );
 
   CREATE TABLE IF NOT EXISTS quest_objectives (

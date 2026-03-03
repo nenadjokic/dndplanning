@@ -36,6 +36,9 @@
       <div class="player-card-info">
         <strong><%= p.username %></strong>
         <span class="role-badge role-<%= p.role %>"><%= p.role === 'admin' ? 'Guild Master' : p.role === 'dm' ? 'Dungeon Master' : 'Adventurer' %></span>
+        <% if (p.char_name) { %>
+          <span class="player-card-character"><%= p.char_name %><% if (p.char_race || p.char_class) { %> &mdash; <% if (p.char_race) { %><%= p.char_race %><% } %><% if (p.char_race && p.char_class) { %> <% } %><% if (p.char_class) { %><%= p.char_class %><% } %><% } %></span>
+        <% } %>
         <span class="player-last-seen">Last seen: <%= getRelativeTime(p.last_heartbeat) %></span>
       </div>
     </a>

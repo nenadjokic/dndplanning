@@ -836,8 +836,7 @@
   // ---- Quest Pins on Map ----
   var mapQuestsData = <%- JSON.stringify(typeof mapQuests !== 'undefined' ? mapQuests : []) %>;
   mapQuestsData.forEach(function(quest) {
-    // Place quest pins at map center (they're linked to the whole map, not a specific location)
-    var ll = pctToLatLng(50, 50);
+    var ll = pctToLatLng(quest.pin_x || 50, quest.pin_y || 50);
     var statusColors = { available: '#3498db', active: '#27ae60', completed: '#7f8c8d', failed: '#e74c3c' };
     var statusColor = statusColors[quest.status] || '#3498db';
     var questIcon = L.divIcon({
@@ -846,7 +845,7 @@
       iconSize: [28, 28],
       iconAnchor: [14, 14]
     });
-    var questMarker = L.marker(ll, { icon: questIcon }).addTo(leafletMap);
+    var questMarker = L.marker(ll, { icon: questIcon, draggable: isDM }).addTo(leafletMap);
     var desc = quest.description ? '<br><span style="font-size:0.7rem;color:var(--text-secondary);">' + escHtml(quest.description.substring(0, 80)) + (quest.description.length > 80 ? '...' : '') + '</span>' : '';
     var questPopup = '<div style="text-align:center;min-width:140px;">'
       + '<strong style="font-size:0.85rem;">' + escHtml(quest.title) + '</strong>'
@@ -857,6 +856,17 @@
       + '<br><a href="/quests" class="btn btn-outline btn-small" style="margin-top:0.4rem;font-size:0.7rem;">View Quest Board</a>'
       + '</div>';
     questMarker.bindPopup(questPopup);
+
+    if (isDM) {
+      questMarker.on('dragend', function() {
+        var pct = latLngToPct(questMarker.getLatLng());
+        fetch('/map/<%= map.id %>/quests/' + quest.id + '/pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({ x: pct.x, y: pct.y })
+        });
+      });
+    }
   });
 
   // ---- Party marker (top-level only) ----

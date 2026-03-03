@@ -279,18 +279,18 @@
               <% if (item.description) { %><br><span class="text-muted" style="font-size:0.85rem;"><%= item.description %></span><% } %>
               <% if (item.vault_item_name) { %><br><button type="button" class="btn btn-small btn-outline vault-detail-btn" data-name="<%= item.vault_item_name %>" style="font-size:0.7rem;padding:0.1rem 0.4rem;">Stat Block</button><% } %>
             </td>
-            <td><% if (item.rarity) { %><span class="rarity-badge" style="background:<%= rarityColors[item.rarity] || '#666' %>"><%= item.rarity %></span><% } else { %>-<% } %></td>
-            <td><span class="loot-category-badge loot-cat-<%= item.category %>"><%= item.category %></span></td>
-            <td><%= item.quantity %></td>
-            <td class="loot-holder"><%= item.holder_name || 'Party Bag' %></td>
-            <td>
+            <td data-label="Rarity"><% if (item.rarity) { %><span class="rarity-badge" style="background:<%= rarityColors[item.rarity] || '#666' %>"><%= item.rarity %></span><% } else { %>-<% } %></td>
+            <td data-label="Type"><span class="loot-category-badge loot-cat-<%= item.category %>"><%= item.category %></span></td>
+            <td data-label="Qty"><%= item.quantity %></td>
+            <td data-label="Held By" class="loot-holder"><%= item.holder_name || 'Party Bag' %></td>
+            <td data-label="Attuned">
               <% if (item.attuned_char_name) { %>
                 <span class="attunement-badge"><%= item.attuned_char_name %> (<%= (attunementCounts[item.attuned_to] || 0) %>/3)</span>
               <% } else { %>
                 -
               <% } %>
             </td>
-            <td>
+            <td data-label="Actions">
               <div style="display:flex;gap:0.25rem;align-items:center;flex-wrap:wrap;">
                 <% if (isDM || item.held_by === user.id) { %>
                   <form action="/loot/<%= item.id %>/assign" method="POST" style="display:flex;gap:0.25rem;align-items:center;">

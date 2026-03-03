@@ -859,7 +859,9 @@ try {
         sort_order INTEGER DEFAULT 0,
         created_by INTEGER NOT NULL REFERENCES users(id),
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        completed_at TEXT
+        completed_at TEXT,
+        pin_x REAL DEFAULT 50,
+        pin_y REAL DEFAULT 50
       )`
     },
     {
@@ -961,7 +963,9 @@ try {
     { table: 'sessions', column: 'arc_id', sql: 'ALTER TABLE sessions ADD COLUMN arc_id INTEGER REFERENCES campaign_arcs(id)' },
     { table: 'sessions', column: 'reminder_24h_sent', sql: 'ALTER TABLE sessions ADD COLUMN reminder_24h_sent INTEGER DEFAULT 0' },
     { table: 'sessions', column: 'reminder_1h_sent', sql: 'ALTER TABLE sessions ADD COLUMN reminder_1h_sent INTEGER DEFAULT 0' },
-    { table: 'users', column: 'sound_default', sql: 'ALTER TABLE users ADD COLUMN sound_default TEXT' }
+    { table: 'users', column: 'sound_default', sql: 'ALTER TABLE users ADD COLUMN sound_default TEXT' },
+    { table: 'quests', column: 'pin_x', sql: 'ALTER TABLE quests ADD COLUMN pin_x REAL DEFAULT 50' },
+    { table: 'quests', column: 'pin_y', sql: 'ALTER TABLE quests ADD COLUMN pin_y REAL DEFAULT 50' }
   ];
 
   for (const col of missingColumns) {

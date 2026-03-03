@@ -44,7 +44,7 @@
   <% } %>
   <% if (isDM) { %>
     <div class="quest-card-actions">
-      <select class="quest-status-select btn btn-small btn-outline" data-quest-id="<%= q.id %>" style="font-size:0.7rem;padding:0.2rem 0.3rem;">
+      <select class="quest-status-select btn btn-small" data-quest-id="<%= q.id %>" style="font-size:0.75rem;padding:0.25rem 1.5rem 0.25rem 0.5rem;">
         <option value="available" <%= q.status === 'available' ? 'selected' : '' %>>Available</option>
         <option value="active" <%= q.status === 'active' ? 'selected' : '' %>>Active</option>
         <option value="completed" <%= q.status === 'completed' ? 'selected' : '' %>>Completed</option>

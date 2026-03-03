@@ -73,6 +73,7 @@
   <% } %>
 
   <% if (session.status === 'confirmed' || session.status === 'completed') { %>
+    <div class="vote-section-divider">Private Notes</div>
     <div class="session-notes-section" style="margin-top:1.5rem">
       <h3>My Notes <span style="font-size:0.8rem;color:var(--text-muted);font-weight:normal">(private, only you can see)</span></h3>
       <textarea id="player-notes-textarea" rows="4" placeholder="Write your personal session notes here... Auto-saves as you type."><%= typeof myNotes !== 'undefined' && myNotes ? myNotes.content : '' %></textarea>
@@ -105,6 +106,7 @@
   <% } %>
 
   <% if (typeof sessionImages !== 'undefined' && sessionImages.length > 0) { %>
+    <div class="vote-section-divider">Gallery</div>
     <div style="margin-top:1.5rem">
       <h3>Session Gallery</h3>
       <div class="session-gallery-grid">
@@ -141,6 +143,7 @@
   <% } %>
 
   <% if (session.status === 'open') { %>
+    <div class="vote-section-divider">Availability</div>
     <h2>Cast Your Availability</h2>
     <p class="form-hint">Select your availability for each time slot, then scroll down and click Submit.</p>
     <form action="/votes/<%= session.id %>" method="POST" id="vote-form">
@@ -202,6 +205,7 @@
 </div>
 
 <% if (typeof players !== 'undefined' && players.length > 0) { %>
+<div class="vote-section-divider">Party Overview</div>
 <div class="card">
   <h2>Party Availability</h2>
   <%- include('../partials/slot-grid', { slots, players, voteMap, slotSummary, preferenceMap: {}, allUsersMap: typeof allUsersMap !== 'undefined' ? allUsersMap : {}, unavailabilityMap: typeof unavailabilityMap !== 'undefined' ? unavailabilityMap : {}, quorumData: typeof quorumData !== 'undefined' ? quorumData : {} }) %>

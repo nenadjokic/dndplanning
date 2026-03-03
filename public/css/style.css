@@ -53,23 +53,23 @@ select:focus-visible,
 
 /* === Light Theme === */
 [data-theme="light"] {
-  --bg-dark: #f5f0e8;
-  --bg-darker: #ebe4d6;
-  --bg-card: #faf7f0;
-  --bg-card-hover: #f0ece3;
-  --text-primary: #2c2416;
-  --text-secondary: #6b5e4f;
+  --bg-dark: #d9c9a5;
+  --bg-darker: #c9b88e;
+  --bg-card: #ede0c4;
+  --bg-card-hover: #e4d5b5;
+  --text-primary: #2a1a0a;
+  --text-secondary: #5c4025;
   --gold: #8b6914;
   --gold-bright: #a07818;
-  --gold-dim: #c4a55a;
-  --border: #d4c9b5;
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  --bg-input: #fff;
+  --gold-dim: #9e7e3a;
+  --border: #b09870;
+  --shadow: 0 4px 12px rgba(40, 25, 10, 0.15);
+  --bg-input: #f2e8d0;
 }
 
 [data-theme="light"] .nav {
-  background: #e0d8c8;
-  border-bottom-color: #c4a55a;
+  background: linear-gradient(to bottom, #b8a478, #c9b88e);
+  border-bottom-color: #9e7e3a;
 }
 
 [data-theme="light"] .btn-primary {
@@ -81,7 +81,8 @@ select:focus-visible,
 }
 
 [data-theme="light"] .btn-outline {
-  border-color: #c4a55a;
+  border-color: #b09870;
+  color: #5c4025;
 }
 
 [data-theme="light"] .form-group input[type="text"],
@@ -92,35 +93,35 @@ select:focus-visible,
 [data-theme="light"] .form-group select,
 [data-theme="light"] .time-select,
 [data-theme="light"] .board-reply-form input[type="text"] {
-  background: #fff;
-  border-color: #d4c9b5;
-  color: #2c2416;
+  background: #f2e8d0;
+  border-color: #b09870;
+  color: #2a1a0a;
 }
 
 [data-theme="light"] .slot-grid thead th,
 [data-theme="light"] .summary-row td {
-  background: #e0d8c8;
+  background: #c9b88e;
 }
 
 [data-theme="light"] .vote-slot-card {
-  background: #fff;
-  border-color: #d4c9b5;
+  background: #ede0c4;
+  border-color: #b09870;
 }
 
 [data-theme="light"] .avatar-letter {
-  background: #c4a55a;
+  background: #8b6914;
   color: #fff;
 }
 
 [data-theme="light"] .avatar-placeholder {
-  background: #c4a55a;
+  background: #8b6914;
   color: #fff;
 }
 
 [data-theme="light"] .role-select {
-  background: #fff;
-  color: #2c2416;
-  border-color: #d4c9b5;
+  background: #f2e8d0;
+  color: #2a1a0a;
+  border-color: #b09870;
 }
 
 /* === Reset & Base === */
@@ -379,11 +380,11 @@ h3 { font-size: 1.25rem; }
 }
 
 [data-theme="light"] .hamburger-menu {
-  background: #faf7f0;
+  background: #ede0c4;
 }
 
 [data-theme="light"] .hamburger-btn {
-  border-color: #d4c9b5;
+  border-color: #b09870;
 }
 
 /* === Flash Messages === */
@@ -478,6 +479,9 @@ h3 { font-size: 1.25rem; }
   color: var(--gold);
   border-color: var(--gold-dim);
 }
+
+/* Disable pseudo-element on selects — causes rendering artifacts */
+select.btn-outline::after { display: none; }
 
 /* Gradient border effect on hover */
 .btn-outline::after {
@@ -949,7 +953,7 @@ select:hover {
 /* Light theme adjustments */
 [data-theme="light"] input[type="checkbox"],
 [data-theme="light"] input[type="radio"] {
-  background: #fff;
+  background: #f2e8d0;
   border-color: #8b6914;
 }
 
@@ -2018,19 +2022,19 @@ select:hover {
 
 [data-theme="light"] .mention {
   color: #8b6914;
-  background: rgba(139, 105, 20, 0.12);
+  background: rgba(139, 105, 20, 0.18);
 }
 
 [data-theme="light"] .notif-dropdown {
-  background: #faf7f0;
+  background: #ede0c4;
 }
 
 [data-theme="light"] .notif-dropdown-header {
-  background: #e0d8c8;
+  background: #c9b88e;
 }
 
 [data-theme="light"] .notif-badge {
-  border-color: #e0d8c8;
+  border-color: #c9b88e;
 }
 
 /* === Nav Clock === */
@@ -2278,19 +2282,19 @@ select:hover {
 }
 
 [data-theme="light"] .session-cat-dnd {
-  border-left-color: #a07818;
+  border-left-color: #8b6914;
 }
 
 [data-theme="light"] .session-cat-rpg {
-  border-left-color: #8e44ad;
+  border-left-color: #7b3fa0;
 }
 
 [data-theme="light"] .session-cat-gamenight {
-  border-left-color: #2980b9;
+  border-left-color: #1f6d99;
 }
 
 [data-theme="light"] .session-cat-casual {
-  border-left-color: #27ae60;
+  border-left-color: #1e8449;
 }
 
 /* === Session Recap === */
@@ -2421,7 +2425,7 @@ select:hover {
 }
 
 [data-theme="light"] .mention-autocomplete {
-  background: #faf7f0;
+  background: #ede0c4;
 }
 
 /* === Profile === */
@@ -2592,14 +2596,14 @@ select:hover {
 }
 
 [data-theme="light"] .announcement-banner {
-  background: linear-gradient(90deg, rgba(139, 105, 20, 0.15) 0%, rgba(139, 105, 20, 0.3) 50%, rgba(139, 105, 20, 0.15) 100%);
-  border-color: #a67c00;
-  box-shadow: 0 2px 8px rgba(139, 105, 20, 0.3), inset 0 0 20px rgba(139, 105, 20, 0.1);
+  background: linear-gradient(90deg, rgba(139, 105, 20, 0.2) 0%, rgba(139, 105, 20, 0.35) 50%, rgba(139, 105, 20, 0.2) 100%);
+  border-color: #8b6914;
+  box-shadow: 0 2px 8px rgba(40, 25, 10, 0.2), inset 0 0 20px rgba(139, 105, 20, 0.1);
 }
 
 [data-theme="light"] .announcement-text {
-  color: #7a5800;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+  color: #5c3a10;
+  text-shadow: 0 1px 2px rgba(237, 224, 196, 0.5);
 }
 
 /* === Reactions === */
@@ -5644,7 +5648,7 @@ a.character-card-link:hover .character-card-name {
 
 [data-theme="light"] .spell-autocomplete-item:hover,
 [data-theme="light"] .spell-autocomplete-item.selected {
-  background: rgba(139, 105, 20, 0.1);
+  background: rgba(139, 105, 20, 0.15);
 }
 
 /* Spell label (after selection) */
@@ -5687,11 +5691,11 @@ a.character-card-link:hover .character-card-name {
 }
 
 [data-theme="light"] .spell-label {
-  background: rgba(139, 105, 20, 0.1);
+  background: rgba(139, 105, 20, 0.15);
 }
 
 [data-theme="light"] .spell-label-link {
-  color: #7a5800;
+  color: #5c3a10;
 }
 
 /* Spell Details Modal */
@@ -5851,11 +5855,11 @@ a.character-card-link:hover .character-card-name {
 }
 
 [data-theme="light"] .spell-modal-header {
-  background: rgba(139, 105, 20, 0.08);
+  background: rgba(139, 105, 20, 0.15);
 }
 
 [data-theme="light"] .spell-modal-title {
-  color: #7a5800;
+  color: #5c3a10;
 }
 
 /* === D&D Data Modals (Classes, Races, etc.) === */
@@ -5990,11 +5994,11 @@ a.character-card-link:hover .character-card-name {
 }
 
 [data-theme="light"] .dnd-modal-header {
-  background: rgba(139, 105, 20, 0.08);
+  background: rgba(139, 105, 20, 0.15);
 }
 
 [data-theme="light"] .dnd-modal-title {
-  color: #7a5800;
+  color: #5c3a10;
 }
 
 /* D&D Class/Race Links */
@@ -6354,19 +6358,19 @@ a.character-card-link:hover .character-card-name {
 }
 
 [data-theme="light"] .vault-tab.active {
-  background: rgba(139, 105, 20, 0.15);
+  background: rgba(139, 105, 20, 0.2);
 }
 
 [data-theme="light"] .vault-card-magic {
-  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(139, 105, 20, 0.08) 100%);
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(139, 105, 20, 0.12) 100%);
 }
 
 [data-theme="light"] .vault-modal-header {
-  background: rgba(139, 105, 20, 0.1);
+  background: rgba(139, 105, 20, 0.15);
 }
 
 [data-theme="light"] .vault-modal-title {
-  color: #7a5800;
+  color: #5c3a10;
 }
 
 @media (max-width: 600px) {
@@ -6564,11 +6568,33 @@ a.character-card-link:hover .character-card-name {
 
 .card:hover {
   border-color: var(--gold-dim);
-  box-shadow: 
+  box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.5),
     0 0 0 1px rgba(212, 168, 67, 0.2),
     inset 0 1px 0 rgba(212, 168, 67, 0.1);
   transform: translateY(-4px);
+}
+
+[data-theme="light"] .card {
+  background: linear-gradient(135deg, var(--bg-card) 0%, #e0d0a8 100%);
+}
+
+[data-theme="light"] .card:hover {
+  box-shadow:
+    0 8px 24px rgba(40, 25, 10, 0.18),
+    0 0 0 1px rgba(139, 105, 20, 0.25),
+    inset 0 1px 0 rgba(139, 105, 20, 0.1);
+}
+
+[data-theme="light"] .card::before {
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(139, 105, 20, 0.03) 2px,
+      rgba(139, 105, 20, 0.03) 4px
+    );
 }
 
 /* Card entrance animation with stagger */
@@ -7643,15 +7669,15 @@ h2 {
 }
 
 [data-theme="light"] .toast {
-  background: linear-gradient(135deg, rgba(250, 247, 240, 0.98) 0%, rgba(240, 235, 220, 0.98) 100%);
-  border-color: #d4a843;
+  background: linear-gradient(135deg, rgba(237, 224, 196, 0.98) 0%, rgba(228, 213, 181, 0.98) 100%);
+  border-color: #8b6914;
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.15),
-    0 0 0 1px rgba(139, 105, 20, 0.2);
+    0 8px 32px rgba(40, 25, 10, 0.2),
+    0 0 0 1px rgba(139, 105, 20, 0.3);
 }
 
 [data-theme="light"] .toast-message {
-  color: var(--text-primary);
+  color: #2a1a0a;
 }
 
 /* === 3.2 ENHANCED EMPTY STATES === */
@@ -7725,7 +7751,7 @@ h2 {
 
 /* Light theme */
 [data-theme="light"] .empty-state-icon::before {
-  background: radial-gradient(circle, rgba(139, 105, 20, 0.15) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(139, 105, 20, 0.2) 0%, transparent 70%);
 }
 
 /* Respect reduced motion preferences */
@@ -9737,7 +9763,7 @@ body {
 
 [data-theme="light"] body {
   background-image:
-    radial-gradient(circle at 50% 50%, rgba(139, 105, 20, 0.025) 1px, transparent 1px);
+    radial-gradient(circle at 50% 50%, rgba(90, 65, 20, 0.04) 1px, transparent 1px);
   background-size: 20px 20px;
 }
 
@@ -9750,9 +9776,9 @@ body {
 }
 
 [data-theme="light"] .nav {
-  background: linear-gradient(to bottom, #d8ceb8, #e0d8c8);
-  border-image: linear-gradient(90deg, transparent 5%, #c4a55a 50%, transparent 95%) 1;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(to bottom, #b8a478, #c9b88e);
+  border-image: linear-gradient(90deg, transparent 5%, #8b6914 50%, transparent 95%) 1;
+  box-shadow: 0 2px 12px rgba(40, 25, 10, 0.15);
 }
 
 /* === Phase 3: Card gold top border always visible === */
@@ -9836,8 +9862,8 @@ body {
 }
 
 [data-theme="light"] .quest-widget-list {
-  border-color: rgba(139, 105, 20, 0.2);
-  background: rgba(139, 105, 20, 0.04);
+  border-color: rgba(139, 105, 20, 0.3);
+  background: rgba(139, 105, 20, 0.08);
 }
 
 /* === Phase 4: Empty state styling === */
@@ -9967,5 +9993,413 @@ body {
   .board-post:focus-within .board-post-header .inline-form {
     opacity: 1;
   }
+}
+
+/* ========================================
+   Design Polish — Body Texture Overlay
+   ======================================== */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+
+[data-theme="light"] body::after {
+  opacity: 0.025;
+}
+
+/* ========================================
+   Design Polish — Session Card Status Borders
+   ======================================== */
+.session-card.session-open {
+  border-left: 4px solid var(--gold);
+}
+
+.session-card.session-confirmed {
+  border-left: 4px solid var(--green);
+}
+
+.session-card.session-completed {
+  border-left: 4px solid #3498db;
+}
+
+.session-card.session-cancelled {
+  border-left: 4px solid var(--red);
+}
+
+/* ========================================
+   Design Polish — Light Theme Contrast
+   ======================================== */
+[data-theme="light"] h1,
+[data-theme="light"] h2,
+[data-theme="light"] h3 {
+  color: #5c3a10;
+}
+
+[data-theme="light"] .role-badge,
+[data-theme="light"] .session-category,
+[data-theme="light"] .loot-category-badge {
+  font-weight: 700;
+}
+
+/* ========================================
+   Design Polish — Footer Enhancement
+   ======================================== */
+.app-footer {
+  background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.15));
+}
+
+[data-theme="light"] .app-footer {
+  background: linear-gradient(to bottom, transparent, rgba(40, 25, 10, 0.06));
+}
+
+.footer-ornament {
+  display: block;
+  text-align: center;
+  margin-bottom: 0.6rem;
+  color: var(--gold-dim);
+  font-size: 0.75rem;
+  letter-spacing: 0.4em;
+}
+
+.footer-copy::before {
+  content: '\2605 ';
+  color: var(--gold-dim);
+  font-size: 0.6rem;
+  vertical-align: middle;
+}
+
+.footer-copy::after {
+  content: ' \2605';
+  color: var(--gold-dim);
+  font-size: 0.6rem;
+  vertical-align: middle;
+}
+
+/* ========================================
+   Design Polish — Nav Bar Enhancement
+   ======================================== */
+.nav {
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.5), inset 0 -1px 0 rgba(212, 168, 67, 0.1);
+}
+
+.nav-brand:hover {
+  text-shadow: 0 0 12px rgba(212, 168, 67, 0.5);
+}
+
+.hamburger-btn:hover {
+  box-shadow: 0 0 8px rgba(212, 168, 67, 0.3);
+  transform: scale(1.05);
+}
+
+.hamburger-menu.open {
+  animation: menuSlideIn 0.2s ease-out;
+}
+
+@keyframes menuSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================================
+   Design Polish — Hover States Enhancement
+   ======================================== */
+.card:hover {
+  box-shadow: var(--shadow), 0 0 0 1px rgba(212, 168, 67, 0.15);
+}
+
+.btn-primary:hover {
+  transform: translateY(-3px) scale(1.02);
+}
+
+.player-card:hover {
+  box-shadow: 0 0 12px rgba(212, 168, 67, 0.2);
+}
+
+/* ========================================
+   Design Polish — Vote Submit Sticky Mobile
+   ======================================== */
+@media (max-width: 767px) {
+  .vote-submit-container {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    padding: 0.75rem 0;
+    background: linear-gradient(to top, var(--bg-dark) 60%, transparent);
+  }
+
+  .vote-submit-container .btn {
+    width: 100%;
+    font-size: 1.05rem;
+    padding: 0.75rem 1rem;
+  }
+}
+
+/* ========================================
+   Design Polish — Recurring Badge Polish
+   ======================================== */
+.session-recurring-badge {
+  letter-spacing: 0.02em;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* ========================================
+   Design Polish — File Input Styled
+   ======================================== */
+.file-input-styled input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.file-input-styled label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: 2px dashed var(--gold-dim);
+  border-radius: var(--radius);
+  color: var(--gold);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  background: rgba(212, 168, 67, 0.04);
+}
+
+.file-input-styled label:hover {
+  border-color: var(--gold);
+  background: rgba(212, 168, 67, 0.08);
+}
+
+.file-input-styled .file-name {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+}
+
+/* ========================================
+   Design Polish — Loot Table Mobile Cards
+   ======================================== */
+@media (max-width: 600px) {
+  .loot-table thead {
+    display: none;
+  }
+
+  .loot-table tbody tr {
+    display: block;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-card);
+  }
+
+  .loot-table tbody td {
+    display: block;
+    padding: 0.25rem 0;
+    border: none;
+    text-align: left;
+  }
+
+  .loot-table tbody td::before {
+    content: attr(data-label);
+    display: inline-block;
+    font-weight: 700;
+    font-family: var(--font-heading);
+    color: var(--gold);
+    min-width: 5rem;
+    margin-right: 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .loot-table tbody td:first-child::before {
+    display: none;
+  }
+}
+
+/* ========================================
+   Design Polish — Vault Tab Grouping
+   ======================================== */
+.vault-tab-separator {
+  width: 1px;
+  height: 1.5rem;
+  background: var(--border);
+  align-self: center;
+  margin: 0 0.15rem;
+}
+
+.vault-tab.active {
+  border-bottom: 3px solid var(--gold);
+}
+
+@media (max-width: 600px) {
+  .vault-tab-separator {
+    display: none;
+  }
+}
+
+/* ========================================
+   Design Polish — Board Categories Enhancement
+   ======================================== */
+.board-cat-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(212, 168, 67, 0.1);
+  border-radius: var(--radius);
+}
+
+.board-category-row:hover {
+  border-left: 3px solid var(--gold-dim);
+  padding-left: calc(1.25rem - 3px);
+}
+
+.board-cat-info h3 {
+  font-family: var(--font-heading);
+}
+
+/* ========================================
+   Design Polish — Map Index Card Grid
+   ======================================== */
+.map-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.map-card-grid .map-index-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-card);
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.map-card-grid .map-index-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--gold);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.map-index-card-thumb {
+  height: 140px;
+  overflow: hidden;
+  background: var(--bg-input);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-index-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.map-index-card-thumb .maps-tree-placeholder {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  border: none;
+  font-size: 2rem;
+}
+
+.map-index-card-body {
+  padding: 0.75rem;
+}
+
+.map-index-card-body h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+}
+
+.map-index-card-body h3 a {
+  color: var(--gold);
+  text-decoration: none;
+}
+
+.map-index-card-body h3 a:hover {
+  color: var(--gold-bright);
+}
+
+.map-index-card-children {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.map-index-card-children a {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(212, 168, 67, 0.1);
+  border: 1px solid var(--border);
+  color: var(--gold);
+  text-decoration: none;
+}
+
+.map-index-card-children a:hover {
+  border-color: var(--gold-dim);
+  background: rgba(212, 168, 67, 0.2);
+}
+
+.map-index-card-actions {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+/* ========================================
+   Design Polish — Player Character Showcase
+   ======================================== */
+.player-card-character {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.1rem;
+  font-style: italic;
+}
+
+/* ========================================
+   Design Polish — Vote Section Dividers
+   ======================================== */
+.vote-section-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+  color: var(--gold-dim);
+  font-family: var(--font-heading);
+  font-size: 0.85rem;
+}
+
+.vote-section-divider::before,
+.vote-section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
 }
 

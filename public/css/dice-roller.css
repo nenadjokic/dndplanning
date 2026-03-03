@@ -610,30 +610,30 @@
 
 /* Light theme adjustments */
 [data-theme="light"] .dice-fab-btn {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 16px rgba(40, 25, 10, 0.2);
 }
 
 [data-theme="light"] .dice-bubble {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(40, 25, 10, 0.15);
 }
 
 [data-theme="light"] .dice-results-banner {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 20px rgba(40, 25, 10, 0.2);
 }
 
 [data-theme="light"] .dice-roll-btn {
   color: #fff;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 16px rgba(40, 25, 10, 0.2);
 }
 
 [data-theme="light"] .dice-toast {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 16px rgba(40, 25, 10, 0.15);
 }
 
 [data-theme="light"] .dice-theme-picker {
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 32px rgba(40, 25, 10, 0.2);
 }
 
 [data-theme="light"] .dice-theme-btn {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(40, 25, 10, 0.15);
 }

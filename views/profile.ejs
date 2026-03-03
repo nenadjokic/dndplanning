@@ -17,9 +17,9 @@
     </div>
     <form action="/profile/avatar" method="POST" enctype="multipart/form-data">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <div class="form-group">
-        <label for="avatar">Upload new avatar (max 2MB, images only)</label>
-        <input type="file" id="avatar" name="avatar" accept="image/*">
+      <div class="form-group file-input-styled">
+        <input type="file" id="avatar" name="avatar" accept="image/*" onchange="var fn=this.nextElementSibling.querySelector('.file-name');fn.textContent=this.files[0]?this.files[0].name:''">
+        <label for="avatar">&#128247; Choose thy portrait... <span class="file-name"></span></label>
       </div>
       <button type="submit" class="btn btn-primary btn-small">Upload Avatar</button>
     </form>
@@ -155,9 +155,9 @@
             <textarea name="description" id="char-desc" rows="3" placeholder="Backstory, traits, goals... (Markdown supported)"></textarea>
             <small class="form-hint">Supports Markdown: **bold**, *italic*, [links](url), lists, etc.</small>
           </div>
-          <div class="form-group">
-            <label for="char-avatar">Character Avatar</label>
-            <input type="file" name="avatar" id="char-avatar" accept="image/*">
+          <div class="form-group file-input-styled">
+            <input type="file" name="avatar" id="char-avatar" accept="image/*" onchange="var fn=this.nextElementSibling.querySelector('.file-name');fn.textContent=this.files[0]?this.files[0].name:''">
+            <label for="char-avatar">&#128220; Choose thy scroll... <span class="file-name"></span></label>
             <small class="form-hint">Will be center-cropped to 256×256.</small>
           </div>
         </div>
