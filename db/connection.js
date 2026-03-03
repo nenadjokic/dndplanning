@@ -39,7 +39,8 @@ const alterStatements = [
   "ALTER TABLE dice_rolls ADD COLUMN hidden INTEGER DEFAULT 0",
   "ALTER TABLE users ADD COLUMN google_id TEXT",
   "ALTER TABLE users ADD COLUMN google_email TEXT",
-  "ALTER TABLE users ADD COLUMN socials TEXT"
+  "ALTER TABLE users ADD COLUMN socials TEXT",
+  "ALTER TABLE users ADD COLUMN sound_default TEXT"
 ];
 
 for (const sql of alterStatements) {

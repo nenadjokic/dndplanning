@@ -105,12 +105,14 @@ function getCsrfToken() {
 
   btn.addEventListener('click', function(e) {
     e.stopPropagation();
-    menu.classList.toggle('open');
+    var isOpen = menu.classList.toggle('open');
+    btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   });
 
   document.addEventListener('click', function(e) {
     if (!menu.contains(e.target) && e.target !== btn) {
       menu.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
     }
   });
 })();
@@ -236,6 +238,7 @@ function checkSlotUnavailability(dateInput) {
     e.stopPropagation();
     isOpen = !isOpen;
     dropdown.style.display = isOpen ? '' : 'none';
+    bell.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     if (isOpen) {
       fetchNotifications();
       markRead();
@@ -246,8 +249,18 @@ function checkSlotUnavailability(dateInput) {
     if (isOpen && !dropdown.contains(e.target) && e.target !== bell) {
       isOpen = false;
       dropdown.style.display = 'none';
+      bell.setAttribute('aria-expanded', 'false');
     }
   });
+
+  // Mark All Read button
+  var markAllBtn = document.getElementById('notif-mark-all-read');
+  if (markAllBtn) {
+    markAllBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      markRead();
+    });
+  }
 
   // Poll for new notifications every 30 seconds
   fetchNotifications();
@@ -780,7 +793,7 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 })();
 
-// === Sound Panel (Tabletopy iframe) ===
+// === Sound Panel (Popup + Set as Default) ===
 (function() {
   var panel = document.getElementById('sound-panel');
   var closeBtn = document.getElementById('sound-panel-close');
@@ -789,6 +802,76 @@ document.addEventListener('DOMContentLoaded', function() {
 
   var isOpen = false;
   var soundWindow = null;
+  var currentUrl = null;
+  var nowPlayingEl = document.getElementById('sound-now-playing');
+  var nowNameEl = document.getElementById('sound-now-name');
+  var focusBtn = document.getElementById('sound-now-focus');
+  var csrfToken = panel.getAttribute('data-csrf');
+
+  var knownSites = {
+    'https://tabletopy.com': 'Tabletopy',
+    'https://tabletopaudio.com': 'Tabletop Audio',
+    'https://rpg.ambient-mixer.com': 'Ambient Mixer',
+    'https://mynoise.net': 'myNoise'
+  };
+
+  function getSiteName(url) {
+    for (var key in knownSites) {
+      if (url.indexOf(key) === 0) return knownSites[key];
+    }
+    try { return new URL(url).hostname; } catch(e) { return 'Custom'; }
+  }
+
+  function updateNowPlaying() {
+    if (soundWindow && !soundWindow.closed && currentUrl) {
+      nowPlayingEl.style.display = 'flex';
+      nowNameEl.textContent = getSiteName(currentUrl);
+    } else {
+      nowPlayingEl.style.display = 'none';
+      currentUrl = null;
+    }
+  }
+
+  function openSoundSite(url, name) {
+    if (soundWindow && !soundWindow.closed) {
+      soundWindow.location.href = url;
+      soundWindow.focus();
+    } else {
+      soundWindow = window.open(url, 'QuestPlannerSound', 'width=500,height=700,menubar=no,toolbar=no,location=yes,status=no');
+    }
+    currentUrl = url;
+    updateNowPlaying();
+  }
+
+  function updateDefaultStars() {
+    var currentDefault = panel.getAttribute('data-sound-default') || '';
+    document.querySelectorAll('.sound-site-btn').forEach(function(btn) {
+      var star = btn.querySelector('.sound-set-default');
+      if (star) {
+        star.classList.toggle('active', btn.getAttribute('data-url') === currentDefault);
+      }
+    });
+  }
+
+  function setDefault(url) {
+    var body = { sound_default: url || '' };
+    if (csrfToken) body._csrf = csrfToken;
+    fetch('/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      if (data.success) {
+        panel.setAttribute('data-sound-default', url || '');
+        updateDefaultStars();
+        if (url) {
+          if (window.Toast) window.Toast.info('Default: ' + getSiteName(url), 3000);
+        } else {
+          if (window.Toast) window.Toast.info('Default cleared', 3000);
+        }
+      }
+    });
+  }
 
   function toggleSoundPanel() {
     isOpen = !isOpen;
@@ -796,28 +879,38 @@ document.addEventListener('DOMContentLoaded', function() {
     localStorage.setItem('sound-panel-open', isOpen ? '1' : '0');
     var navBtn = document.getElementById('nav-sound-btn');
     if (navBtn) navBtn.classList.toggle('active', isOpen);
-  }
 
-  function openSoundSite(url, name) {
-    // Open in popup window — audio persists across Quest Planner page navigations
-    if (soundWindow && !soundWindow.closed) {
-      soundWindow.location.href = url;
-      soundWindow.focus();
-    } else {
-      soundWindow = window.open(url, 'QuestPlannerSound', 'width=500,height=700,menubar=no,toolbar=no,location=yes,status=no');
+    if (isOpen) {
+      updateNowPlaying();
+      // Auto-open default site if no window is already open
+      var defaultUrl = panel.getAttribute('data-sound-default');
+      if (defaultUrl && (!soundWindow || soundWindow.closed)) {
+        openSoundSite(defaultUrl);
+      }
     }
-    localStorage.setItem('sound-last-url', url);
-    if (window.Toast) window.Toast.info('Opened ' + name + ' in sound window', 3000);
   }
 
-  // Site buttons
+  // Check for closed window periodically
+  setInterval(function() {
+    if (isOpen) updateNowPlaying();
+  }, 2000);
+
+  // Site buttons — click opens popup, star sets default
   document.querySelectorAll('.sound-site-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', function(e) {
+      if (e.target.closest('.sound-set-default')) {
+        e.stopPropagation();
+        e.preventDefault();
+        var url = btn.getAttribute('data-url');
+        var currentDefault = panel.getAttribute('data-sound-default');
+        setDefault(currentDefault === url ? '' : url);
+        return;
+      }
       openSoundSite(btn.getAttribute('data-url'), btn.getAttribute('data-name'));
     });
   });
 
-  // Custom URL
+  // Custom URL open
   var customOpenBtn = document.getElementById('sound-custom-open');
   var customUrlInput = document.getElementById('sound-custom-url');
   if (customOpenBtn && customUrlInput) {
@@ -826,6 +919,25 @@ document.addEventListener('DOMContentLoaded', function() {
       if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
         openSoundSite(url, 'Custom');
       }
+    });
+  }
+
+  // Custom URL set default
+  var customDefaultBtn = document.getElementById('sound-custom-default');
+  if (customDefaultBtn && customUrlInput) {
+    customDefaultBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var url = customUrlInput.value.trim();
+      if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+        setDefault(url);
+      }
+    });
+  }
+
+  // Focus button — bring popup to front
+  if (focusBtn) {
+    focusBtn.addEventListener('click', function() {
+      if (soundWindow && !soundWindow.closed) soundWindow.focus();
     });
   }
 
@@ -846,6 +958,8 @@ document.addEventListener('DOMContentLoaded', function() {
       panel.style.left = pos.left + 'px';
     } catch(e) {}
   }
+
+  updateDefaultStars();
 
   // Nav button
   var navBtn = document.getElementById('nav-sound-btn');

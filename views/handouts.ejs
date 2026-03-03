@@ -58,9 +58,12 @@
 
 <% if (handouts.length === 0) { %>
   <div class="card">
-    <div class="empty-state">
-      <p class="empty-state-text"><% if (isDM) { %>No handouts yet. Share images, maps, or text with your players above.<% } else { %>No handouts shared yet. The DM will share documents as the adventure unfolds.<% } %></p>
-    </div>
+    <%- include('partials/empty-state', {
+      icon: '📜',
+      title: 'No Handouts Yet',
+      description: isDM ? 'Share images, maps, or text with your players above.' : 'No handouts shared yet. The DM will share documents as the adventure unfolds.',
+      cta: ''
+    }) %>
   </div>
 <% } else { %>
   <div class="handout-grid">

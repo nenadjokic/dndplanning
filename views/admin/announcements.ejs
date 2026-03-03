@@ -69,7 +69,12 @@
   </div>
 <% } else { %>
   <div class="card">
-    <p class="empty-state-text">No announcements yet. Create your first one above!</p>
+    <%- include('../partials/empty-state', {
+      icon: '📢',
+      title: 'No Announcements',
+      description: 'No announcements yet. Create your first one above!',
+      cta: ''
+    }) %>
   </div>
 <% } %>
 

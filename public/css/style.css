@@ -506,6 +506,18 @@ h3 { font-size: 1.25rem; }
   transform: translateY(-2px);
 }
 
+.btn-secondary {
+  background: rgba(212, 168, 67, 0.15);
+  color: var(--gold);
+  border-color: var(--gold-dim);
+}
+
+.btn-secondary:hover {
+  background: rgba(212, 168, 67, 0.3);
+  border-color: var(--gold);
+  color: var(--gold-bright);
+}
+
 .btn-danger {
   background: var(--red);
   color: white;
@@ -805,6 +817,9 @@ h3 { font-size: 1.25rem; }
 .form-group input[type="password"],
 .form-group input[type="datetime-local"],
 .form-group input[type="date"],
+.form-group input[type="url"],
+.form-group input[type="number"],
+.form-group input[type="email"],
 .form-group textarea,
 .form-group select {
   width: 100%;
@@ -1927,6 +1942,26 @@ select:hover {
   font-size: 0.95rem;
   border-bottom: 1px solid var(--border);
   background: var(--bg-darker);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.notif-mark-all-read {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  transition: color 0.2s, background 0.2s;
+  font-family: var(--font-body);
+}
+
+.notif-mark-all-read:hover {
+  color: var(--gold);
+  background: rgba(212, 168, 67, 0.1);
 }
 
 .notif-list {
@@ -8201,6 +8236,8 @@ h2 {
   font-weight: 600;
   color: var(--text);
   font-size: 1rem;
+  word-break: break-word;
+  min-width: 0;
 }
 .recap-preview {
   font-size: 0.9rem;
@@ -8210,6 +8247,7 @@ h2 {
   overflow: hidden;
   margin-bottom: 0.75rem;
 }
+.recap-preview * { margin: 0; }
 .recap-preview p { margin: 0; }
 .previously-on-footer {
   display: flex;
@@ -8609,9 +8647,25 @@ h2 {
   flex-wrap: wrap;
 }
 .encounter-level-input {
-  width: 52px;
+  width: 52px !important;
+  min-width: 52px;
+  max-width: 52px;
   text-align: center;
-  padding: 0.4rem;
+  padding: 0.3rem 0.2rem;
+  font-size: 0.9rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  color-scheme: dark;
+}
+.encounter-level-input::-webkit-inner-spin-button,
+.encounter-level-input::-webkit-outer-spin-button {
+  opacity: 1;
+  filter: invert(0.85) sepia(1) saturate(5) hue-rotate(15deg) brightness(1.3);
+}
+.encounter-party-row .form-group input[type="number"] {
+  width: 70px;
 }
 
 .encounter-xp-budget {
@@ -8910,6 +8964,11 @@ h2 {
   width: 100%;
   text-align: center;
   font-size: 0.9rem;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.4rem;
 }
 .coin {
   display: inline-flex;
@@ -8929,6 +8988,11 @@ h2 {
 .currency-reason {
   font-size: 0.85rem;
   padding: 0.3rem 0.5rem;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 100%;
 }
 .currency-wallets-toggle,
 .currency-log-toggle {
@@ -9271,7 +9335,7 @@ body.map-fs-active .grid-toolbar {
 }
 
 /* =============================================
-   Sound Panel (Tabletopy iframe)
+   Sound Panel (Popup + Set as Default)
    ============================================= */
 .sound-panel {
   position: fixed;
@@ -9315,6 +9379,32 @@ body.map-fs-active .grid-toolbar {
 .sound-panel-body {
   padding: 0.75rem;
 }
+/* Now Playing bar */
+.sound-now-playing {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  margin-bottom: 0.6rem;
+  background: rgba(212, 168, 67, 0.1);
+  border: 1px solid var(--gold-dim);
+  border-radius: var(--radius);
+}
+.sound-now-icon {
+  color: var(--gold);
+  font-size: 1rem;
+  animation: sound-pulse 1.5s ease-in-out infinite;
+}
+@keyframes sound-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.sound-now-name {
+  flex: 1;
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  color: var(--gold);
+}
 .sound-panel-sites {
   display: flex;
   flex-direction: column;
@@ -9338,6 +9428,31 @@ body.map-fs-active .grid-toolbar {
 .sound-site-btn:hover {
   background: var(--bg-card);
   border-color: var(--gold-dim);
+}
+.sound-site-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.sound-site-label {
+  flex: 1;
+}
+.sound-set-default {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.2s, transform 0.2s;
+}
+.sound-set-default:hover {
+  color: var(--gold);
+  transform: scale(1.2);
+}
+.sound-set-default.active {
+  color: var(--gold);
 }
 .sound-panel-divider {
   height: 1px;
@@ -9588,5 +9703,269 @@ body.map-fs-active .grid-toolbar {
   border-radius: 50%;
   font-size: 14px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+/* === Phase 2: Sticky Vote Submit === */
+.vote-submit-container {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  padding: 1rem 0;
+  margin-top: 1rem;
+  background: linear-gradient(to top, var(--bg-card) 60%, transparent);
+}
+
+.vote-submit-container .btn {
+  width: 100%;
+  font-size: 1.1rem;
+  padding: 0.85rem 1.5rem;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(212, 168, 67, 0.3);
+}
+
+@media (min-width: 768px) {
+  .vote-submit-container .btn {
+    width: auto;
+  }
+}
+
+/* === Phase 3: Body Noise Texture === */
+body {
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(212, 168, 67, 0.015) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+[data-theme="light"] body {
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(139, 105, 20, 0.025) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* === Phase 3: Warm Nav Bar === */
+.nav {
+  background: linear-gradient(to bottom, #1e1814, var(--bg-darker));
+  border-bottom: 2px solid transparent;
+  border-image: linear-gradient(90deg, transparent 5%, var(--gold-dim) 50%, transparent 95%) 1;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="light"] .nav {
+  background: linear-gradient(to bottom, #d8ceb8, #e0d8c8);
+  border-image: linear-gradient(90deg, transparent 5%, #c4a55a 50%, transparent 95%) 1;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* === Phase 3: Card gold top border always visible === */
+.card::after {
+  transform: scaleX(0.3);
+  opacity: 0.4;
+}
+
+.card:hover::after {
+  transform: scaleX(1);
+  opacity: 1;
+}
+
+/* === Phase 3: Card crosshatch always visible === */
+.card::before {
+  opacity: 0.4;
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+/* === Phase 3: Section Divider === */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 2rem 0 1rem;
+  color: var(--gold-dim);
+  font-size: 0.85rem;
+}
+
+.section-divider::before,
+.section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+}
+
+.section-divider-icon {
+  font-size: 1rem;
+  color: var(--gold);
+  line-height: 1;
+}
+
+/* === Phase 3: Footer gold line === */
+.app-footer {
+  border-top: none;
+  position: relative;
+}
+
+.app-footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  width: 80%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+}
+
+/* === Phase 3: Confirmed session corner ornaments === */
+.session-confirmed {
+  background-image:
+    linear-gradient(135deg, rgba(39, 174, 96, 0.08) 8px, transparent 8px),
+    linear-gradient(225deg, rgba(39, 174, 96, 0.08) 8px, transparent 8px),
+    linear-gradient(315deg, rgba(39, 174, 96, 0.08) 8px, transparent 8px),
+    linear-gradient(45deg, rgba(39, 174, 96, 0.08) 8px, transparent 8px);
+  background-position: top left, top right, bottom right, bottom left;
+  background-size: 20px 20px;
+  background-repeat: no-repeat;
+}
+
+/* === Phase 3: Parchment inset for quest widget === */
+.quest-widget-list {
+  border: 1px solid rgba(212, 168, 67, 0.2);
+  background: rgba(212, 168, 67, 0.04);
+  border-radius: var(--radius);
+  padding: 0.25rem;
+}
+
+[data-theme="light"] .quest-widget-list {
+  border-color: rgba(139, 105, 20, 0.2);
+  background: rgba(139, 105, 20, 0.04);
+}
+
+/* === Phase 4: Empty state styling === */
+.empty-state-card {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+}
+
+.empty-state-card .empty-state-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* === Phase 5: What's New modal close button === */
+.whatsnew-modal {
+  position: relative;
+}
+
+.whatsnew-close-x {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: color 0.2s, background 0.2s;
+  z-index: 1;
+  line-height: 1;
+}
+
+.whatsnew-close-x:hover {
+  color: var(--gold);
+  background: rgba(212, 168, 67, 0.1);
+}
+
+.whatsnew-content {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+/* === Phase 5: Loot page section nav === */
+.loot-section-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.75rem 0;
+  margin-bottom: 1rem;
+  background: var(--bg-dark);
+}
+
+.loot-section-nav a {
+  font-size: 0.8rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--gold-dim);
+  color: var(--gold);
+  text-decoration: none;
+  transition: all 0.2s;
+  font-family: var(--font-heading);
+}
+
+.loot-section-nav a:hover {
+  border-color: var(--gold-dim);
+  color: var(--gold);
+  background: rgba(212, 168, 67, 0.1);
+}
+
+/* === Phase 6: Password show/hide toggle === */
+.password-toggle-wrap {
+  position: relative;
+}
+
+.password-toggle-wrap input {
+  padding-right: 2.5rem;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+
+.password-toggle-btn:hover {
+  color: var(--gold);
+}
+
+/* === Phase 6: Mobile board delete button === */
+@media (max-width: 767px) {
+  .board-post-header .inline-form {
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .board-post:focus-within .board-post-header .inline-form,
+  .board-post-header:active .inline-form {
+    opacity: 1;
+  }
+}
+
+@media (hover: hover) {
+  .board-post-header .inline-form {
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .board-post:hover .board-post-header .inline-form,
+  .board-post:focus-within .board-post-header .inline-form {
+    opacity: 1;
+  }
 }
 

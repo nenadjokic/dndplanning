@@ -1,6 +1,6 @@
-# Quest Planner v2.1.0 — D&D Session Scheduler
+# Quest Planner v2.1.1 — D&D Session Scheduler
 
-> **Latest release:** v2.1.0 (2026-03-02)
+> **Latest release:** v2.1.1 (2026-03-03)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -856,6 +856,27 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v2.1.1 (2026-03-03) 🔊 Sound Board Defaults & UI Polish
+
+**New Features:**
+- **🔊 Sound Board Defaults** — Set any sound site as your default with the star button; default auto-opens when you open the Sound Board panel; "Now Playing" bar with pulsing indicator and Focus button; manage default in Settings > "Bard's Instrument"
+- **📊 Vote Progress** — DM dashboard shows voted/total count on open sessions
+- **🔔 Mark All Read** — Notification dropdown now has a "Mark all read" button
+- **🔍 Browse All Creatures** — Vault Bestiary now has a "Browse All Creatures" button
+
+**Improvements:**
+- Password toggle (show/hide) on Login and Register pages
+- Empty states replaced with consistent icon + title + description component across Board, Handouts, Tools, Announcements
+- "Back to Quest Board" buttons renamed to "Back to Dashboard" across all pages
+- Profile social links collapsed into expandable `<details>` section
+- Loot page section navigation anchors (Treasury, Add, Staged, Quest Items, Bag of Holding)
+- Recap preview truncates at last newline (cleaner markdown rendering)
+- Dashboard section dividers between Quests and Board widgets
+- Encounter Builder party size input styled consistently
+- Currency inputs styled with proper dark theme
+- Nav buttons have proper ARIA labels and roles
+- CSS cache-bust suffix for style changes
 
 ### v2.1.0 (2026-03-02) 📋 Quest Board, Grid Overlay & Sound Board
 

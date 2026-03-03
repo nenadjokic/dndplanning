@@ -2,7 +2,7 @@
 
 <div class="page-header">
   <h1><%= session.title %></h1>
-  <a href="/" class="btn btn-outline">Back to Quest Board</a>
+  <a href="/" class="btn btn-outline">Back to Dashboard</a>
 </div>
 
 <div class="card">
@@ -142,7 +142,8 @@
 
   <% if (session.status === 'open') { %>
     <h2>Cast Your Availability</h2>
-    <form action="/votes/<%= session.id %>" method="POST">
+    <p class="form-hint">Select your availability for each time slot, then scroll down and click Submit.</p>
+    <form action="/votes/<%= session.id %>" method="POST" id="vote-form">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="vote-slots">
         <% for (const slot of slots) { %>
@@ -169,7 +170,9 @@
           </div>
         <% } %>
       </div>
-      <button type="submit" class="btn btn-primary">Submit Availability</button>
+      <div class="vote-submit-container">
+        <button type="submit" class="btn btn-primary">Submit Availability</button>
+      </div>
     </form>
   <% } else { %>
     <h2>Your Votes</h2>

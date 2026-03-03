@@ -49,7 +49,12 @@
 <!-- Topic List -->
 <% if (topics.length === 0) { %>
   <div class="card">
-    <p class="empty-state-text">No topics in this category yet. Be the first to post!</p>
+    <%- include('partials/empty-state', {
+      icon: '📋',
+      title: 'No Topics Yet',
+      description: 'No topics in this category yet. Be the first to post!',
+      cta: ''
+    }) %>
   </div>
 <% } else { %>
   <div class="board-topics">

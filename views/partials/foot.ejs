@@ -1,5 +1,16 @@
   </main>
 
+  <!-- Password Toggle -->
+  <script>
+  function togglePassword(inputId, btn) {
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    var isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+    btn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+  }
+  </script>
+
   <!-- Gallery Lightbox -->
   <script>
   function openLightbox(src) {
@@ -12,29 +23,43 @@
   </script>
 
   <!-- Toast Notification Container (Phase 3) -->
-  <div class="toast-container" id="toast-container"></div>
+  <div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
 
   <% if (typeof user !== 'undefined' && user) { %>
   <!-- Sound Panel -->
-  <div id="sound-panel" class="sound-panel" style="display:none;">
+  <div id="sound-panel" class="sound-panel" data-sound-default="<%= user.sound_default || '' %>" data-csrf="<%= csrfToken %>" style="display:none;">
     <div class="sound-panel-header" id="sound-panel-drag">
       <span>Sound Board</span>
       <button type="button" class="sound-panel-close" id="sound-panel-close">&times;</button>
     </div>
     <div class="sound-panel-body" id="sound-panel-body">
+      <!-- Now Playing bar (hidden until a site is opened) -->
+      <div class="sound-now-playing" id="sound-now-playing" style="display:none;">
+        <span class="sound-now-icon">&#9835;</span>
+        <span class="sound-now-name" id="sound-now-name"></span>
+        <button type="button" class="btn btn-small btn-outline" id="sound-now-focus">Focus</button>
+      </div>
+      <!-- Site list -->
       <div class="sound-panel-sites">
-        <p style="margin:0 0 0.5rem;font-size:0.75rem;color:var(--text-secondary);">Open in popup window (audio persists across tabs):</p>
         <button type="button" class="btn btn-small sound-site-btn" data-url="https://tabletopy.com" data-name="Tabletopy">
-          <span style="font-size:1.1rem;">🎵</span> Tabletopy
+          <span class="sound-site-icon">&#127925;</span>
+          <span class="sound-site-label">Tabletopy</span>
+          <span class="sound-set-default" title="Set as default">&#9733;</span>
         </button>
         <button type="button" class="btn btn-small sound-site-btn" data-url="https://tabletopaudio.com" data-name="Tabletop Audio">
-          <span style="font-size:1.1rem;">🎶</span> Tabletop Audio
+          <span class="sound-site-icon">&#127926;</span>
+          <span class="sound-site-label">Tabletop Audio</span>
+          <span class="sound-set-default" title="Set as default">&#9733;</span>
         </button>
         <button type="button" class="btn btn-small sound-site-btn" data-url="https://rpg.ambient-mixer.com" data-name="Ambient Mixer">
-          <span style="font-size:1.1rem;">🌲</span> Ambient Mixer
+          <span class="sound-site-icon">&#127794;</span>
+          <span class="sound-site-label">Ambient Mixer</span>
+          <span class="sound-set-default" title="Set as default">&#9733;</span>
         </button>
         <button type="button" class="btn btn-small sound-site-btn" data-url="https://mynoise.net" data-name="myNoise">
-          <span style="font-size:1.1rem;">🔊</span> myNoise
+          <span class="sound-site-icon">&#128266;</span>
+          <span class="sound-site-label">myNoise</span>
+          <span class="sound-set-default" title="Set as default">&#9733;</span>
         </button>
       </div>
       <div class="sound-panel-divider"></div>
@@ -43,11 +68,12 @@
         <div style="display:flex;gap:0.3rem;">
           <input type="url" id="sound-custom-url" placeholder="https://..." style="flex:1;font-size:0.75rem;">
           <button type="button" class="btn btn-small btn-primary" id="sound-custom-open">Open</button>
+          <span class="sound-set-default" id="sound-custom-default" title="Set as default">&#9733;</span>
         </div>
       </div>
       <div class="sound-panel-divider"></div>
       <p style="margin:0;font-size:0.65rem;color:var(--text-secondary);text-align:center;">
-        Audio plays in a separate window and<br>persists across Quest Planner pages.
+        Audio plays in a separate window.<br>Default site auto-opens with the panel.
       </p>
     </div>
   </div>
@@ -79,27 +105,26 @@
   <% if (typeof showWhatsNew !== 'undefined' && showWhatsNew) { %>
     <div class="welcome-overlay" id="whatsnew-overlay">
       <div class="welcome-modal whatsnew-modal">
-        <h2>What's New in v<%= appVersion %> 📋</h2>
+        <button class="whatsnew-close-x" id="whatsnew-close-x" title="Close">&times;</button>
+        <h2>What's New in v<%= appVersion %> 🔊</h2>
         <div class="whatsnew-content">
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Quest Board, Grid & Sound <span style="color:var(--text-secondary);font-size:0.8rem;">(v2.1.0)</span></h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Sound Board Defaults & UI Polish <span style="color:var(--text-secondary);font-size:0.8rem;">(v2.1.1)</span></h3>
+          <ul class="whatsnew-list">
+            <li><strong>🔊 Sound Board Defaults</strong> &mdash; Set any sound site as your default with the star button &mdash; auto-opens when you open the panel; "Now Playing" bar with Focus button; manage in Settings</li>
+            <li><strong>📊 Vote Progress</strong> &mdash; DM dashboard shows voted/total count on open sessions</li>
+            <li><strong>🔔 Mark All Read</strong> &mdash; Notification dropdown now has a "Mark all read" button</li>
+            <li><strong>🔍 Browse All Creatures</strong> &mdash; Vault Bestiary "Browse All" button for 2200+ monsters</li>
+          </ul>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Quest Board, Grid & Sound <span style="color:var(--text-secondary);font-size:0.8rem;">(v2.1.0)</span></h3>
           <ul class="whatsnew-list">
             <li><strong>📋 Quest Board</strong> &mdash; Tavern bulletin board for campaign quests &mdash; objectives, rewards, NPC quest givers, map links, story arcs, DM staging with reveal/hide</li>
             <li><strong>📐 Grid Overlay</strong> &mdash; Square/hex grid on maps with size, offset, opacity, color controls &mdash; saved per-map, visible to all players</li>
             <li><strong>🔊 Sound Board</strong> &mdash; Floating panel with Tabletopy, Tabletop Audio, Ambient Mixer, myNoise launchers &mdash; audio persists in popup windows</li>
-            <li><strong>🎯 Quest Map Pins</strong> &mdash; Quests linked to maps appear as scroll markers with popup details</li>
-            <li><strong>📊 Active Quests Widget</strong> &mdash; Dashboard widget showing top active quests for DM and players</li>
           </ul>
           <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">NPC Delegation & Token Scale <span style="color:var(--text-secondary);font-size:0.8rem;">(v2.0.12)</span></h3>
           <ul class="whatsnew-list">
             <li><strong>🎭 NPC Move Delegation</strong> &mdash; DM can assign NPC tokens to players (familiars, summons, mounts) &mdash; assigned players can drag them in real-time</li>
             <li><strong>🔍 Token Scale 20x</strong> &mdash; Individual token sliders now go up to 20.0 for huge/gargantuan creatures</li>
-            <li><strong>📐 Scale Step Size</strong> &mdash; Global scale +/- now has selectable step sizes: 0.1, 0.5, or 1.0</li>
-          </ul>
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">NPC Sidebar & Alignment <span style="color:var(--text-secondary);font-size:0.8rem;">(v2.0.9)</span></h3>
-          <ul class="whatsnew-list">
-            <li><strong>📋 NPC Sidebar</strong> &mdash; Persistent sidebar with categories, search, and click-to-place NPCs on the map</li>
-            <li><strong>⚔️ Alignment System</strong> &mdash; Per-NPC hostile/friendly/neutral with colored borders (red/green/white)</li>
-            <li><strong>☑️ Multi-Category NPCs</strong> &mdash; NPCs can belong to multiple categories via checkboxes</li>
           </ul>
         </div>
         <div class="whatsnew-links">
@@ -122,6 +147,9 @@
     </div>
     <script>
       document.getElementById('whatsnew-close').addEventListener('click', function() {
+        document.getElementById('whatsnew-overlay').remove();
+      });
+      document.getElementById('whatsnew-close-x').addEventListener('click', function() {
         document.getElementById('whatsnew-overlay').remove();
       });
       document.getElementById('whatsnew-overlay').addEventListener('click', function(e) {
@@ -163,7 +191,7 @@
   <script src="/js/app.js?v=<%= appVersion %>"></script>
   <script src="/js/dnd-modals.js?v=<%= appVersion %>"></script>
   <% if (typeof user !== 'undefined' && user) { %>
-    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+    <script>if(!window.THREE){document.write('<script src="https://unpkg.com/three@0.160.0/build/three.min.js"><\/script>')}</script>
     <link rel="stylesheet" href="/css/dice-roller.css?v=<%= appVersion %>">
     <script src="/js/dice-geometry.js?v=<%= appVersion %>"></script>
     <script src="/js/dice-themes.js?v=<%= appVersion %>"></script>

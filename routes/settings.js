@@ -8,7 +8,7 @@ const router = express.Router();
 
 router.get('/', requireLogin, (req, res) => {
   // Re-read user to get latest data (e.g. after token generation)
-  const freshUser = db.prepare('SELECT id, username, role, avatar, time_format, calendar_token, theme, week_start, google_id, google_email FROM users WHERE id = ?').get(req.user.id);
+  const freshUser = db.prepare('SELECT id, username, role, avatar, time_format, calendar_token, theme, week_start, google_id, google_email, sound_default FROM users WHERE id = ?').get(req.user.id);
   const unavailabilities = db.prepare(
     'SELECT * FROM unavailability WHERE user_id = ? ORDER BY date'
   ).all(req.user.id);
@@ -33,7 +33,7 @@ router.get('/', requireLogin, (req, res) => {
 
 // Unified settings endpoint for auto-save (Phase 2.3)
 router.post('/', requireLogin, (req, res) => {
-  const { theme, time_format, week_start } = req.body;
+  const { theme, time_format, week_start, sound_default } = req.body;
   const updates = [];
   const values = [];
 
@@ -62,6 +62,24 @@ router.post('/', requireLogin, (req, res) => {
     }
     updates.push('week_start = ?');
     values.push(week_start);
+  }
+
+  // Validate and add sound_default if provided (can be empty string to clear)
+  if (typeof sound_default !== 'undefined') {
+    if (sound_default === '') {
+      updates.push('sound_default = NULL');
+    } else {
+      try {
+        const parsed = new URL(sound_default);
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          return res.json({ success: false, message: 'Invalid sound URL' });
+        }
+      } catch (e) {
+        return res.json({ success: false, message: 'Invalid sound URL' });
+      }
+      updates.push('sound_default = ?');
+      values.push(sound_default);
+    }
   }
 
   // Update database if there are changes

@@ -2,7 +2,7 @@
 
 <div class="page-header">
   <h1>My Profile</h1>
-  <a href="/" class="btn btn-outline">Back to Quest Board</a>
+  <a href="/" class="btn btn-outline">Back to Dashboard</a>
 </div>
 
 <div class="settings-section card">
@@ -49,43 +49,48 @@
         socials = {};
       }
     %>
-    <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem; color: var(--gold);">Social Links (Optional)</h3>
-    <div class="form-group">
-      <label for="social_discord">Discord</label>
-      <input type="text" id="social_discord" name="social_discord" value="<%= socials.discord || '' %>" placeholder="username#1234">
-    </div>
-    <div class="form-group">
-      <label for="social_steam">Steam</label>
-      <input type="url" id="social_steam" name="social_steam" value="<%= socials.steam || '' %>" placeholder="https://steamcommunity.com/id/...">
-    </div>
-    <div class="form-group">
-      <label for="social_twitter">Twitter/X</label>
-      <input type="text" id="social_twitter" name="social_twitter" value="<%= socials.twitter || '' %>" placeholder="@username">
-    </div>
-    <div class="form-group">
-      <label for="social_twitch">Twitch</label>
-      <input type="text" id="social_twitch" name="social_twitch" value="<%= socials.twitch || '' %>" placeholder="username">
-    </div>
-    <div class="form-group">
-      <label for="social_youtube">YouTube</label>
-      <input type="url" id="social_youtube" name="social_youtube" value="<%= socials.youtube || '' %>" placeholder="https://youtube.com/@...">
-    </div>
-    <div class="form-group">
-      <label for="social_instagram">Instagram</label>
-      <input type="text" id="social_instagram" name="social_instagram" value="<%= socials.instagram || '' %>" placeholder="@username">
-    </div>
-    <div class="form-group">
-      <label for="social_reddit">Reddit</label>
-      <input type="text" id="social_reddit" name="social_reddit" value="<%= socials.reddit || '' %>" placeholder="u/username">
-    </div>
-    <div class="form-group">
-      <label for="social_tiktok">TikTok</label>
-      <input type="text" id="social_tiktok" name="social_tiktok" value="<%= socials.tiktok || '' %>" placeholder="@username">
-    </div>
-    <div class="form-group">
-      <label for="social_dndbeyond">D&D Beyond</label>
-      <input type="url" id="social_dndbeyond" name="social_dndbeyond" value="<%= socials.dndbeyond || '' %>" placeholder="https://www.dndbeyond.com/...">
-    </div>
+    <% const hasSocials = socials.discord || socials.steam || socials.twitter || socials.twitch || socials.youtube || socials.instagram || socials.reddit || socials.tiktok || socials.dndbeyond; %>
+    <details style="margin-top: 1.5rem;" <%= hasSocials ? 'open' : '' %>>
+      <summary style="cursor: pointer; color: var(--gold); font-family: var(--font-heading); font-size: 1.15rem;">Social Links (Optional)</summary>
+      <div style="margin-top: 0.75rem;">
+        <div class="form-group">
+          <label for="social_discord">Discord</label>
+          <input type="text" id="social_discord" name="social_discord" value="<%= socials.discord || '' %>" placeholder="username#1234">
+        </div>
+        <div class="form-group">
+          <label for="social_steam">Steam</label>
+          <input type="url" id="social_steam" name="social_steam" value="<%= socials.steam || '' %>" placeholder="https://steamcommunity.com/id/...">
+        </div>
+        <div class="form-group">
+          <label for="social_twitter">Twitter/X</label>
+          <input type="text" id="social_twitter" name="social_twitter" value="<%= socials.twitter || '' %>" placeholder="@username">
+        </div>
+        <div class="form-group">
+          <label for="social_twitch">Twitch</label>
+          <input type="text" id="social_twitch" name="social_twitch" value="<%= socials.twitch || '' %>" placeholder="username">
+        </div>
+        <div class="form-group">
+          <label for="social_youtube">YouTube</label>
+          <input type="url" id="social_youtube" name="social_youtube" value="<%= socials.youtube || '' %>" placeholder="https://youtube.com/@...">
+        </div>
+        <div class="form-group">
+          <label for="social_instagram">Instagram</label>
+          <input type="text" id="social_instagram" name="social_instagram" value="<%= socials.instagram || '' %>" placeholder="@username">
+        </div>
+        <div class="form-group">
+          <label for="social_reddit">Reddit</label>
+          <input type="text" id="social_reddit" name="social_reddit" value="<%= socials.reddit || '' %>" placeholder="u/username">
+        </div>
+        <div class="form-group">
+          <label for="social_tiktok">TikTok</label>
+          <input type="text" id="social_tiktok" name="social_tiktok" value="<%= socials.tiktok || '' %>" placeholder="@username">
+        </div>
+        <div class="form-group">
+          <label for="social_dndbeyond">D&D Beyond</label>
+          <input type="url" id="social_dndbeyond" name="social_dndbeyond" value="<%= socials.dndbeyond || '' %>" placeholder="https://www.dndbeyond.com/...">
+        </div>
+      </div>
+    </details>
     <button type="submit" class="btn btn-primary btn-small">Save Profile</button>
   </form>
 </div>

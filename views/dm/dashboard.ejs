@@ -2,7 +2,7 @@
 
 <div class="page-header">
   <h1>Dungeon Master's Chamber</h1>
-  <a href="/sessions/new" class="btn btn-primary">Post to Tavern Board</a>
+  <a href="/sessions/new" class="btn btn-primary">Schedule a Session</a>
 </div>
 
 <% if (birthdayUsers && birthdayUsers.length > 0) { %>
@@ -17,7 +17,8 @@
       <h3>Previously On...</h3>
       <span class="previously-on-title"><%= latestRecap.title %></span>
     </div>
-    <div class="recap-preview"><%- renderMarkdown(latestRecap.summary.length > 300 ? latestRecap.summary.substring(0, 300) + '...' : latestRecap.summary) %></div>
+    <% var _recapText = latestRecap.summary; if (_recapText.length > 300) { var _cut = _recapText.lastIndexOf('\n', 300); if (_cut < 100) _cut = 300; _recapText = _recapText.substring(0, _cut) + '...'; } %>
+    <div class="recap-preview"><%- renderMarkdown(_recapText) %></div>
     <div class="previously-on-footer">
       <% if (latestRecap.confirmed_date) { %>
         <span class="previously-on-date"><%= formatDate(latestRecap.confirmed_date, { month: 'short', day: 'numeric' }) %></span>
@@ -54,7 +55,12 @@
             <% if (s.confirmed_label) { %> &mdash; <%= s.confirmed_label %><% } %>
           </div>
         <% } %>
-        <div class="session-meta"><%= (s.status === 'completed' || s.status === 'confirmed') && s.confirmed_date ? formatDate(s.confirmed_date, { showTime: false }) : 'Created ' + formatDate(s.created_at, { showTime: false }) %></div>
+        <div class="session-meta">
+          <%= (s.status === 'completed' || s.status === 'confirmed') && s.confirmed_date ? formatDate(s.confirmed_date, { showTime: false }) : 'Created ' + formatDate(s.created_at, { showTime: false }) %>
+          <% if (s.status === 'open' && typeof voteProgress !== 'undefined' && voteProgress[s.id]) { %>
+            <span class="needs-vote-badge"><%= voteProgress[s.id].voted %>/<%= voteProgress[s.id].total %> voted</span>
+          <% } %>
+        </div>
       </a>
     <% }); %>
   </div>
@@ -79,11 +85,13 @@
   <% } %>
 <% } %>
 
-<% if (typeof activeQuests !== 'undefined' && activeQuests.length > 0) { %>
-<div class="page-header" style="margin-top:2rem">
+<% if (typeof activeQuests !== 'undefined') { %>
+<div class="section-divider"><span class="section-divider-icon">&#10022;</span></div>
+<div class="page-header">
   <h2>Active Quests</h2>
   <a href="/quests" class="btn btn-secondary">View All</a>
 </div>
+<% if (activeQuests.length > 0) { %>
 <div class="quest-widget-list">
   <% activeQuests.forEach(q => { %>
     <a href="/quests" class="quest-widget-item">
@@ -95,10 +103,14 @@
     </a>
   <% }); %>
 </div>
+<% } else { %>
+<p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">No active quests. <a href="/quests">Visit the Quest Board</a> to create one.</p>
+<% } %>
 <% } %>
 
 <% if (boardPosts && boardPosts.length > 0) { %>
-<div class="page-header" style="margin-top:2rem">
+<div class="section-divider"><span class="section-divider-icon">&#10022;</span></div>
+<div class="page-header">
   <h2>Bulletin Board</h2>
   <a href="/board" class="btn btn-secondary">View All</a>
 </div>

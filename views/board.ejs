@@ -2,7 +2,7 @@
 
 <div class="page-header">
   <h1>Bulletin Board</h1>
-  <a href="/" class="btn btn-outline">Back to Quest Board</a>
+  <a href="/" class="btn btn-outline">Back to Dashboard</a>
 </div>
 
 <div class="card" style="margin-bottom: 1.5rem;">
@@ -136,7 +136,12 @@
   <% } %>
 <% } else { %>
   <div class="card">
-    <p class="empty-state-text">The bulletin board is empty. Be the first to post!</p>
+    <%- include('partials/empty-state', {
+      icon: '📋',
+      title: 'The Board is Empty',
+      description: 'No posts yet. Be the first to share news, plans, or tavern gossip!',
+      cta: ''
+    }) %>
   </div>
 <% } %>
 

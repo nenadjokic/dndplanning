@@ -71,7 +71,21 @@ router.get('/', requireLogin, (req, res) => {
         LIMIT 3`).all();
     } catch (e) { /* table may not exist yet */ }
 
-    return res.render('dm/dashboard', { sessions, firstLogin, birthdayUsers, showWhatsNew, boardPosts, latestRecap, activeQuests });
+    // Vote progress per open session
+    const totalPlayers = db.prepare(`SELECT COUNT(*) as cnt FROM users WHERE role != 'admin' OR role = 'admin'`).get().cnt;
+    const openSessionIds = sessions.filter(s => s.status === 'open').map(s => s.id);
+    const voteProgress = {};
+    for (const sid of openSessionIds) {
+      const voted = db.prepare(`
+        SELECT COUNT(DISTINCT v.user_id) as cnt
+        FROM votes v
+        JOIN slots sl ON v.slot_id = sl.id
+        WHERE sl.session_id = ?
+      `).get(sid);
+      voteProgress[sid] = { voted: voted.cnt, total: totalPlayers };
+    }
+
+    return res.render('dm/dashboard', { sessions, firstLogin, birthdayUsers, showWhatsNew, boardPosts, latestRecap, activeQuests, voteProgress });
   }
 
   // Player dashboard

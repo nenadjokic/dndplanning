@@ -960,7 +960,8 @@ try {
     { table: 'loot_items', column: 'linked_npc_id', sql: 'ALTER TABLE loot_items ADD COLUMN linked_npc_id INTEGER REFERENCES npc_tokens(id) ON DELETE SET NULL' },
     { table: 'sessions', column: 'arc_id', sql: 'ALTER TABLE sessions ADD COLUMN arc_id INTEGER REFERENCES campaign_arcs(id)' },
     { table: 'sessions', column: 'reminder_24h_sent', sql: 'ALTER TABLE sessions ADD COLUMN reminder_24h_sent INTEGER DEFAULT 0' },
-    { table: 'sessions', column: 'reminder_1h_sent', sql: 'ALTER TABLE sessions ADD COLUMN reminder_1h_sent INTEGER DEFAULT 0' }
+    { table: 'sessions', column: 'reminder_1h_sent', sql: 'ALTER TABLE sessions ADD COLUMN reminder_1h_sent INTEGER DEFAULT 0' },
+    { table: 'users', column: 'sound_default', sql: 'ALTER TABLE users ADD COLUMN sound_default TEXT' }
   ];
 
   for (const col of missingColumns) {

@@ -2,7 +2,15 @@
 
 <div class="page-header">
   <h1>Party Inventory</h1>
-  <a href="/" class="btn btn-outline">Back to Chamber</a>
+  <a href="/" class="btn btn-outline">Back to Dashboard</a>
+</div>
+
+<div class="loot-section-nav">
+  <a href="#loot-treasury">Treasury</a>
+  <a href="#loot-add">Add Loot</a>
+  <% if (user.role === 'dm' || user.role === 'admin') { %><a href="#loot-staged">Staged</a><% } %>
+  <a href="#loot-quest-items">Quest Items</a>
+  <a href="#loot-bag">Bag of Holding</a>
 </div>
 
 <%
@@ -14,7 +22,7 @@
 %>
 
 <!-- Currency Dashboard -->
-<div class="card currency-dashboard">
+<div class="card currency-dashboard" id="loot-treasury">
   <h2>Treasury</h2>
   <div class="currency-grid">
     <div class="currency-section">
@@ -93,7 +101,7 @@
 
 <% if (isDM) { %>
 <!-- Add Loot Form -->
-<div class="card loot-add-form" style="margin-bottom: 1.5rem;">
+<div class="card loot-add-form" style="margin-bottom: 1.5rem;" id="loot-add">
   <h2>Add Loot</h2>
   <form action="/loot" method="POST">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -170,7 +178,7 @@
 
 <!-- Staged Items (DM only) -->
 <% if (isDM && stagedItems.length > 0) { %>
-<div class="card staged-items-card" style="margin-bottom: 1.5rem;">
+<div class="card staged-items-card" style="margin-bottom: 1.5rem;" id="loot-staged">
   <h2>Staged Items <span class="text-muted" style="font-size:0.85rem;">(hidden from players)</span></h2>
   <div class="session-grid">
     <% for (const item of stagedItems) { %>
@@ -201,7 +209,7 @@
 
 <!-- Quest Items -->
 <% if (questItems.length > 0) { %>
-<div style="margin-bottom: 1.5rem;">
+<div style="margin-bottom: 1.5rem;" id="loot-quest-items">
   <h2>Quest Items</h2>
   <div class="session-grid">
     <% for (const item of questItems) { %>
@@ -248,7 +256,7 @@
 
 <!-- Bag of Holding -->
 <% if (otherItems.length > 0) { %>
-<div class="card">
+<div class="card" id="loot-bag">
   <h2>Bag of Holding</h2>
   <div class="admin-table-wrapper">
     <table class="admin-table loot-table">

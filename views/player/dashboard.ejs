@@ -16,7 +16,8 @@
       <h3>Previously On...</h3>
       <span class="previously-on-title"><%= latestRecap.title %></span>
     </div>
-    <div class="recap-preview"><%- renderMarkdown(latestRecap.summary.length > 300 ? latestRecap.summary.substring(0, 300) + '...' : latestRecap.summary) %></div>
+    <% var _recapText = latestRecap.summary; if (_recapText.length > 300) { var _cut = _recapText.lastIndexOf('\n', 300); if (_cut < 100) _cut = 300; _recapText = _recapText.substring(0, _cut) + '...'; } %>
+    <div class="recap-preview"><%- renderMarkdown(_recapText) %></div>
     <div class="previously-on-footer">
       <% if (latestRecap.confirmed_date) { %>
         <span class="previously-on-date"><%= formatDate(latestRecap.confirmed_date, { month: 'short', day: 'numeric' }) %></span>
@@ -85,7 +86,8 @@
 <% } %>
 
 <% if (typeof activeQuests !== 'undefined' && activeQuests.length > 0) { %>
-<div class="page-header" style="margin-top:2rem">
+<div class="section-divider"><span class="section-divider-icon">&#10022;</span></div>
+<div class="page-header">
   <h2>Active Quests</h2>
   <a href="/quests" class="btn btn-secondary">View All</a>
 </div>
@@ -103,7 +105,8 @@
 <% } %>
 
 <% if (boardPosts && boardPosts.length > 0) { %>
-<div class="page-header" style="margin-top:2rem">
+<div class="section-divider"><span class="section-divider-icon">&#10022;</span></div>
+<div class="page-header">
   <h2>Bulletin Board</h2>
   <a href="/board" class="btn btn-secondary">View All</a>
 </div>

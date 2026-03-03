@@ -914,6 +914,18 @@
     }
   });
 
+  // Browse All Creatures button
+  var browseAllBtn = document.getElementById('monsters-browse-all');
+  if (browseAllBtn) {
+    browseAllBtn.addEventListener('click', function() {
+      document.getElementById('monsters-search').value = '';
+      document.getElementById('monsters-cr').value = '';
+      document.getElementById('monsters-type').value = '';
+      document.getElementById('monsters-size').value = '';
+      loadMonsters();
+    });
+  }
+
   // Initial load
   loadSpecies();
 })();
