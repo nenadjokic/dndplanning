@@ -725,9 +725,47 @@ document.addEventListener('DOMContentLoaded', function() {
     var data = JSON.parse(e.data);
     var msg = 'DM shared a handout: "<strong>' + escapeHtml(data.title) + '</strong>"';
     showActivity(msg, '/handouts');
-    if (typeof showToast === 'function') {
-      showToast('DM shared: ' + data.title, 'info', 8000);
+
+    // Build popup content
+    var overlay = document.getElementById('handout-reveal-overlay');
+    var title = document.getElementById('handout-reveal-title');
+    var body = document.getElementById('handout-reveal-body');
+    if (!overlay || !title || !body) return;
+
+    title.textContent = data.title;
+    body.innerHTML = '';
+
+    if (data.type === 'image' && data.image_path) {
+      var img = document.createElement('img');
+      img.src = '/uploads/handouts/' + data.image_path;
+      img.alt = data.title;
+      img.className = 'handout-reveal-img';
+      body.appendChild(img);
+    } else if (data.content) {
+      var textDiv = document.createElement('div');
+      textDiv.className = 'handout-reveal-text';
+      textDiv.textContent = data.content;
+      body.appendChild(textDiv);
     }
+
+    overlay.style.display = 'flex';
+    document.getElementById('handout-reveal-close').focus();
+
+    function dismissPopup() {
+      overlay.style.display = 'none';
+      body.innerHTML = '';
+    }
+    document.getElementById('handout-reveal-close').onclick = dismissPopup;
+    document.getElementById('handout-reveal-dismiss').onclick = dismissPopup;
+    overlay.querySelector('.handout-reveal-backdrop').onclick = dismissPopup;
+
+    var escHandler = function(ev) {
+      if (ev.key === 'Escape') {
+        dismissPopup();
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
   });
 
   eventSource.addEventListener('session-confirmed', function(e) {

@@ -25,6 +25,20 @@
   <!-- Toast Notification Container (Phase 3) -->
   <div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
 
+  <!-- Handout Reveal Popup -->
+  <div class="handout-reveal-overlay" id="handout-reveal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Handout revealed">
+    <div class="handout-reveal-backdrop"></div>
+    <div class="handout-reveal-content">
+      <button type="button" class="handout-reveal-close" id="handout-reveal-close" aria-label="Close">&times;</button>
+      <h2 class="handout-reveal-title" id="handout-reveal-title"></h2>
+      <div class="handout-reveal-body" id="handout-reveal-body"></div>
+      <div class="handout-reveal-footer">
+        <button type="button" class="btn btn-primary" id="handout-reveal-dismiss">Dismiss</button>
+        <a href="/handouts" class="btn btn-outline" id="handout-reveal-link">View in Handouts</a>
+      </div>
+    </div>
+  </div>
+
   <% if (typeof user !== 'undefined' && user) { %>
   <!-- Sound Panel -->
   <div id="sound-panel" class="sound-panel" data-sound-default="<%= user.sound_default || '' %>" data-csrf="<%= csrfToken %>" style="display:none;">
@@ -108,10 +122,10 @@
         <button class="whatsnew-close-x" id="whatsnew-close-x" title="Close">&times;</button>
         <h2>What's New in v<%= appVersion %></h2>
         <div class="whatsnew-content">
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Map Hierarchy & Thumbnails <span style="color:var(--text-secondary);font-size:0.8rem;">(v2.1.4)</span></h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Handout Reveal Popup <span style="color:var(--text-secondary);font-size:0.8rem;">(v2.1.5)</span></h3>
           <ul class="whatsnew-list">
-            <li><strong>Map Tree View</strong> &mdash; Restored hierarchical map list with Detach button, drag-and-drop reparenting, and depth checking</li>
-            <li><strong>Large Thumbnails</strong> &mdash; Root maps display as thumbnail cards in a grid; sub-maps shown as smaller indented tree items</li>
+            <li><strong>Handout Reveal Popup</strong> &mdash; When DM reveals a handout, all players see a dramatic full-screen popup with image or medieval-styled text content</li>
+            <li><strong>Handouts in Tools</strong> &mdash; Handouts moved from DM Zone to Tools menu so all players can access them</li>
           </ul>
           <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Draggable Quest Pins & UI Fix <span style="color:var(--text-secondary);font-size:0.8rem;">(v2.1.2)</span></h3>
           <ul class="whatsnew-list">

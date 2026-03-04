@@ -1,6 +1,6 @@
-# Quest Planner v2.1.4 — D&D Session Scheduler
+# Quest Planner v2.1.5 — D&D Session Scheduler
 
-> **Latest release:** v2.1.4 (2026-03-04)
+> **Latest release:** v2.1.5 (2026-03-04)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -856,6 +856,13 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v2.1.5 (2026-03-04) Handout Reveal Popup
+
+- **Handout Reveal Popup** — When DM reveals a handout, all connected players see a dramatic full-screen popup with the actual content (image or medieval-styled text), dismiss button, and link to Handouts page
+- **Handouts moved to Tools** — Handouts menu item moved from DM Zone to Tools section so players can access it
+
+---
 
 ### v2.1.4 (2026-03-04) Restore Map Hierarchy & Thumbnails
 

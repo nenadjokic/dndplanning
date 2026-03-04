@@ -99,7 +99,7 @@ router.post('/:id/reveal', requireLogin, requireDM, (req, res) => {
   }
   db.prepare('UPDATE handouts SET revealed = 1 WHERE id = ?').run(handout.id);
 
-  sse.broadcast('handout-reveal', { title: handout.title, type: handout.type, id: handout.id });
+  sse.broadcast('handout-reveal', { title: handout.title, type: handout.type, id: handout.id, content: handout.content || null, image_path: handout.image_path || null });
 
   req.flash('success', 'Handout revealed to players!');
   res.redirect('/handouts');
