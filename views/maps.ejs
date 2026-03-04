@@ -47,70 +47,87 @@
     }) %>
   </div>
 <% } else { %>
-  <div class="map-card-grid">
-    <% for (const root of tree) { %>
-      <%
-        var hasChildren = root.children && root.children.length > 0;
-        var isHidden = !!root.hidden_by;
-        var isCreator = root.created_by === (typeof currentUserId !== 'undefined' ? currentUserId : -1);
-        var showAsPlaceholder = isHidden && !isCreator && (typeof isAdmin !== 'undefined' && isAdmin);
-        var isStandalone = !root.parent_id && !hasChildren;
-      %>
-      <% if (showAsPlaceholder) { %>
-        <div class="map-index-card" style="opacity: 0.4;">
-          <div class="map-index-card-thumb"><div class="maps-tree-placeholder"><span>&#128274;</span></div></div>
-          <div class="map-index-card-body">
-            <h3 style="color: var(--text-secondary);">Hidden Map</h3>
-            <span class="map-type-badge" style="background:rgba(255,255,255,0.1);color:var(--text-secondary);">&#128274; Hidden</span>
-            <% if (isDM) { %>
-              <div class="map-index-card-actions">
-                <form action="/map/<%= root.id %>/delete" method="POST" class="inline-form">
-                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                  <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this hidden map?')">&times;</button>
-                </form>
+  <%
+    function renderMapCard(node, level) {
+      var hasChildren = node.children && node.children.length > 0;
+      var isHidden = !!node.hidden_by;
+      var isCreator = node.created_by === (typeof currentUserId !== 'undefined' ? currentUserId : -1);
+      var showAsPlaceholder = isHidden && !isCreator && (typeof isAdmin !== 'undefined' && isAdmin);
+      var isStandalone = !node.parent_id && !hasChildren;
+      var isChild = level > 0;
+  %>
+    <% if (showAsPlaceholder) { %>
+      <div class="map-index-card<%= isChild ? ' map-index-card-sub' : '' %>" style="opacity: 0.4;">
+        <div class="map-index-card-thumb"><div class="maps-tree-placeholder"><span>&#128274;</span></div></div>
+        <div class="map-index-card-body">
+          <h3 style="color: var(--text-secondary);">Hidden Map</h3>
+          <span class="map-type-badge" style="background:rgba(255,255,255,0.1);color:var(--text-secondary);">&#128274; Hidden</span>
+          <% if (isDM) { %>
+            <div class="map-index-card-actions">
+              <form action="/map/<%= node.id %>/delete" method="POST" class="inline-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this hidden map?')">&times;</button>
+              </form>
+            </div>
+          <% } %>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="map-index-card<%= isChild ? ' map-index-card-sub' : '' %>"
+           data-map-id="<%= node.id %>"
+           data-depth="<%= level %>"
+           data-has-children="<%= hasChildren ? '1' : '0' %>"
+           <% if (isDM && isStandalone) { %>draggable="true"<% } %>>
+        <a href="/map/<%= node.id %>" style="text-decoration:none;color:inherit;">
+          <div class="map-index-card-thumb">
+            <% if (node.image_path) { %>
+              <img src="/maps/<%= node.image_path %>" alt="<%= node.name %>">
+            <% } else { %>
+              <div class="maps-tree-placeholder">
+                <span><%= MARKER_TYPES[node.map_type] ? MARKER_TYPES[node.map_type].icon : '&#127757;' %></span>
               </div>
             <% } %>
           </div>
-        </div>
-      <% } else { %>
-        <div class="map-index-card" data-map-id="<%= root.id %>" <% if (isDM && isStandalone) { %>draggable="true"<% } %>>
-          <a href="/map/<%= root.id %>" style="text-decoration:none;color:inherit;">
-            <div class="map-index-card-thumb">
-              <% if (root.image_path) { %>
-                <img src="/maps/<%= root.image_path %>" alt="<%= root.name %>">
-              <% } else { %>
-                <div class="maps-tree-placeholder">
-                  <span><%= MARKER_TYPES[root.map_type] ? MARKER_TYPES[root.map_type].icon : '&#127757;' %></span>
-                </div>
-              <% } %>
-            </div>
-          </a>
-          <div class="map-index-card-body">
-            <h3><a href="/map/<%= root.id %>"><%= root.name %></a></h3>
-            <div class="maps-tree-meta">
-              <span class="map-type-badge map-type-<%= root.map_type %>"><%= MARKER_TYPES[root.map_type] ? MARKER_TYPES[root.map_type].icon : '&#127757;' %> <%= MARKER_TYPES[root.map_type] ? MARKER_TYPES[root.map_type].label : root.map_type %></span>
-              <% if (isHidden && isCreator) { %>
-                <span class="map-hidden-badge" style="font-size:0.7rem;color:var(--text-secondary);background:rgba(255,255,255,0.08);padding:0.1rem 0.4rem;border-radius:999px;">&#128274; Hidden</span>
-              <% } %>
-            </div>
+        </a>
+        <div class="map-index-card-body">
+          <h3><a href="/map/<%= node.id %>"><%= node.name %></a></h3>
+          <div class="maps-tree-meta">
+            <span class="map-type-badge map-type-<%= node.map_type %>"><%= MARKER_TYPES[node.map_type] ? MARKER_TYPES[node.map_type].icon : '&#127757;' %> <%= MARKER_TYPES[node.map_type] ? MARKER_TYPES[node.map_type].label : node.map_type %></span>
             <% if (hasChildren) { %>
-              <div class="map-index-card-children">
-                <% for (const child of root.children) { %>
-                  <a href="/map/<%= child.id %>"><%= child.name %></a>
-                <% } %>
-              </div>
+              <span class="text-muted" style="font-size: 0.8rem;"><%= node.children.length %> sub-map<%= node.children.length !== 1 ? 's' : '' %></span>
             <% } %>
-            <% if (isDM) { %>
-              <div class="map-index-card-actions">
-                <form action="/map/<%= root.id %>/delete" method="POST" class="inline-form">
-                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                  <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this map<%= hasChildren ? ' and all sub-maps' : '' %>?')">&times;</button>
-                </form>
-              </div>
+            <% if (isHidden && isCreator) { %>
+              <span class="map-hidden-badge" style="font-size:0.7rem;color:var(--text-secondary);background:rgba(255,255,255,0.08);padding:0.1rem 0.4rem;border-radius:999px;">&#128274; Hidden</span>
             <% } %>
           </div>
+          <% if (isDM) { %>
+            <div class="map-index-card-actions">
+              <% if (node.parent_id) { %>
+                <button type="button" class="btn btn-small btn-outline" data-unparent="<%= node.id %>" title="Detach from parent">Detach</button>
+              <% } %>
+              <form action="/map/<%= node.id %>/delete" method="POST" class="inline-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this map<%= hasChildren ? ' and all sub-maps' : '' %>?')">&times;</button>
+              </form>
+            </div>
+          <% } %>
         </div>
-      <% } %>
+      </div>
+    <% } %>
+    <% if (hasChildren) { %>
+      <div class="map-index-submaps" style="margin-left: <%= (level + 1) * 1.5 %>rem;">
+        <% for (const child of node.children) { %>
+          <% renderMapCard(child, level + 1); %>
+        <% } %>
+      </div>
+    <% } %>
+  <% } %>
+
+  <div class="map-card-list">
+    <% for (const root of tree) { %>
+      <div class="map-card-group">
+        <% renderMapCard(root, 0); %>
+      </div>
     <% } %>
   </div>
 <% } %>
@@ -139,6 +156,8 @@
       if (!draggedId) return;
       var targetId = el.getAttribute('data-map-id');
       if (targetId === draggedId) return;
+      var depth = parseInt(el.getAttribute('data-depth') || '0');
+      if (depth >= 2) return; // max 3 levels
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
       el.classList.add('drag-over');
@@ -159,6 +178,21 @@
       }).then(function(r) { return r.json(); }).then(function(d) {
         if (d.success) location.reload();
         else alert(d.error || 'Failed to reparent map');
+      });
+    });
+  });
+
+  // Unparent (detach) buttons
+  document.querySelectorAll('[data-unparent]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var mapId = btn.getAttribute('data-unparent');
+      if (!confirm('Detach this map from its parent?')) return;
+      fetch('/map/' + mapId + '/unparent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }
+      }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.success) location.reload();
+        else alert(d.error || 'Failed to detach map');
       });
     });
   });

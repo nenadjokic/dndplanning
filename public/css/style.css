@@ -10283,13 +10283,19 @@ body::after {
 /* ========================================
    Design Polish — Map Index Card Grid
    ======================================== */
-.map-card-grid {
+.map-card-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1rem;
 }
 
-.map-card-grid .map-index-card {
+.map-card-group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Root map cards — large thumbnail on top */
+.map-index-card {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
@@ -10297,14 +10303,23 @@ body::after {
   transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
 }
 
-.map-card-grid .map-index-card:hover {
+.map-index-card:hover {
   transform: translateY(-2px);
   border-color: var(--gold);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
+.map-index-card.dragging {
+  opacity: 0.5;
+}
+
+.map-index-card.drag-over {
+  border-color: var(--gold-bright);
+  box-shadow: 0 0 12px rgba(212, 168, 67, 0.4);
+}
+
 .map-index-card-thumb {
-  height: 140px;
+  height: 160px;
   overflow: hidden;
   background: var(--bg-input);
   display: flex;
@@ -10323,7 +10338,7 @@ body::after {
   height: 100%;
   border-radius: 0;
   border: none;
-  font-size: 2rem;
+  font-size: 2.5rem;
 }
 
 .map-index-card-body {
@@ -10344,26 +10359,34 @@ body::after {
   color: var(--gold-bright);
 }
 
-.map-index-card-children {
+/* Sub-map cards: smaller, indented tree style */
+.map-index-card-sub {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
+  flex-direction: row;
+  border-color: var(--border);
+}
+
+.map-index-card-sub:hover {
+  transform: none;
+}
+
+.map-index-card-sub .map-index-card-thumb {
+  width: 80px;
+  height: auto;
+  min-height: 50px;
+}
+
+.map-index-card-sub .map-index-card-body h3 {
+  font-size: 0.9rem;
+}
+
+.map-index-submaps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
   margin-top: 0.5rem;
-}
-
-.map-index-card-children a {
-  font-size: 0.75rem;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  background: rgba(212, 168, 67, 0.1);
-  border: 1px solid var(--border);
-  color: var(--gold);
-  text-decoration: none;
-}
-
-.map-index-card-children a:hover {
-  border-color: var(--gold-dim);
-  background: rgba(212, 168, 67, 0.2);
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--border);
 }
 
 .map-index-card-actions {
