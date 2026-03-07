@@ -772,6 +772,21 @@ for (const sql of [
   try { db.exec(sql); } catch (e) { /* already exists */ }
 }
 
+// Backup config (Google Drive auto-backup)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS backup_config (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    gdrive_enabled INTEGER NOT NULL DEFAULT 0,
+    gdrive_service_account TEXT,
+    gdrive_folder_id TEXT,
+    gdrive_schedule TEXT NOT NULL DEFAULT 'daily',
+    gdrive_last_backup TEXT,
+    gdrive_last_status TEXT,
+    local_keep_days INTEGER NOT NULL DEFAULT 7
+  );
+  INSERT OR IGNORE INTO backup_config (id) VALUES (1);
+`);
+
 // Fix existing usernames with spaces (migration)
 // Replace spaces and invalid characters with underscores
 (function migrateInvalidUsernames() {

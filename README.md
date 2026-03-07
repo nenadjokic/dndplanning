@@ -1,6 +1,6 @@
-# Quest Planner v2.1.5 — D&D Session Scheduler
+# Quest Planner v2.1.6 — D&D Session Scheduler
 
-> **Latest release:** v2.1.5 (2026-03-04)
+> **Latest release:** v2.1.6 (2026-03-07)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -727,25 +727,34 @@ dndplanning/
 
 ## Database Backup
 
-The SQLite database is located in the `data/` directory (or in the Docker volume).
+Quest Planner has a built-in backup system accessible from **Guild Settings**.
 
-### On the Server (without Docker)
+### Manual Backup & Restore (via UI)
+
+1. Go to **Guild Settings** (admin only)
+2. Scroll to **Database Backup & Restore**
+3. Click **Download Backup** to download the current database
+4. To restore, click **Restore from File** and upload a previous `.db` backup
+5. The server automatically creates a safety backup before restoring and restarts after
+
+### Google Drive Auto-Backup
+
+Automatic daily backups to Google Drive can be configured in Guild Settings:
+
+1. Create a [Google Cloud](https://console.cloud.google.com/) project
+2. Enable the **Google Drive API**
+3. Create a **Service Account** and download the JSON key
+4. Create a Google Drive folder and **share it** with the service account email
+5. In Guild Settings, upload the JSON key and enter the folder ID
+6. Enable auto-backup — runs daily at 3:00 AM, keeps last 7 backups on Drive
+
+### Manual Backup (CLI)
 
 ```bash
-# Manual backup
+# Without Docker
 cp /opt/dndplanning/data/dndplanning.db /backup/dndplanning-$(date +%Y%m%d).db
 
-# Cron job for daily backup (add with crontab -e)
-0 3 * * * cp /opt/dndplanning/data/dndplanning.db /backup/dndplanning-$(date +\%Y\%m\%d).db
-```
-
-### From a Docker Volume
-
-```bash
-# Find the volume path
-docker volume inspect quest-planner-data
-
-# Copy the database from the container
+# With Docker
 docker cp quest-planner:/app/data/dndplanning.db ./backup-dndplanning.db
 ```
 
@@ -856,6 +865,14 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v2.1.6 (2026-03-07) Database Backup & Google Drive Auto-Backup
+
+- **Database Backup & Restore** — Download/restore database from Guild Settings with safety backup before restore and automatic server restart
+- **Google Drive Auto-Backup** — Automatic daily backup to Google Drive via Service Account; configurable folder, retention, test connection, and manual "Backup Now"
+- **Local Backup Management** — View, download, and manage local backups with configurable retention period
+
+---
 
 ### v2.1.5 (2026-03-04) Handout Reveal Popup
 

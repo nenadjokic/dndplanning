@@ -102,4 +102,17 @@ setTimeout(checkReminders, 5000);
 
 console.log('[Scheduler] Auto-reminder scheduler started (every 15 min)');
 
+// --- Database Auto-Backup ---
+const { runScheduledBackup } = require('./backup');
+
+// Run daily at 3:00 AM
+cron.schedule('0 3 * * *', () => {
+  console.log('[Scheduler] Running daily database backup...');
+  runScheduledBackup().catch(err => {
+    console.error('[Scheduler] Backup failed:', err.message);
+  });
+});
+
+console.log('[Scheduler] Database auto-backup scheduled (daily at 3:00 AM)');
+
 module.exports = { checkReminders };

@@ -1,10 +1,42 @@
 const express = require('express');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 const db = require('../db/connection');
 const { requireLogin, requireAdmin, requireDM } = require('../middleware/auth');
 const messenger = require('../helpers/messenger');
+const backup = require('../helpers/backup');
 const router = express.Router();
+
+// Multer for database restore upload (temp storage)
+const uploadTemp = path.join(__dirname, '..', 'data', 'temp');
+if (!fs.existsSync(uploadTemp)) fs.mkdirSync(uploadTemp, { recursive: true });
+
+const restoreUpload = multer({
+  dest: uploadTemp,
+  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB max
+  fileFilter: (req, file, cb) => {
+    if (file.originalname.endsWith('.db') || file.originalname.endsWith('.sqlite') || file.originalname.endsWith('.sqlite3')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only .db, .sqlite, and .sqlite3 files are allowed'));
+    }
+  }
+});
+
+const jsonUpload = multer({
+  dest: uploadTemp,
+  limits: { fileSize: 1 * 1024 * 1024 }, // 1MB max for JSON
+  fileFilter: (req, file, cb) => {
+    if (file.originalname.endsWith('.json')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only .json files are allowed'));
+    }
+  }
+});
 
 router.get('/users', requireLogin, requireAdmin, (req, res) => {
   const users = db.prepare('SELECT id, username, role, created_at FROM users ORDER BY created_at').all();
@@ -438,6 +470,236 @@ router.post('/announcements/:id/delete', requireLogin, requireDM, (req, res) => 
   db.prepare('DELETE FROM announcements WHERE id = ?').run(req.params.id);
   req.flash('success', 'Announcement deleted.');
   res.redirect('/admin/announcements');
+});
+
+// --- Database Backup & Restore ---
+
+// Download database backup
+router.get('/backup/download', requireLogin, requireAdmin, async (req, res) => {
+  try {
+    const { backupName, backupPath } = await backup.createLocalBackupSync();
+    res.download(backupPath, backupName, (err) => {
+      if (err) console.error('[Backup] Download error:', err.message);
+      // Clean up the temp backup after download
+      try { fs.unlinkSync(backupPath); } catch (e) { /* ignore */ }
+    });
+  } catch (err) {
+    console.error('[Backup] Download failed:', err.message);
+    req.flash('error', 'Failed to create backup: ' + err.message);
+    res.redirect('/admin/users');
+  }
+});
+
+// Restore database from upload
+router.post('/backup/restore', requireLogin, requireAdmin, restoreUpload.single('database'), (req, res) => {
+  // Validate CSRF for multipart form
+  if (req._csrfDeferred) {
+    const token = req.body._csrf;
+    const sessionToken = req.session?.csrfToken;
+    if (!token || token !== sessionToken) {
+      if (req.file) try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
+      req.flash('error', 'Invalid CSRF token');
+      return res.redirect('/admin/users');
+    }
+  }
+
+  if (!req.file) {
+    req.flash('error', 'No file uploaded.');
+    return res.redirect('/admin/users');
+  }
+
+  const uploadedPath = req.file.path;
+
+  try {
+    // Validate the uploaded file is a valid SQLite database
+    const Database = require('better-sqlite3');
+    const testDb = new Database(uploadedPath, { readonly: true });
+    // Quick sanity check — try reading the users table
+    try {
+      testDb.prepare('SELECT COUNT(*) as count FROM users').get();
+    } catch (e) {
+      testDb.close();
+      fs.unlinkSync(uploadedPath);
+      req.flash('error', 'Invalid database file: missing users table.');
+      return res.redirect('/admin/users');
+    }
+    testDb.close();
+
+    // Create a safety backup of the current database before restoring
+    const safetyBackupName = `pre-restore-${Date.now()}.db`;
+    const safetyBackupPath = path.join(backup.backupDir, safetyBackupName);
+    fs.copyFileSync(backup.dbPath, safetyBackupPath);
+    console.log(`[Backup] Safety backup created: ${safetyBackupName}`);
+
+    // Close the current database connection and replace the file
+    // We need to restart the app after restore for changes to take effect
+    fs.copyFileSync(uploadedPath, backup.dbPath);
+    fs.unlinkSync(uploadedPath);
+
+    console.log('[Backup] Database restored from uploaded file. Restart required.');
+    req.flash('success', 'Database restored successfully! The server will restart to apply changes.');
+    res.redirect('/admin/users');
+
+    // Schedule a graceful restart after response is sent
+    setTimeout(() => {
+      console.log('[Backup] Restarting server after database restore...');
+      process.exit(0); // Docker/PM2 will auto-restart
+    }, 1500);
+  } catch (err) {
+    try { fs.unlinkSync(uploadedPath); } catch (e) { /* ignore */ }
+    console.error('[Backup] Restore failed:', err.message);
+    req.flash('error', 'Failed to restore database: ' + err.message);
+    res.redirect('/admin/users');
+  }
+});
+
+// List local backups
+router.get('/backup/list', requireLogin, requireAdmin, (req, res) => {
+  try {
+    if (!fs.existsSync(backup.backupDir)) {
+      return res.json([]);
+    }
+    const files = fs.readdirSync(backup.backupDir)
+      .filter(f => f.startsWith('dndplanning-') && f.endsWith('.db'))
+      .map(f => {
+        const stat = fs.statSync(path.join(backup.backupDir, f));
+        return {
+          name: f,
+          size: (stat.size / (1024 * 1024)).toFixed(2) + ' MB',
+          date: stat.mtime.toISOString()
+        };
+      })
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+    res.json(files);
+  } catch (err) {
+    res.json({ error: err.message });
+  }
+});
+
+// Download a specific local backup
+router.get('/backup/download/:name', requireLogin, requireAdmin, (req, res) => {
+  const name = req.params.name;
+  // Sanitize filename to prevent path traversal
+  if (name.includes('..') || name.includes('/') || name.includes('\\')) {
+    return res.status(400).json({ error: 'Invalid filename' });
+  }
+  const filePath = path.join(backup.backupDir, name);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'Backup not found' });
+  }
+  res.download(filePath, name);
+});
+
+// Trigger manual backup now
+router.post('/backup/now', requireLogin, requireAdmin, async (req, res) => {
+  try {
+    await backup.runScheduledBackup();
+    res.json({ success: true });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// --- Google Drive Backup Config ---
+
+router.get('/backup/gdrive/config', requireLogin, requireAdmin, (req, res) => {
+  try {
+    const config = db.prepare('SELECT * FROM backup_config WHERE id = 1').get();
+    if (!config) return res.json({});
+
+    res.json({
+      gdrive_enabled: config.gdrive_enabled ? true : false,
+      gdrive_folder_id: config.gdrive_folder_id || '',
+      gdrive_schedule: config.gdrive_schedule || 'daily',
+      gdrive_last_backup: config.gdrive_last_backup || null,
+      gdrive_last_status: config.gdrive_last_status || null,
+      gdrive_has_credentials: !!config.gdrive_service_account,
+      local_keep_days: config.local_keep_days || 7
+    });
+  } catch (err) {
+    res.json({ error: err.message });
+  }
+});
+
+router.post('/backup/gdrive', requireLogin, requireAdmin, (req, res) => {
+  const { gdrive_enabled, gdrive_folder_id, gdrive_schedule, local_keep_days } = req.body;
+
+  db.prepare(`
+    UPDATE backup_config SET
+      gdrive_enabled = ?,
+      gdrive_folder_id = ?,
+      gdrive_schedule = ?,
+      local_keep_days = ?
+    WHERE id = 1
+  `).run(
+    gdrive_enabled ? 1 : 0,
+    gdrive_folder_id || null,
+    gdrive_schedule || 'daily',
+    parseInt(local_keep_days) || 7
+  );
+
+  req.flash('success', 'Backup settings saved.');
+  res.redirect('/admin/users');
+});
+
+// Upload Google Drive service account JSON
+router.post('/backup/gdrive/credentials', requireLogin, requireAdmin, jsonUpload.single('service_account'), (req, res) => {
+  // Validate CSRF for multipart form
+  if (req._csrfDeferred) {
+    const token = req.body._csrf;
+    const sessionToken = req.session?.csrfToken;
+    if (!token || token !== sessionToken) {
+      if (req.file) try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
+      req.flash('error', 'Invalid CSRF token');
+      return res.redirect('/admin/users');
+    }
+  }
+
+  if (!req.file) {
+    req.flash('error', 'No file uploaded.');
+    return res.redirect('/admin/users');
+  }
+
+  try {
+    const content = fs.readFileSync(req.file.path, 'utf-8');
+    const parsed = JSON.parse(content);
+
+    if (!parsed.client_email || !parsed.private_key) {
+      throw new Error('Invalid service account JSON: missing client_email or private_key');
+    }
+
+    db.prepare('UPDATE backup_config SET gdrive_service_account = ? WHERE id = 1').run(content);
+    fs.unlinkSync(req.file.path);
+
+    req.flash('success', `Google Drive credentials saved. Service account: ${parsed.client_email}`);
+  } catch (err) {
+    try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
+    req.flash('error', 'Invalid service account file: ' + err.message);
+  }
+
+  res.redirect('/admin/users');
+});
+
+// Test Google Drive connection
+router.post('/backup/gdrive/test', requireLogin, requireAdmin, async (req, res) => {
+  try {
+    const config = db.prepare('SELECT * FROM backup_config WHERE id = 1').get();
+    if (!config || !config.gdrive_service_account) {
+      return res.json({ success: false, error: 'No service account credentials configured.' });
+    }
+
+    const result = await backup.testGoogleDriveConnection(config.gdrive_service_account, config.gdrive_folder_id);
+    res.json({ success: true, email: result.email });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// Remove Google Drive credentials
+router.post('/backup/gdrive/remove-credentials', requireLogin, requireAdmin, (req, res) => {
+  db.prepare("UPDATE backup_config SET gdrive_service_account = NULL, gdrive_enabled = 0 WHERE id = 1").run();
+  req.flash('success', 'Google Drive credentials removed.');
+  res.redirect('/admin/users');
 });
 
 module.exports = router;

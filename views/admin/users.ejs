@@ -216,6 +216,86 @@
   <div id="comms-test-result" class="comms-test-result"></div>
 </div>
 
+<div class="card" style="margin-top: 1.5rem;">
+  <h2>Database Backup & Restore</h2>
+  <p class="text-muted" style="margin-bottom: 1rem;">Download a backup of your database or restore from a previous backup.</p>
+
+  <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+    <a href="/admin/backup/download" class="btn btn-primary">Download Backup</a>
+    <button type="button" class="btn btn-outline" onclick="document.getElementById('restore-file').click()">Restore from File</button>
+    <form action="/admin/backup/restore" method="POST" enctype="multipart/form-data" id="restore-form" style="display: none;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="file" id="restore-file" name="database" accept=".db,.sqlite,.sqlite3" onchange="confirmRestore(this)">
+    </form>
+  </div>
+
+  <div id="backup-list-section">
+    <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">Local Backups</h3>
+    <div id="backup-list" style="font-size: 0.9rem; color: var(--text-secondary);">Loading...</div>
+  </div>
+</div>
+
+<div class="card comms-section" style="margin-top: 1.5rem;">
+  <h2>Google Drive Auto-Backup</h2>
+  <p class="text-muted" style="margin-bottom: 1rem;">Automatically backup your database to Google Drive daily.</p>
+
+  <div class="discord-setup-guide" style="margin-bottom: 1rem; padding: 1rem; background: rgba(66, 133, 244, 0.08); border: 1px solid rgba(66, 133, 244, 0.3); border-radius: var(--radius);">
+    <h3 style="color: #4285F4; margin-bottom: 0.5rem; font-size: 1rem;">Google Drive Setup Guide</h3>
+    <ol style="margin: 0; padding-left: 1.25rem; font-size: 0.88rem; color: var(--text-secondary); line-height: 1.7;">
+      <li>Go to <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer">console.cloud.google.com</a></li>
+      <li>Create a new project (or select existing one)</li>
+      <li>Go to <strong>APIs & Services</strong> &rarr; <strong>Library</strong> &rarr; search <strong>"Google Drive API"</strong> &rarr; <strong>Enable</strong></li>
+      <li>Go to <strong>APIs & Services</strong> &rarr; <strong>Credentials</strong></li>
+      <li>Click <strong>"+ CREATE CREDENTIALS"</strong> &rarr; <strong>"Service Account"</strong></li>
+      <li>Give it a name (e.g. "Quest Planner Backup") &rarr; <strong>Create</strong></li>
+      <li>Skip optional steps &rarr; <strong>Done</strong></li>
+      <li>Click on the newly created service account</li>
+      <li>Go to <strong>Keys</strong> tab &rarr; <strong>Add Key</strong> &rarr; <strong>Create new key</strong> &rarr; <strong>JSON</strong> &rarr; <strong>Create</strong></li>
+      <li>A JSON file will download &mdash; upload it below</li>
+      <li>In Google Drive, create a folder for backups (e.g. "Quest Planner Backups")</li>
+      <li><strong>Share that folder</strong> with the service account email (from the JSON file's <code>client_email</code>)</li>
+      <li>Copy the <strong>folder ID</strong> from the URL: <code>drive.google.com/drive/folders/<strong>FOLDER_ID</strong></code></li>
+    </ol>
+  </div>
+
+  <div id="gdrive-status" style="margin-bottom: 1rem;"></div>
+
+  <form action="/admin/backup/gdrive/credentials" method="POST" enctype="multipart/form-data" style="margin-bottom: 1rem;">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="form-group">
+      <label>Service Account JSON Key</label>
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <input type="file" name="service_account" accept=".json" class="form-input" style="flex: 1;">
+        <button type="submit" class="btn btn-outline btn-small">Upload</button>
+      </div>
+      <small class="form-hint">Upload the JSON key file from Google Cloud Console</small>
+    </div>
+  </form>
+
+  <form action="/admin/backup/gdrive" method="POST" id="gdrive-config-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="form-group">
+      <label><input type="checkbox" name="gdrive_enabled" value="1" id="gdrive_enabled"> Enable Google Drive Auto-Backup</label>
+    </div>
+    <div class="form-group">
+      <label for="gdrive_folder_id">Google Drive Folder ID</label>
+      <input type="text" name="gdrive_folder_id" id="gdrive_folder_id" class="form-input" placeholder="e.g. 1AbC_dEfGhIjKlMnOpQrStUv">
+      <small class="form-hint">From the Drive folder URL: drive.google.com/drive/folders/<strong>THIS_PART</strong></small>
+    </div>
+    <div class="form-group">
+      <label for="local_keep_days">Keep Local Backups (days)</label>
+      <input type="number" name="local_keep_days" id="local_keep_days" class="form-input" value="7" min="1" max="90" style="width: 100px;">
+    </div>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <button type="submit" class="btn btn-primary">Save</button>
+      <button type="button" class="btn btn-outline" onclick="testGDriveConnection()">Test Connection</button>
+      <button type="button" class="btn btn-outline" onclick="runBackupNow()">Backup Now</button>
+    </div>
+  </form>
+
+  <div id="gdrive-test-result" class="comms-test-result"></div>
+</div>
+
 <script>
 function toggleProviderFields() {
   var provider = document.getElementById('comms-provider').value;
@@ -406,10 +486,124 @@ function updateDndData() {
   };
 }
 
+function confirmRestore(input) {
+  if (!input.files || !input.files[0]) return;
+  var fileName = input.files[0].name;
+  var confirmed = confirm(
+    'WARNING: This will replace your entire database with the uploaded file!\n\n' +
+    'File: ' + fileName + '\n\n' +
+    'A safety backup of the current database will be created automatically.\n' +
+    'The server will restart after restore.\n\n' +
+    'Are you sure you want to proceed?'
+  );
+  if (confirmed) {
+    document.getElementById('restore-form').submit();
+  } else {
+    input.value = '';
+  }
+}
+
+function loadBackupList() {
+  fetch('/admin/backup/list')
+    .then(function(r) { return r.json(); })
+    .then(function(files) {
+      var listDiv = document.getElementById('backup-list');
+      if (!files || files.length === 0) {
+        listDiv.innerHTML = '<p style="color: var(--text-secondary);">No local backups found.</p>';
+        return;
+      }
+      var html = '<table style="width: 100%; font-size: 0.85rem;"><thead><tr><th style="text-align: left;">File</th><th style="text-align: left;">Size</th><th style="text-align: left;">Date</th><th></th></tr></thead><tbody>';
+      files.forEach(function(f) {
+        var date = new Date(f.date);
+        html += '<tr><td>' + f.name + '</td><td>' + f.size + '</td><td>' + date.toLocaleString() + '</td>';
+        html += '<td><a href="/admin/backup/download/' + encodeURIComponent(f.name) + '" class="btn btn-small btn-outline">Download</a></td></tr>';
+      });
+      html += '</tbody></table>';
+      listDiv.innerHTML = html;
+    })
+    .catch(function() {
+      document.getElementById('backup-list').innerHTML = '<p style="color: var(--error);">Failed to load backups.</p>';
+    });
+}
+
+function loadGDriveConfig() {
+  fetch('/admin/backup/gdrive/config')
+    .then(function(r) { return r.json(); })
+    .then(function(cfg) {
+      if (cfg.gdrive_enabled) document.getElementById('gdrive_enabled').checked = true;
+      if (cfg.gdrive_folder_id) document.getElementById('gdrive_folder_id').value = cfg.gdrive_folder_id;
+      if (cfg.local_keep_days) document.getElementById('local_keep_days').value = cfg.local_keep_days;
+
+      var statusDiv = document.getElementById('gdrive-status');
+      var parts = [];
+      if (cfg.gdrive_has_credentials) {
+        parts.push('<span style="color: var(--success);">&#x2705; Service account credentials loaded</span>');
+      } else {
+        parts.push('<span style="color: var(--warning);">&#x26A0;&#xFE0F; No service account credentials uploaded</span>');
+      }
+      if (cfg.gdrive_last_backup) {
+        var lastDate = new Date(cfg.gdrive_last_backup + 'Z');
+        var statusColor = cfg.gdrive_last_status === 'success' ? 'var(--success)' : 'var(--error)';
+        var statusText = cfg.gdrive_last_status === 'success' ? 'Success' : cfg.gdrive_last_status;
+        parts.push('<br><strong>Last backup:</strong> ' + lastDate.toLocaleString() + ' &mdash; <span style="color: ' + statusColor + ';">' + statusText + '</span>');
+      }
+      statusDiv.innerHTML = '<p style="font-size: 0.9rem;">' + parts.join('') + '</p>';
+    })
+    .catch(function() {});
+}
+
+function testGDriveConnection() {
+  var resultDiv = document.getElementById('gdrive-test-result');
+  resultDiv.textContent = 'Testing connection...';
+  resultDiv.className = 'comms-test-result';
+
+  fetch('/admin/backup/gdrive/test', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<%= csrfToken %>' } })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        resultDiv.textContent = 'Connection successful! Service account: ' + data.email;
+        resultDiv.className = 'comms-test-result comms-test-success';
+      } else {
+        resultDiv.textContent = 'Connection failed: ' + (data.error || 'Unknown error');
+        resultDiv.className = 'comms-test-result comms-test-error';
+      }
+    })
+    .catch(function() {
+      resultDiv.textContent = 'Connection test failed.';
+      resultDiv.className = 'comms-test-result comms-test-error';
+    });
+}
+
+function runBackupNow() {
+  var resultDiv = document.getElementById('gdrive-test-result');
+  resultDiv.textContent = 'Running backup...';
+  resultDiv.className = 'comms-test-result';
+
+  fetch('/admin/backup/now', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<%= csrfToken %>' } })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        resultDiv.textContent = 'Backup completed successfully!';
+        resultDiv.className = 'comms-test-result comms-test-success';
+        loadBackupList();
+        loadGDriveConfig();
+      } else {
+        resultDiv.textContent = 'Backup failed: ' + (data.error || 'Unknown error');
+        resultDiv.className = 'comms-test-result comms-test-error';
+      }
+    })
+    .catch(function() {
+      resultDiv.textContent = 'Backup request failed.';
+      resultDiv.className = 'comms-test-result comms-test-error';
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   loadCommsConfig();
   loadGoogleOAuthConfig();
   loadDndDataStatus();
+  loadBackupList();
+  loadGDriveConfig();
 });
 </script>
 

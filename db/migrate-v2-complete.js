@@ -873,8 +873,26 @@ try {
         completed INTEGER DEFAULT 0,
         sort_order INTEGER DEFAULT 0
       )`
+    },
+    {
+      name: 'backup_config',
+      sql: `CREATE TABLE backup_config (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        gdrive_enabled INTEGER NOT NULL DEFAULT 0,
+        gdrive_service_account TEXT,
+        gdrive_folder_id TEXT,
+        gdrive_schedule TEXT NOT NULL DEFAULT 'daily',
+        gdrive_last_backup TEXT,
+        gdrive_last_status TEXT,
+        local_keep_days INTEGER NOT NULL DEFAULT 7
+      )`
     }
   ];
+
+  // Insert default rows for single-row config tables
+  if (tableExists('backup_config')) {
+    try { db.exec("INSERT OR IGNORE INTO backup_config (id) VALUES (1)"); } catch (e) { /* ignore */ }
+  }
 
   for (const table of missingTables) {
     if (!tableExists(table.name)) {
