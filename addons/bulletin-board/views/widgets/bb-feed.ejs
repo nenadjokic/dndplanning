@@ -1,0 +1,32 @@
+<div class="page-header">
+  <h2>Bulletin Board</h2>
+  <a href="/board" class="btn btn-secondary">View All</a>
+</div>
+<% if (typeof posts !== 'undefined' && posts.length > 0) { %>
+<div class="bb-mini-feed">
+  <% for (const p of posts) { %>
+    <a href="/board/topic/<%= p.id %>" class="bb-mini-card card">
+      <div class="bb-mini-avatar">
+        <% if (p.avatar) { %>
+          <img src="/avatars/<%= p.avatar %>" alt="<%= p.username %>">
+        <% } else { %>
+          <div class="avatar-placeholder"><%= p.username.charAt(0).toUpperCase() %></div>
+        <% } %>
+      </div>
+      <div class="bb-mini-content">
+        <div class="bb-mini-header">
+          <strong><%= p.username %></strong>
+          <% if (p.category_name) { %>
+            <span class="bb-category-badge"><%= p.category_icon || '' %> <%= p.category_name %></span>
+          <% } %>
+          <span class="bb-mini-time"><%= formatDate(p.created_at, { showTime: false }) %></span>
+        </div>
+        <p class="bb-mini-text"><%= p.content ? p.content.substring(0, 120) + (p.content.length > 120 ? '...' : '') : '' %></p>
+        <% if (p.reply_count > 0) { %>
+          <span class="bb-mini-replies"><%= p.reply_count %> repl<%= p.reply_count === 1 ? 'y' : 'ies' %></span>
+        <% } %>
+      </div>
+    </a>
+  <% } %>
+</div>
+<% } %>

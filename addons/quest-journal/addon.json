@@ -1,0 +1,32 @@
+{
+  "id": "quest-journal",
+  "name": "Quest Journal",
+  "version": "1.0.0",
+  "author": "Quest Planner",
+  "type": "preinstalled",
+  "category": "Organization",
+  "description": "Session notes, images, attendance tracking, and Previously On recaps.",
+  "routes": "/journal",
+  "softDependencies": ["campaigns"],
+  "navItems": [
+    {
+      "label": "Quest Journal",
+      "href": "/journal",
+      "icon": "journal",
+      "group": "tools",
+      "sort": 30,
+      "roles": ["admin", "dm", "player"]
+    }
+  ],
+  "dashboardWidgets": [
+    {
+      "id": "previously-on",
+      "label": "Previously On",
+      "position": "top",
+      "sort": 0,
+      "template": "widgets/previously-on.ejs",
+      "roles": ["admin", "dm", "player"]
+    }
+  ],
+  "tables": ["session_notes", "session_images", "session_attendance"]
+}

@@ -82,6 +82,7 @@
   </div>
 </div>
 
+<% if (addonEnabled('google-auth')) { %>
 <div class="card comms-section" style="margin-top: 1.5rem;">
   <h2>Google Login</h2>
   <p class="text-muted" style="margin-bottom: 1rem;">Allow guild members to sign in with their Google account.</p>
@@ -127,7 +128,9 @@
     <button type="submit" class="btn btn-primary">Save</button>
   </form>
 </div>
+<% } %>
 
+<% if (addonEnabled('messenger')) { %>
 <div class="card comms-section" style="margin-top: 1.5rem;">
   <h2>Communications Center</h2>
   <p class="text-muted" style="margin-bottom: 1rem;">Configure a messaging provider to broadcast session events to your guild.</p>
@@ -215,22 +218,30 @@
 
   <div id="comms-test-result" class="comms-test-result"></div>
 </div>
+<% } %>
 
 <div class="card" style="margin-top: 1.5rem;">
-  <h2>Database Backup & Restore</h2>
-  <p class="text-muted" style="margin-bottom: 1rem;">Download a backup of your database or restore from a previous backup.</p>
+  <h2>Backup & Restore</h2>
+  <p class="text-muted" style="margin-bottom: 1rem;">Download or restore backups. <strong>Full Backup</strong> includes database + all images and files. <strong>DB Only</strong> includes just the database.</p>
 
-  <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
-    <a href="/admin/backup/download" class="btn btn-primary">Download Backup</a>
+  <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+    <a href="/admin/backup/download-full" class="btn btn-primary">Full Backup</a>
+    <a href="/admin/backup/download" class="btn btn-outline">DB Only</a>
     <button type="button" class="btn btn-outline" onclick="document.getElementById('restore-file').click()">Restore from File</button>
     <form action="/admin/backup/restore" method="POST" enctype="multipart/form-data" id="restore-form" style="display: none;">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <input type="file" id="restore-file" name="database" accept=".db,.sqlite,.sqlite3" onchange="confirmRestore(this)">
+      <input type="file" id="restore-file" name="database" accept=".db,.sqlite,.sqlite3,.qpb" onchange="confirmRestore(this)">
     </form>
   </div>
 
   <div id="backup-list-section">
-    <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">Local Backups</h3>
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+      <h3 style="font-size: 1rem; margin: 0;">Local Backups</h3>
+      <div style="display: flex; gap: 0.5rem;">
+        <button type="button" class="btn btn-small btn-primary" onclick="manualBackup('full')" id="full-backup-btn">Full Backup</button>
+        <button type="button" class="btn btn-small btn-outline" onclick="manualBackup('db')" id="manual-backup-btn">DB Only</button>
+      </div>
+    </div>
     <div id="backup-list" style="font-size: 0.9rem; color: var(--text-secondary);">Loading...</div>
   </div>
 </div>
@@ -463,14 +474,15 @@ function updateDndData() {
 function confirmRestore(input) {
   if (!input.files || !input.files[0]) return;
   var fileName = input.files[0].name;
-  var confirmed = confirm(
-    'WARNING: This will replace your entire database with the uploaded file!\n\n' +
-    'File: ' + fileName + '\n\n' +
-    'A safety backup of the current database will be created automatically.\n' +
-    'The server will restart after restore.\n\n' +
-    'Are you sure you want to proceed?'
-  );
-  if (confirmed) {
+  var isFullBackup = fileName.toLowerCase().endsWith('.qpb');
+  var msg = isFullBackup
+    ? 'WARNING: This will replace your ENTIRE database AND all data files (images, maps, uploads) with the contents of this backup archive!\n\n'
+    : 'WARNING: This will replace your database with the uploaded file!\n\n';
+  msg += 'File: ' + fileName + '\n\n';
+  msg += 'A safety backup will be created automatically before restoring.\n';
+  msg += 'The server will restart after restore.\n\n';
+  msg += 'Are you sure you want to proceed?';
+  if (confirm(msg)) {
     document.getElementById('restore-form').submit();
   } else {
     input.value = '';
@@ -486,11 +498,19 @@ function loadBackupList() {
         listDiv.innerHTML = '<p style="color: var(--text-secondary);">No local backups found.</p>';
         return;
       }
-      var html = '<table style="width: 100%; font-size: 0.85rem;"><thead><tr><th style="text-align: left;">File</th><th style="text-align: left;">Size</th><th style="text-align: left;">Date</th><th></th></tr></thead><tbody>';
+      var html = '<table style="width: 100%; font-size: 0.85rem;"><thead><tr><th style="text-align: left;">File</th><th style="text-align: left;">Type</th><th style="text-align: left;">Size</th><th style="text-align: left;">Date</th><th style="text-align: right;">Actions</th></tr></thead><tbody>';
       files.forEach(function(f) {
         var date = new Date(f.date);
-        html += '<tr><td>' + f.name + '</td><td>' + f.size + '</td><td>' + date.toLocaleString() + '</td>';
-        html += '<td><a href="/admin/backup/download/' + encodeURIComponent(f.name) + '" class="btn btn-small btn-outline">Download</a></td></tr>';
+        var encodedName = encodeURIComponent(f.name);
+        var isFull = f.name.endsWith('.qpb');
+        var typeBadge = isFull
+          ? '<span style="background: rgba(212, 168, 67, 0.15); color: var(--gold); border: 1px solid rgba(212, 168, 67, 0.3); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.75rem;">Full</span>'
+          : '<span style="background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.1); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.75rem;">DB</span>';
+        html += '<tr><td>' + f.name + '</td><td>' + typeBadge + '</td><td>' + f.size + '</td><td>' + date.toLocaleString() + '</td>';
+        html += '<td style="text-align: right; white-space: nowrap;">';
+        html += '<a href="/admin/backup/download/' + encodedName + '" class="btn btn-small btn-outline" style="margin-right: 0.25rem;">Download</a>';
+        html += '<button type="button" class="btn btn-small btn-danger" onclick="deleteBackup(\'' + encodedName + '\', this)">Delete</button>';
+        html += '</td></tr>';
       });
       html += '</tbody></table>';
       listDiv.innerHTML = html;
@@ -498,6 +518,61 @@ function loadBackupList() {
     .catch(function() {
       document.getElementById('backup-list').innerHTML = '<p style="color: var(--error);">Failed to load backups.</p>';
     });
+}
+
+function deleteBackup(encodedName, btn) {
+  var name = decodeURIComponent(encodedName);
+  if (!confirm('Delete backup "' + name + '"? This cannot be undone.')) return;
+  btn.disabled = true;
+  btn.textContent = '...';
+  fetch('/admin/backup/' + encodedName, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': '<%= csrfToken %>' }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.success) {
+      loadBackupList();
+    } else {
+      alert('Failed to delete: ' + (data.error || 'Unknown error'));
+      btn.disabled = false;
+      btn.textContent = 'Delete';
+    }
+  })
+  .catch(function() {
+    alert('Failed to delete backup.');
+    btn.disabled = false;
+    btn.textContent = 'Delete';
+  });
+}
+
+function manualBackup(type) {
+  type = type || 'db';
+  var btnId = type === 'full' ? 'full-backup-btn' : 'manual-backup-btn';
+  var btn = document.getElementById(btnId);
+  var origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = type === 'full' ? 'Creating archive...' : 'Creating...';
+  fetch('/admin/backup/now', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<%= csrfToken %>' },
+    body: JSON.stringify({ type: type })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    btn.disabled = false;
+    btn.textContent = origText;
+    if (data.success) {
+      loadBackupList();
+    } else {
+      alert('Backup failed: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(function() {
+    btn.disabled = false;
+    btn.textContent = origText;
+    alert('Backup request failed.');
+  });
 }
 
 function loadGDriveConfig() {
@@ -584,11 +659,11 @@ function runBackupNow() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  loadCommsConfig();
-  loadGoogleOAuthConfig();
+  if (document.getElementById('comms-provider')) loadCommsConfig();
+  if (document.getElementById('google_enabled')) loadGoogleOAuthConfig();
   loadDndDataStatus();
   loadBackupList();
-  loadGDriveConfig();
+  if (document.getElementById('gdrive_enabled')) loadGDriveConfig();
 });
 </script>
 

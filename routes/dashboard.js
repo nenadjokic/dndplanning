@@ -18,29 +18,41 @@ router.get('/', requireLogin, (req, res) => {
     db.prepare('UPDATE users SET last_seen_version = ? WHERE id = ?').run(appVersion, req.user.id);
   }
 
+  const addonManager = req.app.locals.addonManager;
+  const addonEnabled = (id) => addonManager ? addonManager.isEnabled(id) : false;
+
   const birthdayUsers = db.prepare(`
     SELECT username, avatar FROM users
     WHERE birthday IS NOT NULL
     AND substr(birthday, 6) = strftime('%m-%d', 'now', 'localtime')
   `).all();
 
-  // Latest completed session with recap for "Previously On..." banner
-  const latestRecap = db.prepare(`
-    SELECT s.id, s.title, s.summary, sl.date_time as confirmed_date, u.username as dm_name
-    FROM sessions s
-    JOIN users u ON s.created_by = u.id
-    LEFT JOIN slots sl ON s.confirmed_slot_id = sl.id
-    WHERE s.status = 'completed' AND s.summary IS NOT NULL AND s.summary != ''
-    ORDER BY COALESCE(sl.date_time, s.created_at) DESC LIMIT 1
-  `).get();
+  // Latest recap — only query if quest-journal addon is enabled
+  let latestRecap = null;
+  if (addonEnabled('quest-journal')) {
+    try {
+      latestRecap = db.prepare(`
+        SELECT s.id, s.title, s.summary, sl.date_time as confirmed_date, u.username as dm_name
+        FROM sessions s
+        JOIN users u ON s.created_by = u.id
+        LEFT JOIN slots sl ON s.confirmed_slot_id = sl.id
+        WHERE s.status = 'completed' AND s.summary IS NOT NULL AND s.summary != ''
+        ORDER BY COALESCE(sl.date_time, s.created_at) DESC LIMIT 1
+      `).get() || null;
+    } catch (e) { /* ignore */ }
+  }
+
+  // Campaign JOIN (only if campaigns addon is enabled)
+  const campJoin = addonEnabled('campaigns') ? 'LEFT JOIN campaigns camp ON s.campaign_id = camp.id' : '';
+  const campSelect = addonEnabled('campaigns') ? ', camp.name as campaign_name, camp.color as campaign_color' : '';
 
   if (req.user.role === 'dm' || req.user.role === 'admin') {
     const sessions = db.prepare(`
-      SELECT s.*, sl.date_time as confirmed_date, sl.label as confirmed_label,
-        camp.name as campaign_name, camp.color as campaign_color
+      SELECT s.*, sl.date_time as confirmed_date, sl.label as confirmed_label
+        ${campSelect}
       FROM sessions s
       LEFT JOIN slots sl ON s.confirmed_slot_id = sl.id
-      LEFT JOIN campaigns camp ON s.campaign_id = camp.id
+      ${campJoin}
       ORDER BY
         CASE s.status
           WHEN 'open' THEN 0
@@ -51,27 +63,6 @@ router.get('/', requireLogin, (req, res) => {
         CASE WHEN s.status IN ('confirmed', 'completed') THEN sl.date_time END DESC,
         s.created_at DESC
     `).all();
-
-    // Latest board posts for BB mini feed
-    const boardPosts = db.prepare(`
-      SELECT p.*, u.username, u.avatar, bc.name as category_name, bc.icon as category_icon,
-        (SELECT COUNT(*) FROM replies r WHERE r.post_id = p.id) as reply_count
-      FROM posts p
-      JOIN users u ON p.user_id = u.id
-      LEFT JOIN board_categories bc ON p.category_id = bc.id
-      WHERE p.session_id IS NULL
-      ORDER BY p.created_at DESC
-      LIMIT 5
-    `).all();
-
-    // Active quests for dashboard widget
-    let activeQuests = [];
-    try {
-      activeQuests = db.prepare(`SELECT id, title, status, difficulty FROM quests
-        WHERE status IN ('available', 'active')
-        ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END, created_at DESC
-        LIMIT 3`).all();
-    } catch (e) { /* table may not exist yet */ }
 
     // Vote progress per open session
     const totalPlayers = db.prepare(`SELECT COUNT(*) as cnt FROM users WHERE role != 'admin' OR role = 'admin'`).get().cnt;
@@ -87,30 +78,21 @@ router.get('/', requireLogin, (req, res) => {
       voteProgress[sid] = { voted: voted.cnt, total: totalPlayers };
     }
 
-    // Campaigns
-    let campaigns = [];
-    try {
-      campaigns = db.prepare(`
-        SELECT c.*,
-          (SELECT COUNT(*) FROM sessions s WHERE s.campaign_id = c.id) as session_count,
-          (SELECT COUNT(*) FROM maps m WHERE m.campaign_id = c.id) as map_count,
-          (SELECT COUNT(*) FROM quests q WHERE q.campaign_id = c.id) as quest_count
-        FROM campaigns c ORDER BY c.created_at DESC
-      `).all();
-    } catch (e) { /* table may not exist yet */ }
+    // Get dashboard widgets from addons
+    const dashboardWidgets = addonManager ? addonManager.getDashboardWidgets(req.user, true) : [];
 
-    return res.render('dm/dashboard', { sessions, firstLogin, birthdayUsers, showWhatsNew, boardPosts, latestRecap, activeQuests, voteProgress, campaigns });
+    return res.render('dm/dashboard', { sessions, firstLogin, birthdayUsers, showWhatsNew, latestRecap, voteProgress, dashboardWidgets });
   }
 
   // Player dashboard
   const sessions = db.prepare(`
     SELECT s.*, u.username as dm_name,
-      sl.date_time as confirmed_date, sl.label as confirmed_label,
-      camp.name as campaign_name, camp.color as campaign_color
+      sl.date_time as confirmed_date, sl.label as confirmed_label
+      ${campSelect}
     FROM sessions s
     JOIN users u ON s.created_by = u.id
     LEFT JOIN slots sl ON s.confirmed_slot_id = sl.id
-    LEFT JOIN campaigns camp ON s.campaign_id = camp.id
+    ${campJoin}
     ORDER BY
       CASE s.status
         WHEN 'open' THEN 0
@@ -130,40 +112,10 @@ router.get('/', requireLogin, (req, res) => {
     WHERE v.user_id = ?
   `).all(req.user.id).map(r => r.session_id);
 
-  // Latest board posts for BB mini feed
-  const boardPosts = db.prepare(`
-    SELECT p.*, u.username, u.avatar, bc.name as category_name, bc.icon as category_icon,
-      (SELECT COUNT(*) FROM replies r WHERE r.post_id = p.id) as reply_count
-    FROM posts p
-    JOIN users u ON p.user_id = u.id
-    LEFT JOIN board_categories bc ON p.category_id = bc.id
-    WHERE p.session_id IS NULL
-    ORDER BY p.created_at DESC
-    LIMIT 5
-  `).all();
+  // Get dashboard widgets from addons
+  const dashboardWidgets = addonManager ? addonManager.getDashboardWidgets(req.user, false) : [];
 
-  // Active quests for dashboard widget
-  let activeQuests = [];
-  try {
-    activeQuests = db.prepare(`SELECT id, title, status, difficulty FROM quests
-      WHERE revealed = 1 AND status IN ('available', 'active')
-      ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END, created_at DESC
-      LIMIT 3`).all();
-  } catch (e) { /* table may not exist yet */ }
-
-  // Campaigns
-  let campaigns = [];
-  try {
-    campaigns = db.prepare(`
-      SELECT c.*,
-        (SELECT COUNT(*) FROM sessions s WHERE s.campaign_id = c.id) as session_count,
-        (SELECT COUNT(*) FROM maps m WHERE m.campaign_id = c.id) as map_count,
-        (SELECT COUNT(*) FROM quests q WHERE q.campaign_id = c.id) as quest_count
-      FROM campaigns c ORDER BY c.created_at DESC
-    `).all();
-  } catch (e) { /* table may not exist yet */ }
-
-  res.render('player/dashboard', { sessions, votedSessionIds, firstLogin, birthdayUsers, showWhatsNew, boardPosts, latestRecap, activeQuests, campaigns });
+  res.render('player/dashboard', { sessions, votedSessionIds, firstLogin, birthdayUsers, showWhatsNew, latestRecap, dashboardWidgets });
 });
 
 module.exports = router;

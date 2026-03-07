@@ -1,0 +1,25 @@
+{
+  "id": "announcements",
+  "name": "Announcements",
+  "version": "1.0.0",
+  "author": "Quest Planner",
+  "type": "preinstalled",
+  "category": "Social",
+  "description": "DM announcements banner with scheduling and expiration support.",
+  "minAppVersion": "3.0.0",
+  "routes": "/admin/announcements",
+  "navItems": [
+    {
+      "label": "Announcements",
+      "href": "/admin/announcements",
+      "icon": "megaphone",
+      "group": "dmzone",
+      "sort": 40,
+      "roles": ["admin", "dm"]
+    }
+  ],
+  "css": [],
+  "js": [],
+  "dependencies": [],
+  "softDependencies": []
+}

@@ -1,0 +1,31 @@
+{
+  "id": "campaigns",
+  "name": "Campaigns",
+  "version": "1.0.0",
+  "author": "Quest Planner",
+  "type": "preinstalled",
+  "category": "Organization",
+  "description": "Organize sessions, maps, quests, and more into separate campaigns.",
+  "routes": "/campaigns",
+  "navItems": [
+    {
+      "label": "Campaigns",
+      "href": "/campaigns",
+      "icon": "book",
+      "group": "main",
+      "sort": 40,
+      "roles": ["admin", "dm", "player"]
+    }
+  ],
+  "dashboardWidgets": [
+    {
+      "id": "campaigns-grid",
+      "label": "Campaigns",
+      "position": "middle",
+      "sort": 10,
+      "template": "widgets/campaigns-grid.ejs",
+      "roles": ["admin", "dm", "player"]
+    }
+  ],
+  "tables": ["campaigns", "campaign_arcs"]
+}

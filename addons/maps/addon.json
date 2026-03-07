@@ -1,0 +1,28 @@
+{
+  "id": "maps",
+  "name": "Interactive Maps",
+  "version": "1.0.0",
+  "author": "Quest Planner",
+  "type": "preinstalled",
+  "category": "Maps & Exploration",
+  "description": "Full-featured map system with tokens, NPCs, fog of war, combat tracking, and loot chests.",
+  "routes": "/map",
+  "softDependencies": ["campaigns"],
+  "navItems": [
+    {
+      "label": "Maps",
+      "href": "/map",
+      "icon": "globe",
+      "group": "tools",
+      "sort": 10,
+      "roles": ["admin", "dm", "player"]
+    }
+  ],
+  "tables": [
+    "maps", "map_config", "map_locations", "map_tokens",
+    "map_npc_tokens", "map_links", "npc_tokens", "npc_categories",
+    "npc_token_categories", "npc_token_conditions", "token_conditions",
+    "npc_token_assignments", "combat_encounters", "combat_participants",
+    "map_loot_chests", "chest_items"
+  ]
+}

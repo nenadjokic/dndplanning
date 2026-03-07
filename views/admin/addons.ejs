@@ -1,0 +1,464 @@
+<%- include('../partials/head', { pageTitle: 'Addon Management' }) %>
+
+<div class="page-header">
+  <h1>Addon Management</h1>
+  <a href="/admin/users" class="btn btn-outline">Back to Guild Settings</a>
+</div>
+
+<% if (typeof flash_success !== 'undefined' && flash_success) { %>
+  <div class="alert alert-success"><%= flash_success %></div>
+<% } %>
+<% if (typeof flash_error !== 'undefined' && flash_error) { %>
+  <div class="alert alert-error"><%= flash_error %></div>
+<% } %>
+
+<div class="addons-tabs">
+  <button type="button" class="addons-tab active" data-tab="installed">Installed (<%= addons.length %>)</button>
+  <button type="button" class="addons-tab" data-tab="store">Browse Store</button>
+  <button type="button" class="addons-tab" data-tab="upload">Upload</button>
+</div>
+
+<!-- Installed Tab -->
+<div class="addons-tab-content active" id="tab-installed">
+  <p class="form-hint" style="margin-bottom: 1rem;">
+    Enable or disable addons to customize your Quest Planner.
+  </p>
+
+  <form method="POST" action="/admin/addons/save" id="addons-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <div class="addon-grid">
+      <% for (const addon of addons) { %>
+        <div class="addon-card card <%= addon.enabled ? 'addon-enabled' : 'addon-disabled' %>">
+          <div class="addon-card-header">
+            <div class="addon-icon">
+              <% if (typeof navIcons !== 'undefined' && navIcons[addon.icon]) { %>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><%- navIcons[addon.icon] %></svg>
+              <% } else { %>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 1 0-3.214 3.214c.446.166.855.497.925.968a.979.979 0 0 1-.276.837l-1.61 1.61a2.404 2.404 0 0 1-1.705.707 2.402 2.402 0 0 1-1.704-.706l-1.568-1.568a1.026 1.026 0 0 0-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 1 1-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 0 0-.289-.877l-1.568-1.568A2.402 2.402 0 0 1 1.998 12c0-.617.236-1.234.706-1.704L4.23 8.77c.24-.24.581-.353.917-.303.515.077.877.528 1.073 1.01a2.5 2.5 0 1 0 3.259-3.259c-.482-.196-.933-.558-1.01-1.073-.05-.336.062-.676.303-.917l1.525-1.525A2.402 2.402 0 0 1 12 2c.617 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.968a2.5 2.5 0 1 1 3.237 3.237c-.464.18-.894.527-.967 1.02Z"></path></svg>
+              <% } %>
+            </div>
+            <div class="addon-info">
+              <h3><%= addon.name %>
+                <% if (addon.type === 'preinstalled') { %>
+                  <span class="addon-badge addon-badge-core">Core</span>
+                <% } else { %>
+                  <span class="addon-badge addon-badge-community">Community</span>
+                <% } %>
+              </h3>
+              <span class="addon-version">v<%= addon.version %></span>
+              <span class="addon-category"><%= addon.category %></span>
+            </div>
+            <label class="addon-toggle">
+              <input type="checkbox" name="enabled[]" value="<%= addon.id %>" <%= addon.enabled ? 'checked' : '' %>>
+              <span class="addon-toggle-slider"></span>
+            </label>
+          </div>
+          <p class="addon-description"><%= addon.description %></p>
+          <div class="addon-card-footer">
+            <span class="addon-author">by <%= addon.author %></span>
+            <% if (addon.type === 'community') { %>
+              <button type="button" class="btn btn-small btn-danger addon-uninstall-btn" data-addon="<%= addon.id %>" data-name="<%= addon.name %>">Uninstall</button>
+            <% } %>
+          </div>
+        </div>
+      <% } %>
+    </div>
+
+    <div class="addons-save-bar">
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+      <span class="form-hint">Changes apply immediately.</span>
+    </div>
+  </form>
+</div>
+
+<!-- Browse Store Tab -->
+<div class="addons-tab-content" id="tab-store" style="display:none;">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; gap: 1rem; flex-wrap: wrap;">
+    <p class="form-hint" style="margin: 0;">
+      Browse community addons from the official registry and your custom repositories.
+    </p>
+    <button type="button" class="btn btn-small btn-outline" onclick="toggleRepoManager()">Manage Repositories</button>
+  </div>
+
+  <!-- Repository Manager (hidden by default) -->
+  <div id="repo-manager" class="card" style="display: none; margin-bottom: 1.5rem; padding: 1rem;">
+    <h3 style="margin: 0 0 0.75rem 0; font-size: 0.95rem;">Custom Repositories</h3>
+    <p class="form-hint" style="margin-bottom: 0.75rem;">Add GitHub repositories that host addon registries. Each repo needs a <code>registry.json</code> file in its root.</p>
+    <div id="repo-list" style="margin-bottom: 1rem; font-size: 0.85rem;">Loading...</div>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: flex-end;">
+      <div style="flex: 1; min-width: 120px;">
+        <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">Name</label>
+        <input type="text" id="repo-name" class="form-input" placeholder="My Addons" style="font-size: 0.85rem; padding: 0.4rem 0.6rem;">
+      </div>
+      <div style="flex: 2; min-width: 200px;">
+        <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">GitHub URL</label>
+        <input type="text" id="repo-url" class="form-input" placeholder="https://github.com/username/my-qp-addons" style="font-size: 0.85rem; padding: 0.4rem 0.6rem;">
+      </div>
+      <button type="button" class="btn btn-small btn-primary" onclick="addRepo()">Add</button>
+    </div>
+  </div>
+
+  <div id="store-errors" style="display: none; margin-bottom: 1rem;"></div>
+  <div id="store-loading" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+    Loading addon store...
+  </div>
+  <div id="store-grid" class="addon-grid" style="display: none;"></div>
+  <div id="store-error" style="display: none; text-align: center; padding: 2rem;">
+    <p style="color: var(--text-secondary); margin-bottom: 1rem;">Could not load addon store.</p>
+    <button type="button" class="btn btn-outline" onclick="loadStore()">Retry</button>
+  </div>
+</div>
+
+<!-- Upload Tab -->
+<div class="addons-tab-content" id="tab-upload" style="display:none;">
+  <div class="card" style="padding: 2rem; text-align: center;">
+    <h3>Upload Addon Package</h3>
+    <p class="form-hint">Upload a .qpa or .zip file to install a community addon.</p>
+    <form method="POST" action="/admin/addons/upload" enctype="multipart/form-data" style="margin-top: 1rem;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="upload-dropzone" id="addon-dropzone">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <p>Drag & drop .qpa file here or click to browse</p>
+        <input type="file" name="addon_package" accept=".qpa,.zip" style="display:none" id="addon-file-input">
+      </div>
+      <button type="submit" class="btn btn-primary" style="margin-top: 1rem;" id="addon-upload-btn" disabled>Install Addon</button>
+    </form>
+  </div>
+</div>
+
+<!-- Uninstall Confirmation Modal -->
+<div class="modal-overlay" id="uninstall-modal" style="display:none;">
+  <div class="modal-content">
+    <h3>Uninstall Addon</h3>
+    <p>Are you sure you want to uninstall <strong id="uninstall-addon-name"></strong>? This will remove all addon data and files.</p>
+    <form method="POST" action="" id="uninstall-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem;">
+        <button type="button" class="btn btn-outline" onclick="document.getElementById('uninstall-modal').style.display='none'">Cancel</button>
+        <button type="submit" class="btn btn-danger">Uninstall</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+.addons-tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 1.5rem; }
+.addons-tab { background: none; border: none; color: var(--text-secondary); padding: 0.75rem 1.25rem; cursor: pointer; font-size: 0.9rem; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color 0.2s, border-color 0.2s; }
+.addons-tab:hover { color: var(--text-primary); }
+.addons-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+.addon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
+
+.addon-card { padding: 1rem; transition: opacity 0.2s; }
+.addon-card.addon-disabled { opacity: 0.6; }
+.addon-card-header { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.5rem; }
+.addon-icon { flex-shrink: 0; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: var(--surface-elevated); border-radius: 8px; color: var(--gold); }
+.addon-info { flex: 1; min-width: 0; }
+.addon-info h3 { margin: 0; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.addon-version { font-size: 0.7rem; color: var(--text-secondary); }
+.addon-category { font-size: 0.7rem; color: var(--text-secondary); margin-left: 0.5rem; background: var(--surface-elevated); padding: 0.1rem 0.4rem; border-radius: 4px; }
+.addon-description { font-size: 0.8rem; color: var(--text-secondary); margin: 0; line-height: 1.4; }
+.addon-card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
+.addon-author { font-size: 0.7rem; color: var(--text-secondary); }
+
+.addon-badge { font-size: 0.6rem; padding: 0.1rem 0.4rem; border-radius: 4px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+.addon-badge-core { background: rgba(212, 168, 67, 0.15); color: var(--gold); border: 1px solid rgba(212, 168, 67, 0.3); }
+.addon-badge-community { background: var(--accent-blue, #4a9eff); color: white; }
+.addon-badge-installed { background: rgba(76, 175, 80, 0.15); color: var(--success); border: 1px solid rgba(76, 175, 80, 0.3); }
+.addon-source { font-size: 0.65rem; color: var(--text-secondary); background: var(--surface-elevated); padding: 0.1rem 0.35rem; border-radius: 3px; margin-left: 0.25rem; }
+
+.addon-toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+.addon-toggle input { opacity: 0; width: 0; height: 0; }
+.addon-toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: var(--surface-elevated); transition: 0.3s; border-radius: 24px; border: 1px solid var(--border); }
+.addon-toggle-slider:before { content: ''; position: absolute; height: 18px; width: 18px; left: 2px; bottom: 2px; background: var(--text-secondary); transition: 0.3s; border-radius: 50%; }
+.addon-toggle input:checked + .addon-toggle-slider { background: rgba(212, 168, 67, 0.25); border-color: var(--gold); }
+.addon-toggle input:checked + .addon-toggle-slider:before { transform: translateX(20px); background: var(--gold); }
+
+.addons-save-bar { display: flex; align-items: center; gap: 1rem; margin-top: 1.5rem; padding: 1rem; background: var(--surface); border-radius: 8px; border: 1px solid var(--border); }
+
+.upload-dropzone { border: 2px dashed var(--border); border-radius: 8px; padding: 2rem; cursor: pointer; transition: border-color 0.2s; }
+.upload-dropzone:hover { border-color: var(--gold); }
+.upload-dropzone p { margin: 0.5rem 0 0; color: var(--text-secondary); font-size: 0.85rem; }
+
+.store-empty { text-align: center; padding: 3rem 1rem; color: var(--text-secondary); }
+</style>
+
+<script>
+// Tab switching
+document.querySelectorAll('.addons-tab').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.addons-tab').forEach(function(t) { t.classList.remove('active'); });
+    document.querySelectorAll('.addons-tab-content').forEach(function(c) { c.style.display = 'none'; });
+    tab.classList.add('active');
+    var tabId = tab.dataset.tab;
+    document.getElementById('tab-' + tabId).style.display = '';
+    if (tabId === 'store' && !window._storeLoaded) loadStore();
+  });
+});
+
+// Toggle card visual state
+document.querySelectorAll('.addon-toggle input').forEach(function(cb) {
+  cb.addEventListener('change', function() {
+    var card = this.closest('.addon-card');
+    card.classList.toggle('addon-enabled', this.checked);
+    card.classList.toggle('addon-disabled', !this.checked);
+  });
+});
+
+// Uninstall button
+document.querySelectorAll('.addon-uninstall-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.getElementById('uninstall-addon-name').textContent = this.dataset.name;
+    document.getElementById('uninstall-form').action = '/admin/addons/' + this.dataset.addon + '/uninstall';
+    document.getElementById('uninstall-modal').style.display = '';
+  });
+});
+
+// Upload dropzone
+var dropzone = document.getElementById('addon-dropzone');
+var fileInput = document.getElementById('addon-file-input');
+var uploadBtn = document.getElementById('addon-upload-btn');
+if (dropzone) {
+  dropzone.addEventListener('click', function() { fileInput.click(); });
+  dropzone.addEventListener('dragover', function(e) { e.preventDefault(); dropzone.style.borderColor = 'var(--gold)'; });
+  dropzone.addEventListener('dragleave', function() { dropzone.style.borderColor = ''; });
+  dropzone.addEventListener('drop', function(e) {
+    e.preventDefault();
+    dropzone.style.borderColor = '';
+    if (e.dataTransfer.files.length) {
+      fileInput.files = e.dataTransfer.files;
+      dropzone.querySelector('p').textContent = e.dataTransfer.files[0].name;
+      uploadBtn.disabled = false;
+    }
+  });
+  fileInput.addEventListener('change', function() {
+    if (fileInput.files.length) {
+      dropzone.querySelector('p').textContent = fileInput.files[0].name;
+      uploadBtn.disabled = false;
+    }
+  });
+}
+
+// Browse Store
+function loadStore() {
+  var loading = document.getElementById('store-loading');
+  var grid = document.getElementById('store-grid');
+  var error = document.getElementById('store-error');
+  var errorsDiv = document.getElementById('store-errors');
+  loading.style.display = '';
+  grid.style.display = 'none';
+  error.style.display = 'none';
+  errorsDiv.style.display = 'none';
+
+  fetch('/admin/addons/registry')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      loading.style.display = 'none';
+
+      // Show fetch errors for specific repos
+      if (data.errors && data.errors.length > 0) {
+        var errHtml = data.errors.map(function(e) {
+          return '<span style="font-size:0.8rem;">Could not fetch from <strong>' + e.source + '</strong>: ' + e.error + '</span>';
+        }).join('<br>');
+        errorsDiv.innerHTML = errHtml;
+        errorsDiv.style.display = '';
+        errorsDiv.style.cssText = 'display:block; margin-bottom:1rem; padding:0.6rem 1rem; background:rgba(255,193,7,0.08); border:1px solid rgba(255,193,7,0.3); border-radius:var(--radius); color:var(--text-secondary);';
+      }
+
+      if (!data.addons || data.addons.length === 0) {
+        grid.style.display = '';
+        grid.innerHTML = '<div class="store-empty"><p>No community addons available yet.</p><p style="font-size:0.85rem;margin-top:0.5rem;">Want to create one? Check the <a href="https://github.com/nenadjokic/questplanner-addons" target="_blank" rel="noopener noreferrer" style="color:var(--gold);">addon development guide</a>.</p></div>';
+        window._storeLoaded = true;
+        return;
+      }
+
+      // Filter to only show community addons (not preinstalled)
+      var communityAddons = data.addons.filter(function(a) { return a.type !== 'preinstalled'; });
+      if (communityAddons.length === 0) {
+        grid.style.display = '';
+        grid.innerHTML = '<div class="store-empty"><p>No community addons available yet.</p><p style="font-size:0.85rem;margin-top:0.5rem;">All ' + data.addons.length + ' core addons are already included with Quest Planner.</p><p style="font-size:0.85rem;margin-top:0.5rem;">Want to create an addon? Check the <a href="https://github.com/nenadjokic/questplanner-addons" target="_blank" rel="noopener noreferrer" style="color:var(--gold);">addon development guide</a>.</p></div>';
+        window._storeLoaded = true;
+        return;
+      }
+
+      var html = '';
+      communityAddons.forEach(function(addon) {
+        var statusBadge = addon.installed
+          ? '<span class="addon-badge addon-badge-installed">Installed</span>'
+          : '';
+        var sourceBadge = addon._source && addon._source !== 'Official'
+          ? '<span class="addon-source">' + addon._source + '</span>'
+          : '';
+        var actionBtns = '';
+        var safeId = (addon.id || '').replace(/'/g, "\\'");
+        var safeUrl = (addon.downloadUrl || '').replace(/'/g, "\\'");
+
+        if (!addon.installed && addon.downloadUrl) {
+          // Not installed — show Install + Download
+          actionBtns += '<button type="button" class="btn btn-small btn-primary" onclick="installAddon(\'' + safeId + '\', \'' + safeUrl + '\', this)">Install</button>';
+          actionBtns += ' <a href="' + addon.downloadUrl + '" class="btn btn-small btn-outline" download title="Download .qpa file">Download</a>';
+        } else if (addon.installed && addon.installedVersion && addon.version !== addon.installedVersion) {
+          // Installed but update available
+          actionBtns += '<span style="font-size:0.7rem;color:var(--warning);margin-right:0.5rem;">Update: v' + addon.version + '</span>';
+          actionBtns += '<button type="button" class="btn btn-small btn-primary" onclick="installAddon(\'' + safeId + '\', \'' + safeUrl + '\', this)">Update</button>';
+          actionBtns += ' <button type="button" class="btn btn-small btn-danger" onclick="uninstallStoreAddon(\'' + safeId + '\', this)">Uninstall</button>';
+        } else if (addon.installed) {
+          // Installed and up to date
+          actionBtns += '<button type="button" class="btn btn-small btn-danger" onclick="uninstallStoreAddon(\'' + safeId + '\', this)">Uninstall</button>';
+        }
+
+        html += '<div class="addon-card card" id="store-card-' + addon.id + '">';
+        html += '<div class="addon-card-header">';
+        html += '<div class="addon-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 1 0-3.214 3.214c.446.166.855.497.925.968a.979.979 0 0 1-.276.837l-1.61 1.61a2.404 2.404 0 0 1-1.705.707 2.402 2.402 0 0 1-1.704-.706l-1.568-1.568a1.026 1.026 0 0 0-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 1 1-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 0 0-.289-.877l-1.568-1.568A2.402 2.402 0 0 1 1.998 12c0-.617.236-1.234.706-1.704L4.23 8.77c.24-.24.581-.353.917-.303.515.077.877.528 1.073 1.01a2.5 2.5 0 1 0 3.259-3.259c-.482-.196-.933-.558-1.01-1.073-.05-.336.062-.676.303-.917l1.525-1.525A2.402 2.402 0 0 1 12 2c.617 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.968a2.5 2.5 0 1 1 3.237 3.237c-.464.18-.894.527-.967 1.02Z"></path></svg></div>';
+        html += '<div class="addon-info"><h3>' + addon.name + ' ' + statusBadge + sourceBadge + '</h3>';
+        html += '<span class="addon-version">v' + addon.version + '</span>';
+        html += '<span class="addon-category">' + addon.category + '</span></div>';
+        html += '</div>';
+        html += '<p class="addon-description">' + addon.description + '</p>';
+        html += '<div class="addon-card-footer"><span class="addon-author">by ' + addon.author + '</span><div style="display:flex;gap:0.35rem;align-items:center;">' + actionBtns + '</div></div>';
+        html += '</div>';
+      });
+
+      grid.innerHTML = html;
+      grid.style.display = '';
+      window._storeLoaded = true;
+    })
+    .catch(function() {
+      loading.style.display = 'none';
+      error.style.display = '';
+    });
+}
+
+// Repository management
+function toggleRepoManager() {
+  var mgr = document.getElementById('repo-manager');
+  if (mgr.style.display === 'none') {
+    mgr.style.display = '';
+    loadRepos();
+  } else {
+    mgr.style.display = 'none';
+  }
+}
+
+function loadRepos() {
+  fetch('/admin/addons/repos')
+    .then(function(r) { return r.json(); })
+    .then(function(repos) {
+      var el = document.getElementById('repo-list');
+      if (!repos || repos.length === 0) {
+        el.innerHTML = '<p style="color:var(--text-secondary);margin:0;">No custom repositories added. Only the official Quest Planner registry is active.</p>';
+        return;
+      }
+      var html = '<table style="width:100%;"><thead><tr><th style="text-align:left;">Name</th><th style="text-align:left;">URL</th><th style="text-align:right;">Actions</th></tr></thead><tbody>';
+      repos.forEach(function(r) {
+        html += '<tr><td>' + r.name + '</td>';
+        html += '<td style="word-break:break-all;"><a href="' + r.url + '" target="_blank" rel="noopener noreferrer" style="color:var(--gold);">' + r.url + '</a></td>';
+        html += '<td style="text-align:right;"><button type="button" class="btn btn-small btn-danger" onclick="removeRepo(' + r.id + ', this)">Remove</button></td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      el.innerHTML = html;
+    });
+}
+
+function addRepo() {
+  var nameInput = document.getElementById('repo-name');
+  var urlInput = document.getElementById('repo-url');
+  var name = nameInput.value.trim();
+  var url = urlInput.value.trim();
+  if (!name || !url) { alert('Please enter both a name and URL.'); return; }
+
+  fetch('/admin/addons/repos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<%= csrfToken %>' },
+    body: JSON.stringify({ name: name, url: url })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.error) { alert(data.error); return; }
+    nameInput.value = '';
+    urlInput.value = '';
+    loadRepos();
+    // Refresh store to include new repo
+    window._storeLoaded = false;
+    loadStore();
+  });
+}
+
+function removeRepo(id, btn) {
+  if (!confirm('Remove this repository?')) return;
+  btn.disabled = true;
+  fetch('/admin/addons/repos/' + id, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': '<%= csrfToken %>' }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function() {
+    loadRepos();
+    window._storeLoaded = false;
+    loadStore();
+  });
+}
+
+function installAddon(addonId, downloadUrl, btn) {
+  var origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Installing...';
+
+  fetch('/admin/addons/install-remote', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<%= csrfToken %>' },
+    body: JSON.stringify({ downloadUrl: downloadUrl, addonId: addonId })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.error) {
+      alert('Install failed: ' + data.error);
+      btn.disabled = false;
+      btn.textContent = origText;
+      return;
+    }
+    // Refresh both tabs — store will show "Installed", installed tab will show the addon
+    window._storeLoaded = false;
+    loadStore();
+    // Reload page to refresh installed addons list
+    window.location.reload();
+  })
+  .catch(function(err) {
+    alert('Install failed: ' + (err.message || 'Network error'));
+    btn.disabled = false;
+    btn.textContent = origText;
+  });
+}
+
+function uninstallStoreAddon(addonId, btn) {
+  if (!confirm('Uninstall "' + addonId + '"? This will remove all addon data and files.')) return;
+  var origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Removing...';
+
+  fetch('/admin/addons/' + addonId + '/uninstall-json', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<%= csrfToken %>' }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.error) {
+      alert('Uninstall failed: ' + data.error);
+      btn.disabled = false;
+      btn.textContent = origText;
+      return;
+    }
+    // Reload page to refresh everything
+    window.location.reload();
+  })
+  .catch(function(err) {
+    alert('Uninstall failed: ' + (err.message || 'Network error'));
+    btn.disabled = false;
+    btn.textContent = origText;
+  });
+}
+</script>
+
+<%- include('../partials/foot') %>

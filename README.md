@@ -1,6 +1,6 @@
-# Quest Planner v2.5.0 — D&D Session Scheduler
+# Quest Planner v3.0.0 — D&D Session Scheduler
 
-> **Latest release:** v2.5.0 (2026-03-07)
+> **Latest release:** v3.0.0 (2026-03-07)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -115,6 +115,11 @@ If you enjoy Quest Planner, consider buying me a coffee:
 - **Auto-Update Check** — Admin can check for new releases from the Guild Settings page
 - **Welcome Popup** — First-login modal thanking users with support links
 - **Role System** — Guild Master (admin), Dungeon Master, Adventurer (player)
+- **Addon System** — Modular addon architecture with preinstalled core addons and community addons from the Browse Store; enable/disable individual features; custom addon repositories
+- **Browse Store** — Install community addons with one click; manage addon repositories; install, uninstall, and update addons from the admin panel
+- **Addon Developer Kit** — Community addon with documentation viewer, addon scaffolder (.qpa generator), addon validator (structure + security scan), and registry preview
+- **Full Backup System** — Full backup (.qpb) includes database + all images, maps, uploads, and thumbnails as a single archive; DB-only backup option; restore handles both formats
+- **Custom Addon Repositories** — Add your own GitHub repositories as addon sources in the Browse Store
 - **Open Source** — GPL-3.0 licensed, footer with GitHub/license/support links
 - **SQLite Database** — Zero-config, file-based, easy to back up
 - **Docker Ready** — Dockerfile and docker-compose.yml included
@@ -865,6 +870,20 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v3.0.0 (2026-03-07) Addon System, Browse Store & Full Backups
+
+- **Addon System** — Modular addon architecture; 17 preinstalled core addons (maps, loot, dice, quests, etc.) that can be individually enabled/disabled from Addon Management
+- **Browse Store** — Install community addons from the official Quest Planner Addon Registry or custom GitHub repositories with one-click install/uninstall
+- **Custom Repositories** — Add your own GitHub repos as addon sources in Manage Repositories
+- **Addon Developer Kit** — First community addon; 4-tab tool: Documentation Viewer (bundled addon API docs), Addon Scaffolder (generates ready-to-develop .qpa packages), Addon Validator (structure + security checks), Registry Preview (shows store appearance + generates registry.json entry)
+- **Full Backup (.qpb)** — Archive backup includes database + avatars + maps + uploads + thumbnails; restore replaces everything with pre-restore safety backup
+- **DB-Only Backup** — Lightweight database-only backup option retained alongside full backups
+- **Addon Guard Middleware** — Routes protected by addon state; disabled addons return clean "addon not enabled" message
+- **Dynamic Nav & Dashboard** — Navigation and dashboard widgets automatically update when addons are enabled/disabled; no server restart needed
+- **Migration v3** — New `db/migrate-v3.js` for addon system tables (`addon_state`, `addon_migrations`, `addon_repositories`)
+
+---
 
 ### v2.5.0 (2026-03-07) Campaigns, Filtering & Google Drive Fix
 

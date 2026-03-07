@@ -1,0 +1,30 @@
+{
+  "id": "bulletin-board",
+  "name": "Bulletin Board",
+  "version": "1.0.0",
+  "author": "Quest Planner",
+  "type": "preinstalled",
+  "category": "Social",
+  "description": "Community bulletin board with posts, replies, reactions, polls, and categories.",
+  "routes": "/board",
+  "navItems": [
+    {
+      "label": "Bulletin Board",
+      "href": "/board",
+      "icon": "scroll",
+      "group": "main",
+      "sort": 30,
+      "roles": ["admin", "dm", "player"]
+    }
+  ],
+  "dashboardWidgets": [
+    {
+      "id": "bb-mini-feed",
+      "label": "Bulletin Board",
+      "position": "bottom",
+      "sort": 30,
+      "template": "widgets/bb-feed.ejs",
+      "roles": ["admin", "dm", "player"]
+    }
+  ]
+}

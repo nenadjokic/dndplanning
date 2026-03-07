@@ -35,6 +35,10 @@ PRODUKCIJA-IZVESTAJ.md
 cookies.txt
 production-*.log
 
+# Addon store (separate repo)
+addon-store/
+.gitmodules
+
 # Screenshots and test images
 *.png
 !public/icons/*.png

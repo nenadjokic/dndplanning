@@ -116,9 +116,9 @@ Quest Planner zauzima **jedinstvenu nišu** koju nijedan drugi alat ne pokriva:
 - **Automatski reminders** — node-cron scheduler (svakih 15min), 24h i 1h pre confirmed sesije šalje Discord + push notifikacije. Idempotent flagovi (`reminder_24h_sent`, `reminder_1h_sent`) sprečavaju duplikate. Takođe se pokreće 5s posle startup-a da uhvati propuštene remindere.
 
 **Preostalo:**
-- **Quick RSVP** — jedan klik odgovor iz email/Discord notifikacije (bez logina)
-- **Waitlist** — ako je sesija puna, igrači se mogu staviti na waitlist
-- **Session Zero Checklist** — safety tools, expectations, campaign tone template
+- **Quick RSVP** — prebačeno u sekciju 8a (Discord integracije), jer se RSVP link šalje putem Discord/push notifikacija
+- **Waitlist** — ako je sesija puna, igrači se mogu staviti na waitlist (auto-notify kad se mesto oslobodi)
+- ~~**Session Zero Checklist**~~ — UKLONJEN iz plana (niska korisnost, većina DM-ova koristi Google Docs/Discord za ovo)
 
 **Zašto baš ovo:** When2Meet i Doodle nisu za D&D. Tabletop Time je jedini RPG scheduler ali nema ništa drugo. Quest Planner je jedini koji kombinuje scheduling + ceo campaign management. Recurring sessions i quorum bi bili game-changer.
 
@@ -204,15 +204,161 @@ Quest Planner zauzima **jedinstvenu nišu** koju nijedan drugi alat ne pokriva:
 - **Rich Embeds** — session_created (slot datumi, kategorija emoji, broj igrača), session_confirmed (lista igrača, ime mape), session_reminder (alarm emoji, narandžasta boja #e67e22). Svi embedi sa `.setThumbnail()` (app ikona).
 - **Session Reminder Bot** — node-cron scheduler (svakih 15min), 24h i 1h pre confirmed sesije šalje Discord webhook + push notifikacije. Idempotent flagovi, pokreće se 5s posle startup-a.
 
-**Preostalo:**
-- **Slash Commands** — `/quest next`, `/quest roll 2d6`, `/quest loot add`
-- **RSVP iz Discorda** — reaguj emoji-jem na notification da glasaš za slot
-- **Dice Roll Feed** — prosleđuj dice rolls u Discord kanal
-- **Webhook Templates** — custom formati za različite event tipove
+**Preostalo (detaljni planovi ispod):**
+- Quick RSVP (tokenized links, bez logina)
+- Dice Roll Feed u Discord kanal (webhook, lako)
+- Discord Bot Addon (slash commands, emoji RSVP — community addon)
 
-**Zašto:** Discord je "living room" D&D zajednice. Roll20 ima Discord Activity integraciju. Foundry ima Discord module. Naš Discord bot već radi — treba ga proširiti.
+**Zašto:** Discord je "living room" D&D zajednice. Roll20 ima Discord Activity integraciju. Foundry ima Discord module. Naš Discord webhook već radi — ali pravi Bot bi bio game-changer.
 
-**Effort:** Srednji
+**Effort:** Nizak (Quick RSVP, Dice Feed) / Visok (Discord Bot Addon)
+
+#### 8a. Quick RSVP — Glasanje bez Logina
+
+**Status:** TODO
+
+**Kako radi:**
+- DM kreira sesiju → Quest Planner generiše **personalizovani token link** za svakog igrača
+- Token je vezan za konkretnog korisnika (npr. `questplanner.com/rsvp/x7k9m2` = Markov token)
+- Igrač klikne link → vidi slot grid → klikne "Available" → gotovo, **bez logina**
+- Quest Planner evidentira glas jer token identifikuje korisnika
+
+**Flow:**
+1. DM kreira sesiju sa 3 datuma
+2. Player "Marko" dobije Discord poruku: *"Nova sesija! Glasaj ovde: questplanner.com/rsvp/x7k9m2"*
+3. Marko klikne → vidi slotove → klikne "Available" na suboti
+4. Quest Planner upisuje glas kao Marko (token `x7k9m2` → user_id 5)
+
+**Implementacija:**
+- DB: `rsvp_tokens` tabela (token, user_id, session_id, expires_at, used_at)
+- Route: `GET /rsvp/:token` — public (no auth), renderuje mini vote stranicu
+- Route: `POST /rsvp/:token/vote` — upisuje glas, označava token kao korišćen
+- Token generisanje: `crypto.randomBytes(16).toString('hex')` — 32-char unique
+- Token expiry: 7 dana od kreiranja sesije
+- Integracija: u Discord webhook embeds dodati personalizovani RSVP link za svakog igrača
+- Ne zahteva Discord Bot — koristi postojeće webhook-ove + per-user DM ili channel message sa mention-om
+
+**Effort:** Nizak — 1 nova ruta, 1 tabela, mali EJS template
+
+#### 8b. Dice Roll Feed u Discord
+
+**Status:** TODO
+
+**Kako radi:**
+- Kad neko baci kockice u Quest Planner-u (mapa ili dice roller stranica), rezultat se automatski pošalje u Discord kanal putem webhook-a
+
+**Primer Discord poruke:**
+```
+🎲 Marko rolled 18 (d20 + 3) — Attack Roll
+🎲 Ana rolled 24 (4d6) — Fireball Damage
+🎲 DM rolled 12 (d20 + 5) — Goblin Saving Throw
+```
+
+**Implementacija:**
+- Reuse postojećeg Discord webhook sistema (`helpers/discord.js`)
+- Hook na `POST /dice/roll` endpoint — posle DB save, pošalji webhook
+- DM toggle u Guild Settings: "Send dice rolls to Discord" (default: off)
+- Opciono: filter po tipu (samo combat rolls, ili sve)
+- Embed format: compact inline, bez thumbnail-a (da ne spamuje kanal)
+
+**Effort:** Nizak — dodaj webhook poziv u postojeći dice endpoint
+
+#### 8c. Discord Bot Addon — COMMUNITY ADDON (Browse Store)
+
+**Status:** TODO — Potencijalno NAJJAČI addon za Quest Planner
+
+**Zašto addon a ne core:** Discord Bot zahteva Bot Token, OAuth2 setup, i Discord Developer Portal konfiguraciju. Nije svaki korisnik spreman za to — zato je bolje kao opcionalni addon koji se instalira iz Browse Store-a.
+
+**Šta addon uključuje:**
+
+**1. Slash Commands:**
+
+| Komanda | Opis | Primer odgovora |
+|---------|------|-----------------|
+| `/quest next` | Sledeća zakazana sesija | "📅 **Dragon's Lair** — Sub 15. mart u 19:00 (4/6 igrača confirmed)" |
+| `/quest roll <dice>` | Baci kockice | "🎲 Marko rolled **18** (d20+3)" |
+| `/quest roll <dice> <label>` | Baci sa opisom | "🎲 Marko rolled **18** (d20+3) — Attack Roll" |
+| `/quest loot add <item>` | Dodaj item u party loot | "💰 Added **Sword of Flames** to party loot" |
+| `/quest loot list` | Party inventory | Embed sa listom item-a po rarityju |
+| `/quest party` | Lista igrača | Embed sa character imenima, klasama, levelima |
+| `/quest recap` | Poslednji session recap | Embed sa "Previously On..." tekstom |
+| `/quest status` | Kampanja overview | "⚔️ 23 sesija, 5 active quest-ova, 12,450 GP u treasury" |
+| `/quest npc <name>` | NPC info | Stat block embed (HP, AC, abilities) |
+| `/quest vote` | Quick vote link | Pošalje RSVP link za sledeću sesiju |
+
+**2. Emoji RSVP (Glasanje iz Discorda):**
+
+Kada Quest Planner pošalje session notifikaciju u Discord:
+```
+📅 Nova sesija: "Dragon's Lair Assault"
+
+1️⃣ Subota 15. mart, 19:00
+2️⃣ Nedelja 16. mart, 18:00
+3️⃣ Utorak 18. mart, 20:00
+
+Reaguj brojem za datume kad si dostupan!
+```
+
+- Igrači reaguju sa 1️⃣ 2️⃣ 3️⃣ emoji-jem
+- Bot čita `messageReactionAdd` evente i upisuje glasove u Quest Planner bazu
+- Zahteva **Discord-to-QP account linking** (player radi `/quest link <username>` jednom)
+
+**3. Live Notifications u Discord:**
+- Session confirmed → "@everyone Sesija potvrđena za subotu!"
+- Quest revealed → "📜 Novi quest: Dragon's Hoard"
+- Loot revealed → "💎 DM otkrio: Vorpal Sword (Legendary)"
+- Combat started → "⚔️ Combat started on Dragon's Lair map!"
+
+**4. Account Linking:**
+- `/quest link <username>` — igrač povezuje Discord account sa QP accountom
+- Verifikacija: QP šalje jedinstven kod koji igrač unese u Discord-u
+- Jednom linkovano, bot zna ko je ko za emoji RSVP i personalizovane odgovore
+
+**Tehnički zahtevi:**
+- **Discord Bot Token** — korisnik kreira bota na Discord Developer Portal
+- **discord.js** library (v14+) — Node.js Discord SDK
+- **Bot Gateway Intents:** `GUILD_MESSAGES`, `GUILD_MESSAGE_REACTIONS`, `MESSAGE_CONTENT`
+- **Slash Command Registration** — addon registruje komande pri instalaciji
+- **Addon Settings UI** — polje za Bot Token, Guild ID, kanal za notifikacije
+- **Addon Routes:**
+  - `GET /discord-bot/settings` — konfiguracija (Bot Token, Guild ID, kanali)
+  - `POST /discord-bot/link` — account linking API
+  - `GET /discord-bot/status` — bot connection status (online/offline/error)
+- **Bot Process:** child_process ili worker thread — pokreće se kao pozadinski proces kad je addon aktivan
+- **Graceful Shutdown:** kad se addon disable-uje, bot se disconnectuje čisto
+
+**Addon manifest:**
+```json
+{
+  "id": "discord-bot",
+  "name": "Discord Bot Integration",
+  "version": "1.0.0",
+  "author": "Quest Planner",
+  "description": "Full Discord bot with slash commands, emoji RSVP, dice rolls, and live campaign notifications.",
+  "category": "Integration",
+  "icon": "message-circle",
+  "adminOnly": false,
+  "minAppVersion": "3.0.0",
+  "dependencies": ["discord.js"],
+  "settings": {
+    "botToken": { "type": "password", "label": "Discord Bot Token", "required": true },
+    "guildId": { "type": "text", "label": "Discord Server ID", "required": true },
+    "notificationChannelId": { "type": "text", "label": "Notification Channel ID" },
+    "diceChannelId": { "type": "text", "label": "Dice Roll Channel ID" },
+    "enableSlashCommands": { "type": "boolean", "label": "Enable Slash Commands", "default": true },
+    "enableEmojiRSVP": { "type": "boolean", "label": "Enable Emoji Voting", "default": true },
+    "enableDiceFeed": { "type": "boolean", "label": "Send Dice Rolls to Discord", "default": false }
+  }
+}
+```
+
+**Zašto je ovo OPAK addon:**
+- Nijedan self-hosted D&D tool nema ovako duboku Discord integraciju
+- Roll20 ima Discord Activity (limited), Foundry ima basic webhook module
+- Ovo bi bio **jedinstven selling point** za Quest Planner
+- Community bi mogao da proširi bot sa custom komandama
+
+**Effort:** Visok (2-3 dana razvoja), ali **ogroman impact**
 
 ---
 
@@ -363,7 +509,9 @@ Export mape kao PNG/PDF za štampanje ili deljenje na social media.
 | 5 | Random Generators | Srednji | Nizak | **P1** | ✅ DONE (P1 batch) |
 | 6 | Campaign Timeline | Srednji | Srednji | **P1** | ✅ DONE (P1 batch) |
 | 7 | Prošireni Loot | Srednji | Nizak | **P1** | ✅ DONE (P1 batch) |
-| 8 | Discord Integracije | Srednji | Srednji | **P1** | 🔶 PARCIJALNO (rich embeds + reminders done) |
+| 8a | Quick RSVP (tokenized links) | Visok | Nizak | **P1** | ⬜ TODO |
+| 8b | Dice Roll Feed (webhook) | Srednji | Nizak | **P1** | ⬜ TODO |
+| 8c | Discord Bot Addon (slash cmds, emoji RSVP) | Vrlo Visok | Visok | **P1** | ⬜ TODO — COMMUNITY ADDON |
 | 9 | Guest Mode | Visok | Srednji | **P1** | ⏸️ ON HOLD |
 | 10 | Ambient Sound | Srednji | Visok | **P2** | ✅ DONE (v2.1.0) |
 | 11 | Map Drawing Tools (Grid Overlay) | Srednji | Visok | **P2** | ✅ DONE (v2.1.0) |

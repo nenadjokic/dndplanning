@@ -1,0 +1,16 @@
+{
+  "id": "sound-board",
+  "name": "Sound Board",
+  "version": "1.0.0",
+  "icon": "music",
+  "category": "Ambiance",
+  "description": "Floating sound board panel with links to ambient music sites like Tabletopy and Tabletop Audio.",
+  "author": "Quest Planner",
+  "minAppVersion": "3.0.0",
+  "routes": [],
+  "navItems": [],
+  "css": [],
+  "js": [],
+  "dependencies": [],
+  "softDependencies": []
+}

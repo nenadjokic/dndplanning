@@ -1,0 +1,20 @@
+{
+  "id": "dice-roller",
+  "name": "Dice Roller",
+  "version": "1.0.0",
+  "icon": "dice",
+  "category": "Gameplay",
+  "description": "Floating dice roller with roll history, hidden rolls, and themed dice animations.",
+  "author": "Quest Planner",
+  "minAppVersion": "3.0.0",
+  "routes": "/api/dice",
+  "navItems": [],
+  "css": [
+    "css/dice-roller.css"
+  ],
+  "js": [
+    "js/dice-roller.js"
+  ],
+  "dependencies": [],
+  "softDependencies": []
+}

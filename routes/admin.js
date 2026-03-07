@@ -16,12 +16,13 @@ if (!fs.existsSync(uploadTemp)) fs.mkdirSync(uploadTemp, { recursive: true });
 
 const restoreUpload = multer({
   dest: uploadTemp,
-  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB max
+  limits: { fileSize: 2 * 1024 * 1024 * 1024 }, // 2GB max for full backups
   fileFilter: (req, file, cb) => {
-    if (file.originalname.endsWith('.db') || file.originalname.endsWith('.sqlite') || file.originalname.endsWith('.sqlite3')) {
+    const name = file.originalname.toLowerCase();
+    if (name.endsWith('.db') || name.endsWith('.sqlite') || name.endsWith('.sqlite3') || name.endsWith('.qpb')) {
       cb(null, true);
     } else {
-      cb(new Error('Only .db, .sqlite, and .sqlite3 files are allowed'));
+      cb(new Error('Only .db, .sqlite, .sqlite3, and .qpb files are allowed'));
     }
   }
 });
@@ -165,6 +166,9 @@ router.post('/users/:id/delete', requireLogin, requireAdmin, (req, res) => {
     safeDelete('DELETE FROM post_reactions WHERE user_id = ?', targetId);
     // Delete reply reactions by this user
     safeDelete('DELETE FROM reply_reactions WHERE user_id = ?', targetId);
+    // Let addon hooks clean up their own data
+    const addonManager = req.app.locals.addonManager;
+    if (addonManager) addonManager.handleUserDelete(targetId);
     // Delete the user
     db.prepare('DELETE FROM users WHERE id = ?').run(targetId);
   });
@@ -463,13 +467,12 @@ router.post('/announcements/:id/delete', requireLogin, requireDM, (req, res) => 
 
 // --- Database Backup & Restore ---
 
-// Download database backup
+// Download database-only backup
 router.get('/backup/download', requireLogin, requireAdmin, async (req, res) => {
   try {
     const { backupName, backupPath } = await backup.createLocalBackupSync();
     res.download(backupPath, backupName, (err) => {
       if (err) console.error('[Backup] Download error:', err.message);
-      // Clean up the temp backup after download
       try { fs.unlinkSync(backupPath); } catch (e) { /* ignore */ }
     });
   } catch (err) {
@@ -479,7 +482,22 @@ router.get('/backup/download', requireLogin, requireAdmin, async (req, res) => {
   }
 });
 
-// Restore database from upload
+// Download full backup (DB + all data files)
+router.get('/backup/download-full', requireLogin, requireAdmin, async (req, res) => {
+  try {
+    const { backupName, backupPath } = await backup.createFullBackup();
+    res.download(backupPath, backupName, (err) => {
+      if (err) console.error('[Backup] Full download error:', err.message);
+      try { fs.unlinkSync(backupPath); } catch (e) { /* ignore */ }
+    });
+  } catch (err) {
+    console.error('[Backup] Full backup failed:', err.message);
+    req.flash('error', 'Failed to create full backup: ' + err.message);
+    res.redirect('/admin/users');
+  }
+});
+
+// Restore from upload (.db for database only, .qpb for full archive)
 router.post('/backup/restore', requireLogin, requireAdmin, restoreUpload.single('database'), (req, res) => {
   // Validate CSRF for multipart form
   if (req._csrfDeferred) {
@@ -498,46 +516,92 @@ router.post('/backup/restore', requireLogin, requireAdmin, restoreUpload.single(
   }
 
   const uploadedPath = req.file.path;
+  const originalName = (req.file.originalname || '').toLowerCase();
+  const isFullBackup = originalName.endsWith('.qpb');
 
   try {
-    // Validate the uploaded file is a valid SQLite database
-    const Database = require('better-sqlite3');
-    const testDb = new Database(uploadedPath, { readonly: true });
-    // Quick sanity check — try reading the users table
-    try {
-      testDb.prepare('SELECT COUNT(*) as count FROM users').get();
-    } catch (e) {
-      testDb.close();
-      fs.unlinkSync(uploadedPath);
-      req.flash('error', 'Invalid database file: missing users table.');
-      return res.redirect('/admin/users');
-    }
-    testDb.close();
-
-    // Create a safety backup of the current database before restoring
-    const safetyBackupName = `pre-restore-${Date.now()}.db`;
+    // Create a safety backup before restoring (full archive)
+    const safetyBackupName = `pre-restore-${Date.now()}.qpb`;
     const safetyBackupPath = path.join(backup.backupDir, safetyBackupName);
-    fs.copyFileSync(backup.dbPath, safetyBackupPath);
-    console.log(`[Backup] Safety backup created: ${safetyBackupName}`);
 
-    // Close the current database connection and replace the file
-    // We need to restart the app after restore for changes to take effect
-    fs.copyFileSync(uploadedPath, backup.dbPath);
-    fs.unlinkSync(uploadedPath);
+    if (isFullBackup) {
+      // --- Full archive restore (.qpb) ---
+      console.log('[Backup] Restoring from full backup archive...');
 
-    console.log('[Backup] Database restored from uploaded file. Restart required.');
-    req.flash('success', 'Database restored successfully! The server will restart to apply changes.');
+      // Extract and validate
+      const extractedDir = backup.extractFullBackup(uploadedPath);
+      fs.unlinkSync(uploadedPath);
+
+      // Create safety backup (full) before replacing
+      try {
+        const { execSync } = require('child_process');
+        const tarItems = ['dndplanning.db'];
+        for (const dir of ['avatars', 'maps', 'uploads', 'thumbnails']) {
+          if (fs.existsSync(path.join(backup.dataDir, dir))) tarItems.push(dir);
+        }
+        execSync(`tar -czf "${safetyBackupPath}" ${tarItems.map(i => `"${i}"`).join(' ')}`, {
+          cwd: backup.dataDir, timeout: 120000
+        });
+        console.log(`[Backup] Safety backup created: ${safetyBackupName}`);
+      } catch (safetyErr) {
+        console.warn('[Backup] Could not create safety backup:', safetyErr.message);
+      }
+
+      // Close DB and restore everything
+      try { db.close(); } catch (e) { /* may already be closed */ }
+      backup.restoreFromExtracted(extractedDir);
+    } else {
+      // --- Database-only restore (.db) ---
+      console.log('[Backup] Restoring from database file...');
+
+      // Validate the uploaded file
+      const Database = require('better-sqlite3');
+      const testDb = new Database(uploadedPath, { readonly: true });
+      try {
+        testDb.prepare('SELECT COUNT(*) as count FROM users').get();
+      } catch (e) {
+        testDb.close();
+        fs.unlinkSync(uploadedPath);
+        req.flash('error', 'Invalid database file: missing users table.');
+        return res.redirect('/admin/users');
+      }
+      testDb.close();
+
+      // Safety backup (DB only)
+      const dbSafetyPath = path.join(backup.backupDir, `pre-restore-${Date.now()}.db`);
+      fs.copyFileSync(backup.dbPath, dbSafetyPath);
+      console.log(`[Backup] Safety backup created: ${path.basename(dbSafetyPath)}`);
+
+      // Close DB and replace
+      try { db.close(); } catch (e) { /* may already be closed */ }
+      fs.copyFileSync(uploadedPath, backup.dbPath);
+      fs.unlinkSync(uploadedPath);
+      try { fs.unlinkSync(backup.dbPath + '-wal'); } catch (e) { /* ignore */ }
+      try { fs.unlinkSync(backup.dbPath + '-shm'); } catch (e) { /* ignore */ }
+    }
+
+    const restoreType = isFullBackup ? 'Full backup' : 'Database';
+    console.log(`[Backup] ${restoreType} restored. Restarting...`);
+    req.flash('success', `${restoreType} restored successfully! The server will restart to apply changes.`);
     res.redirect('/admin/users');
 
-    // Schedule a graceful restart after response is sent
+    // Self-restart: spawn a new process then exit
     setTimeout(() => {
-      console.log('[Backup] Restarting server after database restore...');
-      process.exit(0); // Docker/PM2 will auto-restart
+      console.log('[Backup] Restarting server after restore...');
+      const { spawn } = require('child_process');
+      const child = spawn(process.argv[0], process.argv.slice(1), {
+        detached: true,
+        stdio: 'inherit',
+        cwd: process.cwd(),
+        env: process.env
+      });
+      child.unref();
+      process.exit(0);
     }, 1500);
   } catch (err) {
     try { fs.unlinkSync(uploadedPath); } catch (e) { /* ignore */ }
     console.error('[Backup] Restore failed:', err.message);
-    req.flash('error', 'Failed to restore database: ' + err.message);
+    req.flash('error', 'Failed to restore: ' + err.message);
     res.redirect('/admin/users');
   }
 });
@@ -549,7 +613,7 @@ router.get('/backup/list', requireLogin, requireAdmin, (req, res) => {
       return res.json([]);
     }
     const files = fs.readdirSync(backup.backupDir)
-      .filter(f => f.startsWith('dndplanning-') && f.endsWith('.db'))
+      .filter(f => (f.startsWith('dndplanning-') || f.startsWith('pre-restore-')) && (f.endsWith('.db') || f.endsWith('.qpb')))
       .map(f => {
         const stat = fs.statSync(path.join(backup.backupDir, f));
         return {
@@ -579,11 +643,35 @@ router.get('/backup/download/:name', requireLogin, requireAdmin, (req, res) => {
   res.download(filePath, name);
 });
 
-// Trigger manual backup now
+// Delete a specific local backup
+router.delete('/backup/:name', requireLogin, requireAdmin, (req, res) => {
+  const name = req.params.name;
+  if (name.includes('..') || name.includes('/') || name.includes('\\') || !(name.startsWith('dndplanning-') || name.startsWith('pre-restore-')) || !(name.endsWith('.db') || name.endsWith('.qpb'))) {
+    return res.status(400).json({ error: 'Invalid filename' });
+  }
+  const filePath = path.join(backup.backupDir, name);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'Backup not found' });
+  }
+  try {
+    fs.unlinkSync(filePath);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Trigger manual backup now (DB only or full)
 router.post('/backup/now', requireLogin, requireAdmin, async (req, res) => {
   try {
-    await backup.runScheduledBackup();
-    res.json({ success: true });
+    const type = req.body.type || 'db';
+    if (type === 'full') {
+      const { backupName } = await backup.createFullBackup();
+      res.json({ success: true, name: backupName, type: 'full' });
+    } else {
+      await backup.runScheduledBackup();
+      res.json({ success: true, type: 'db' });
+    }
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
@@ -713,6 +801,292 @@ router.post('/backup/gdrive/disconnect', requireLogin, requireAdmin, (req, res) 
   db.prepare("UPDATE backup_config SET gdrive_refresh_token = NULL, gdrive_enabled = 0 WHERE id = 1").run();
   req.flash('success', 'Google Drive disconnected.');
   res.redirect('/admin/users');
+});
+
+// --- Addon Management ---
+
+router.get('/addons', requireLogin, requireAdmin, (req, res) => {
+  const addonManager = req.app.locals.addonManager;
+  const addons = addonManager ? addonManager.getAll() : [];
+  res.render('admin/addons', { addons });
+});
+
+router.post('/addons/save', requireLogin, requireAdmin, (req, res) => {
+  const addonManager = req.app.locals.addonManager;
+  if (!addonManager) {
+    req.flash('error', 'Addon manager not available.');
+    return res.redirect('/admin/addons');
+  }
+
+  // Get list of enabled addon IDs from form
+  // With extended: true, express parses "enabled[]" as req.body.enabled (array)
+  let enabledIds = req.body.enabled || req.body['enabled[]'] || [];
+  if (typeof enabledIds === 'string') enabledIds = [enabledIds];
+
+  const allAddons = addonManager.getAll();
+  let changed = false;
+
+  for (const addon of allAddons) {
+    const shouldBeEnabled = enabledIds.includes(addon.id);
+    if (shouldBeEnabled && !addon.enabled) {
+      addonManager.enable(addon.id);
+      changed = true;
+    } else if (!shouldBeEnabled && addon.enabled) {
+      addonManager.disable(addon.id);
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    addonManager.reload();
+    req.flash('success', 'Addon settings saved and applied.');
+  } else {
+    req.flash('success', 'No changes to apply.');
+  }
+  res.redirect('/admin/addons');
+});
+
+router.post('/addons/:id/uninstall', requireLogin, requireAdmin, (req, res) => {
+  const addonManager = req.app.locals.addonManager;
+  if (!addonManager) {
+    req.flash('error', 'Addon manager not available.');
+    return res.redirect('/admin/addons');
+  }
+
+  try {
+    addonManager.uninstall(req.params.id);
+    addonManager.reload();
+    req.flash('success', 'Addon uninstalled.');
+  } catch (err) {
+    req.flash('error', 'Failed to uninstall: ' + err.message);
+    res.redirect('/admin/addons');
+  }
+});
+
+router.post('/addons/:id/delete-data', requireLogin, requireAdmin, (req, res) => {
+  const addonManager = req.app.locals.addonManager;
+  if (!addonManager) {
+    req.flash('error', 'Addon manager not available.');
+    return res.redirect('/admin/addons');
+  }
+
+  try {
+    addonManager.deleteData(req.params.id);
+    req.flash('success', 'Addon data deleted.');
+  } catch (err) {
+    req.flash('error', 'Failed to delete data: ' + err.message);
+  }
+  res.redirect('/admin/addons');
+});
+
+// Upload addon package
+const addonUpload = multer({
+  dest: uploadTemp,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
+  fileFilter: (req, file, cb) => {
+    if (file.originalname.endsWith('.qpa') || file.originalname.endsWith('.zip')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only .qpa and .zip files are allowed'));
+    }
+  }
+});
+
+router.post('/addons/upload', requireLogin, requireAdmin, addonUpload.single('addon_package'), async (req, res) => {
+  // Validate CSRF for multipart form
+  if (req._csrfDeferred) {
+    const token = req.body._csrf;
+    const sessionToken = req.session?.csrfToken;
+    if (!token || token !== sessionToken) {
+      if (req.file) try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
+      req.flash('error', 'Invalid CSRF token');
+      return res.redirect('/admin/addons');
+    }
+  }
+
+  if (!req.file) {
+    req.flash('error', 'No file uploaded.');
+    return res.redirect('/admin/addons');
+  }
+
+  const addonManager = req.app.locals.addonManager;
+  try {
+    const addonId = await addonManager.installFromZip(req.file.path);
+    fs.unlinkSync(req.file.path);
+    // Re-discover and reload to pick up the new addon
+    addonManager.discover();
+    addonManager.loadAll();
+    addonManager.reload();
+    req.flash('success', `Addon "${addonId}" installed and enabled.`);
+    res.redirect('/admin/addons');
+  } catch (err) {
+    if (req.file) try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
+    req.flash('error', 'Failed to install addon: ' + err.message);
+    res.redirect('/admin/addons');
+  }
+});
+
+// Install addon from remote URL (Browse Store "Install" button)
+router.post('/addons/install-remote', requireLogin, requireAdmin, async (req, res) => {
+  const { downloadUrl, addonId: expectedId } = req.body;
+  if (!downloadUrl) {
+    return res.status(400).json({ error: 'Download URL is required' });
+  }
+
+  const addonManager = req.app.locals.addonManager;
+  const tempPath = path.join(uploadTemp, `remote-${Date.now()}.qpa`);
+
+  try {
+    // Download the .qpa file
+    const response = await fetch(downloadUrl, { signal: AbortSignal.timeout(30000) });
+    if (!response.ok) throw new Error(`Download failed: HTTP ${response.status}`);
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    fs.writeFileSync(tempPath, buffer);
+
+    // Install
+    const addonId = await addonManager.installFromZip(tempPath);
+    try { fs.unlinkSync(tempPath); } catch (e) {}
+
+    // Re-discover and reload
+    addonManager.discover();
+    addonManager.loadAll();
+    addonManager.reload();
+
+    res.json({ success: true, addonId });
+  } catch (err) {
+    try { fs.unlinkSync(tempPath); } catch (e) {}
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Uninstall addon via JSON API (for Browse Store)
+router.post('/addons/:id/uninstall-json', requireLogin, requireAdmin, (req, res) => {
+  const addonManager = req.app.locals.addonManager;
+  try {
+    addonManager.uninstall(req.params.id);
+    addonManager.reload();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Fetch addon registry from GitHub
+// Fetch addon registries from official + custom repositories
+router.get('/addons/registry', requireLogin, requireAdmin, async (req, res) => {
+  const officialUrl = 'https://raw.githubusercontent.com/nenadjokic/questplanner-addons/main/registry.json';
+  const addonManager = req.app.locals.addonManager;
+  const installed = new Set(addonManager.getAll().map(a => a.id));
+  const allAddons = [];
+  const errors = [];
+
+  // Helper: resolve GitHub repo URL to raw registry.json
+  function resolveRegistryUrl(repoUrl) {
+    const cleaned = repoUrl.replace(/\/+$/, '');
+    // If already a raw URL, use as-is
+    if (cleaned.includes('raw.githubusercontent.com') || cleaned.endsWith('.json')) {
+      return cleaned;
+    }
+    // Convert github.com URL to raw content URL
+    const ghMatch = cleaned.match(/github\.com\/([^/]+)\/([^/]+)/);
+    if (ghMatch) {
+      return `https://raw.githubusercontent.com/${ghMatch[1]}/${ghMatch[2]}/main/registry.json`;
+    }
+    // Fallback: append registry.json
+    return cleaned + '/registry.json';
+  }
+
+  // Fetch from a single registry URL
+  async function fetchRegistry(url, sourceName) {
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const registry = await response.json();
+      const addons = registry.addons || [];
+      for (const addon of addons) {
+        addon._source = sourceName;
+        addon.installed = installed.has(addon.id);
+        if (addon.installed) {
+          const local = addonManager.getAll().find(a => a.id === addon.id);
+          addon.installedVersion = local ? local.version : null;
+        }
+      }
+      return addons;
+    } catch (err) {
+      errors.push({ source: sourceName, error: err.message });
+      return [];
+    }
+  }
+
+  // Fetch official registry
+  const officialAddons = await fetchRegistry(officialUrl, 'Official');
+  allAddons.push(...officialAddons);
+
+  // Fetch custom repositories
+  try {
+    const repos = db.prepare('SELECT * FROM addon_repositories ORDER BY name').all();
+    const fetches = repos.map(repo =>
+      fetchRegistry(resolveRegistryUrl(repo.url), repo.name)
+    );
+    const results = await Promise.all(fetches);
+    for (const addons of results) {
+      allAddons.push(...addons);
+    }
+  } catch (e) { /* addon_repositories table may not exist yet */ }
+
+  // Deduplicate by addon id (first one wins — official takes priority)
+  const seen = new Set();
+  const unique = [];
+  for (const addon of allAddons) {
+    if (!seen.has(addon.id)) {
+      seen.add(addon.id);
+      unique.push(addon);
+    }
+  }
+
+  res.json({ addons: unique, errors: errors.length > 0 ? errors : undefined });
+});
+
+// List custom addon repositories
+router.get('/addons/repos', requireLogin, requireAdmin, (req, res) => {
+  try {
+    const repos = db.prepare('SELECT * FROM addon_repositories ORDER BY name').all();
+    res.json(repos);
+  } catch (e) {
+    res.json([]);
+  }
+});
+
+// Add a custom addon repository
+router.post('/addons/repos', requireLogin, requireAdmin, (req, res) => {
+  const { name, url } = req.body;
+  if (!name || !url) {
+    return res.status(400).json({ error: 'Name and URL are required' });
+  }
+  // Basic URL validation
+  if (!url.startsWith('https://') && !url.startsWith('http://')) {
+    return res.status(400).json({ error: 'URL must start with https:// or http://' });
+  }
+  try {
+    db.prepare('INSERT INTO addon_repositories (name, url) VALUES (?, ?)').run(name.trim(), url.trim());
+    res.json({ success: true });
+  } catch (err) {
+    if (err.message.includes('UNIQUE')) {
+      return res.status(400).json({ error: 'This repository URL is already added' });
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Remove a custom addon repository
+router.delete('/addons/repos/:id', requireLogin, requireAdmin, (req, res) => {
+  try {
+    db.prepare('DELETE FROM addon_repositories WHERE id = ?').run(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

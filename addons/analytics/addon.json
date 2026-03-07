@@ -1,0 +1,25 @@
+{
+  "id": "analytics",
+  "name": "Session Analytics",
+  "version": "1.0.0",
+  "author": "Quest Planner",
+  "type": "preinstalled",
+  "category": "Insights",
+  "description": "Visual analytics dashboard showing session attendance, voting patterns, and scheduling trends.",
+  "minAppVersion": "3.0.0",
+  "routes": "/analytics",
+  "navItems": [
+    {
+      "label": "Analytics",
+      "href": "/analytics",
+      "icon": "chart",
+      "group": "dmzone",
+      "sort": 30,
+      "roles": ["admin", "dm"]
+    }
+  ],
+  "css": [],
+  "js": [],
+  "dependencies": [],
+  "softDependencies": []
+}

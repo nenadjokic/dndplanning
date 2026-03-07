@@ -42,7 +42,9 @@ if (!isInstalled()) {
 const db = require('./db/connection');
 const { attachUser } = require('./middleware/auth');
 const { flashMiddleware } = require('./middleware/flash');
+const AddonManager = require('./lib/addon-manager');
 
+// Core routes (always available)
 const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
 const sessionRoutes = require('./routes/sessions');
@@ -50,25 +52,29 @@ const voteRoutes = require('./routes/votes');
 const adminRoutes = require('./routes/admin');
 const settingsRoutes = require('./routes/settings');
 const calendarRoutes = require('./routes/calendar');
-const boardRoutes = require('./routes/board');
 const notificationRoutes = require('./routes/notifications');
 const historyRoutes = require('./routes/history');
-const journalRoutes = require('./routes/journal');
 const profileRoutes = require('./routes/profile');
 const playersRoutes = require('./routes/players');
+const dmToolsRoutes = require('./routes/dm-tools');
+const dndDataRoutes = require('./routes/dnd-data');
+const vaultRoutes = require('./routes/vault');
+const adminUpdatesRoutes = require('./routes/admin-updates');
+
+// Addon routes (only loaded if addon is enabled)
+// These are still in routes/ for now but guarded by addon-guard middleware
+const addonGuard = require('./middleware/addon-guard');
+const boardRoutes = require('./routes/board');
+const journalRoutes = require('./routes/journal');
 const mapRoutes = require('./routes/map');
 const lootRoutes = require('./routes/loot');
 const analyticsRoutes = require('./routes/analytics');
-const dmToolsRoutes = require('./routes/dm-tools');
 const diceRoutes = require('./routes/dice');
-const dndDataRoutes = require('./routes/dnd-data');
-const vaultRoutes = require('./routes/vault');
 const encounterRoutes = require('./routes/encounters');
 const generatorsRoutes = require('./routes/generators');
 const handoutsRoutes = require('./routes/handouts');
 const questsRoutes = require('./routes/quests');
 const campaignsRoutes = require('./routes/campaigns');
-const adminUpdatesRoutes = require('./routes/admin-updates');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -86,6 +92,12 @@ if (!process.env.SESSION_SECRET) {
 }
 
 app.locals.appVersion = require('./package.json').version;
+
+// Initialize Addon Manager
+const addonManager = new AddonManager(db, app);
+addonManager.discover();
+addonManager.loadAll();
+app.locals.addonManager = addonManager;
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -238,6 +250,7 @@ const apiLimiter = rateLimit({
   legacyHeaders: false
 });
 
+// --- Core Routes (always available) ---
 app.use('/', authRoutes);
 app.use('/', dashboardRoutes);
 app.use('/sessions', sessionRoutes);
@@ -245,25 +258,36 @@ app.use('/votes', voteRoutes);
 app.use('/admin', adminRoutes);
 app.use('/settings', settingsRoutes);
 app.use('/calendar', calendarRoutes);
-app.use('/board', boardRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/history', historyRoutes);
-app.use('/journal', journalRoutes);
 app.use('/profile', profileRoutes);
 app.use('/players', playersRoutes);
-app.use('/map', mapRoutes);
-app.use('/loot', lootRoutes);
-app.use('/analytics', analyticsRoutes);
 app.use('/dm-tools', dmToolsRoutes);
-app.use('/api/dice', diceRoutes);
 app.use('/api/dnd', dndDataRoutes);
 app.use('/vault', vaultRoutes);
-app.use('/encounters', encounterRoutes);
-app.use('/generators', generatorsRoutes);
-app.use('/handouts', handoutsRoutes);
-app.use('/quests', questsRoutes);
-app.use('/campaigns', campaignsRoutes);
 app.use('/admin', adminUpdatesRoutes);
+
+// --- Addon Routes (guarded — return 404 if addon disabled) ---
+app.use('/board', addonGuard('bulletin-board'), boardRoutes);
+app.use('/journal', addonGuard('quest-journal'), journalRoutes);
+app.use('/map', addonGuard('maps'), mapRoutes);
+app.use('/loot', addonGuard('loot-tracker'), lootRoutes);
+app.use('/analytics', addonGuard('analytics'), analyticsRoutes);
+app.use('/api/dice', addonGuard('dice-roller'), diceRoutes);
+app.use('/encounters', addonGuard('encounter-builder'), encounterRoutes);
+app.use('/generators', addonGuard('generators'), generatorsRoutes);
+app.use('/handouts', addonGuard('handouts'), handoutsRoutes);
+app.use('/quests', addonGuard('quest-board'), questsRoutes);
+app.use('/campaigns', addonGuard('campaigns'), campaignsRoutes);
+
+// Mount addon static assets and additional addon routes
+addonManager.mountAll();
+
+// Add addon view directories to Express view lookup
+const addonViewPaths = addonManager.getViewPaths();
+if (addonViewPaths.length > 0) {
+  app.set('views', [path.join(__dirname, 'views'), ...addonViewPaths]);
+}
 
 // PWA install page
 const pushService = require('./helpers/push');

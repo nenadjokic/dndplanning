@@ -1,0 +1,16 @@
+{
+  "id": "google-auth",
+  "name": "Google Login",
+  "version": "1.0.0",
+  "icon": "key",
+  "category": "Authentication",
+  "description": "Allow users to sign in with their Google account via OAuth 2.0.",
+  "author": "Quest Planner",
+  "minAppVersion": "3.0.0",
+  "routes": [],
+  "navItems": [],
+  "css": [],
+  "js": [],
+  "dependencies": [],
+  "softDependencies": []
+}

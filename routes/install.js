@@ -319,7 +319,48 @@ router.post('/', requireNotInstalled, async (req, res) => {
         auth TEXT NOT NULL,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
+
+      CREATE TABLE IF NOT EXISTS addon_state (
+        addon_id TEXT PRIMARY KEY,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        installed_at TEXT NOT NULL DEFAULT (datetime('now')),
+        version TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'preinstalled'
+          CHECK(type IN ('preinstalled', 'community'))
+      );
+
+      CREATE TABLE IF NOT EXISTS addon_migrations (
+        addon_id TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        description TEXT,
+        applied_at TEXT NOT NULL DEFAULT (datetime('now')),
+        PRIMARY KEY(addon_id, version)
+      );
+
+      CREATE TABLE IF NOT EXISTS addon_repositories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        url TEXT NOT NULL UNIQUE,
+        added_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
     `);
+
+    // Auto-register all preinstalled addons as enabled
+    const addonsDir = path.join(__dirname, '..', 'addons');
+    if (fs.existsSync(addonsDir)) {
+      const addonDirs = fs.readdirSync(addonsDir, { withFileTypes: true }).filter(d => d.isDirectory());
+      for (const dir of addonDirs) {
+        const manifestPath = path.join(addonsDir, dir.name, 'addon.json');
+        if (fs.existsSync(manifestPath)) {
+          try {
+            const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+            db.prepare('INSERT OR IGNORE INTO addon_state (addon_id, enabled, version, type) VALUES (?, 1, ?, ?)').run(
+              manifest.id, manifest.version || '1.0.0', 'preinstalled'
+            );
+          } catch (e) { /* skip invalid manifests */ }
+        }
+      }
+    }
 
     // Create admin user
     const hashedPassword = bcrypt.hashSync(admin_password, 10);

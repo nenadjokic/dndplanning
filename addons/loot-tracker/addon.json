@@ -1,0 +1,21 @@
+{
+  "id": "loot-tracker",
+  "name": "Party Loot",
+  "version": "1.0.0",
+  "author": "Quest Planner",
+  "type": "preinstalled",
+  "category": "Gameplay",
+  "description": "Track party loot, individual inventories, and currency across campaigns.",
+  "routes": "/loot",
+  "softDependencies": ["campaigns"],
+  "navItems": [
+    {
+      "label": "Party Loot",
+      "href": "/loot",
+      "icon": "chest",
+      "group": "tools",
+      "sort": 20,
+      "roles": ["admin", "dm", "player"]
+    }
+  ]
+}

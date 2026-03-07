@@ -25,6 +25,7 @@
   <!-- Toast Notification Container (Phase 3) -->
   <div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
 
+  <% if (addonEnabled('handouts')) { %>
   <!-- Handout Reveal Popup -->
   <div class="handout-reveal-overlay" id="handout-reveal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Handout revealed">
     <div class="handout-reveal-backdrop"></div>
@@ -38,8 +39,9 @@
       </div>
     </div>
   </div>
+  <% } %>
 
-  <% if (typeof user !== 'undefined' && user) { %>
+  <% if (typeof user !== 'undefined' && user && addonEnabled('sound-board')) { %>
   <!-- Sound Panel -->
   <div id="sound-panel" class="sound-panel" data-sound-default="<%= user.sound_default || '' %>" data-csrf="<%= csrfToken %>" style="display:none;">
     <div class="sound-panel-header" id="sound-panel-drag">
@@ -122,21 +124,20 @@
         <button class="whatsnew-close-x" id="whatsnew-close-x" title="Close">&times;</button>
         <h2>What's New in v<%= appVersion %></h2>
         <div class="whatsnew-content">
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Campaigns & Filtering <span style="color:var(--text-secondary);font-size:0.8rem;">(v2.5.0)</span></h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Addon System & Browse Store <span style="color:var(--text-secondary);font-size:0.8rem;">(v3.0.0)</span></h3>
           <ul class="whatsnew-list">
-            <li><strong>Campaign System</strong> &mdash; Create campaigns with cover image, color, and description to organize your sessions, maps, quests, loot, and handouts</li>
-            <li><strong>Campaign Filtering</strong> &mdash; Filter Maps, Loot, Handouts, and Quest Board by campaign; "Unsorted" for unlinked items; quick links from campaign page</li>
-            <li><strong>Dashboard Campaign Labels</strong> &mdash; Session cards show campaign name with colored accent; campaign cards with stats on dashboard</li>
-            <li><strong>Campaign Assignment</strong> &mdash; Assign campaign when creating or editing loot, quests, handouts, and maps; child maps inherit parent campaign</li>
-            <li><strong>Edit Modals</strong> &mdash; New Edit buttons for loot items and handouts with full edit modals (name, category, rarity, campaign, etc.)</li>
-            <li><strong>Google Drive Backup Fix</strong> &mdash; Auto-creates backup folder when manual folder ID fails due to OAuth scope</li>
+            <li><strong>Addon System</strong> &mdash; Modular architecture with 17 preinstalled core addons; enable/disable individual features from Addon Management</li>
+            <li><strong>Browse Store</strong> &mdash; Install community addons from the official registry or custom GitHub repositories with one-click install/uninstall</li>
+            <li><strong>Addon Developer Kit</strong> &mdash; Documentation, scaffolder, validator, and registry preview tools for building your own addons</li>
+            <li><strong>Full Backup (.qpb)</strong> &mdash; Complete backup including database, images, maps, uploads, and thumbnails in one archive</li>
+            <li><strong>Custom Repositories</strong> &mdash; Add your own GitHub repos as addon sources in the Browse Store</li>
           </ul>
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Previous Highlights <span style="color:var(--text-secondary);font-size:0.8rem;">(v2.1.x)</span></h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Previous Highlights <span style="color:var(--text-secondary);font-size:0.8rem;">(v2.x)</span></h3>
           <ul class="whatsnew-list">
-            <li><strong>Database Backup</strong> &mdash; Google Drive auto-backup, local backup management, download/restore from Guild Settings</li>
-            <li><strong>Quest Board</strong> &mdash; Quests with objectives, rewards, NPC givers, map links, story arcs, DM staging</li>
-            <li><strong>Grid Overlay</strong> &mdash; Square/hex grid on maps with full customization</li>
-            <li><strong>Sound Board</strong> &mdash; Floating panel with ambient audio launchers</li>
+            <li><strong>Campaign System</strong> &mdash; Organize sessions, maps, quests, loot, and handouts per campaign with filtering</li>
+            <li><strong>Google Drive Backup</strong> &mdash; Auto-backup to Google Drive with OAuth2 authorization</li>
+            <li><strong>Quest Board</strong> &mdash; Quests with objectives, rewards, NPC givers, map links, story arcs</li>
+            <li><strong>Grid Overlay & Sound Board</strong> &mdash; Square/hex grid on maps; ambient audio launchers</li>
           </ul>
         </div>
         <div class="whatsnew-links">
@@ -202,12 +203,17 @@
   <script src="/js/menu.js?v=<%= appVersion %>"></script>
   <script src="/js/app.js?v=<%= appVersion %>"></script>
   <script src="/js/dnd-modals.js?v=<%= appVersion %>"></script>
-  <% if (typeof user !== 'undefined' && user) { %>
+  <% if (typeof user !== 'undefined' && user && addonEnabled('dice-roller')) { %>
     <script>if(!window.THREE){document.write('<script src="https://unpkg.com/three@0.160.0/build/three.min.js"><\/script>')}</script>
     <link rel="stylesheet" href="/css/dice-roller.css?v=<%= appVersion %>">
     <script src="/js/dice-geometry.js?v=<%= appVersion %>"></script>
     <script src="/js/dice-themes.js?v=<%= appVersion %>"></script>
     <script type="module" src="/js/dice-roller.js?v=<%= appVersion %>"></script>
+  <% } %>
+  <% if (typeof addonJS !== 'undefined' && addonJS.length > 0) { %>
+    <% for (const js of addonJS) { %>
+    <script src="<%= js %>"></script>
+    <% } %>
   <% } %>
 </body>
 </html>

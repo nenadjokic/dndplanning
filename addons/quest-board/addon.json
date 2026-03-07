@@ -1,0 +1,32 @@
+{
+  "id": "quest-board",
+  "name": "Quest Board",
+  "version": "1.0.0",
+  "author": "Quest Planner",
+  "type": "preinstalled",
+  "category": "Gameplay",
+  "description": "Track quests, objectives, and rewards for your campaign.",
+  "routes": "/quests",
+  "softDependencies": ["maps", "campaigns"],
+  "navItems": [
+    {
+      "label": "Quest Board",
+      "href": "/quests",
+      "icon": "quest",
+      "group": "tools",
+      "sort": 40,
+      "roles": ["admin", "dm", "player"]
+    }
+  ],
+  "dashboardWidgets": [
+    {
+      "id": "active-quests",
+      "label": "Active Quests",
+      "position": "bottom",
+      "sort": 20,
+      "template": "widgets/active-quests.ejs",
+      "roles": ["admin", "dm", "player"]
+    }
+  ],
+  "tables": ["quests", "quest_objectives"]
+}

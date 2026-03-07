@@ -1,6 +1,7 @@
 const db = require('../db/connection');
 const { formatDate, formatTime } = require('../helpers/time');
 const { marked } = require('marked');
+const navIcons = require('../helpers/nav-icons');
 
 function attachUser(req, res, next) {
   res.locals.user = null;
@@ -11,16 +12,27 @@ function attachUser(req, res, next) {
   res.locals.announcement = null;
   res.locals.isProduction = process.env.NODE_ENV === 'production';
 
-  // Load active announcement (checking expiry)
-  const activeAnnouncement = db.prepare(`
-    SELECT * FROM announcements
-    WHERE active = 1
-    AND (expires_at IS NULL OR expires_at > datetime('now'))
-    ORDER BY created_at DESC
-    LIMIT 1
-  `).get();
-  if (activeAnnouncement) {
-    res.locals.announcement = activeAnnouncement;
+  // Addon system — inject into every response
+  const addonManager = req.app.locals.addonManager;
+  res.locals.addonEnabled = (id) => addonManager ? addonManager.isEnabled(id) : false;
+  res.locals.addonCSS = addonManager ? addonManager.getAddonCSS() : [];
+  res.locals.addonJS = addonManager ? addonManager.getAddonJS() : [];
+  res.locals.navIcons = navIcons;
+
+  // Load active announcement (only if announcements addon is enabled)
+  if (!addonManager || addonManager.isEnabled('announcements')) {
+    try {
+      const activeAnnouncement = db.prepare(`
+        SELECT * FROM announcements
+        WHERE active = 1
+        AND (expires_at IS NULL OR expires_at > datetime('now'))
+        ORDER BY created_at DESC
+        LIMIT 1
+      `).get();
+      if (activeAnnouncement) {
+        res.locals.announcement = activeAnnouncement;
+      }
+    } catch (e) { /* table may not exist yet */ }
   }
 
   if (req.session.userId) {
@@ -38,6 +50,13 @@ function attachUser(req, res, next) {
       // Load all usernames for @mention autocomplete
       const allUsernames = db.prepare('SELECT username FROM users ORDER BY username').all().map(u => u.username);
       res.locals.allUsernames = allUsernames;
+
+      // Inject addon nav items for this user
+      if (addonManager) {
+        res.locals.addonNavItems = addonManager.getNavItems(user);
+      } else {
+        res.locals.addonNavItems = [];
+      }
     } else {
       delete req.session.userId;
     }

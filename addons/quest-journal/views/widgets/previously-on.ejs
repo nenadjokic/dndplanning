@@ -1,0 +1,17 @@
+<% if (typeof recap !== 'undefined' && recap) { %>
+<div class="previously-on-banner card">
+  <div class="previously-on-header">
+    <h3>Previously On...</h3>
+    <span class="previously-on-title"><%= recap.title %></span>
+  </div>
+  <% var _recapText = recap.summary; if (_recapText.length > 300) { var _cut = _recapText.lastIndexOf('\n', 300); if (_cut < 100) _cut = 300; _recapText = _recapText.substring(0, _cut) + '...'; } %>
+  <div class="recap-preview"><%- renderMarkdown(_recapText) %></div>
+  <div class="previously-on-footer">
+    <% if (recap.confirmed_date) { %>
+      <span class="previously-on-date"><%= formatDate(recap.confirmed_date, { month: 'short', day: 'numeric' }) %></span>
+    <% } %>
+    <a href="/sessions/<%= recap.id %>" class="btn btn-outline btn-small">Read Full Recap</a>
+    <a href="/journal" class="btn btn-outline btn-small">Quest Journal</a>
+  </div>
+</div>
+<% } %>

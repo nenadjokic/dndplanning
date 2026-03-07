@@ -1,0 +1,19 @@
+<div class="page-header">
+  <h2>Active Quests</h2>
+  <a href="/quests" class="btn btn-secondary">View All</a>
+</div>
+<% if (typeof quests !== 'undefined' && quests.length > 0) { %>
+<div class="quest-widget-list">
+  <% quests.forEach(q => { %>
+    <a href="/quests" class="quest-widget-item">
+      <span class="quest-widget-title"><%= q.title %></span>
+      <span class="quest-widget-status quest-status-<%= q.status %>"><%= q.status %></span>
+      <% if (q.difficulty) { %>
+        <span class="quest-difficulty-badge quest-diff-<%= q.difficulty %>" style="font-size:0.6rem;"><%= q.difficulty %></span>
+      <% } %>
+    </a>
+  <% }); %>
+</div>
+<% } else { %>
+<p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">No active quests. <a href="/quests">Visit the Quest Board</a> to create one.</p>
+<% } %>

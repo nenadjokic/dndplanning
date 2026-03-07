@@ -1,14 +1,21 @@
 <%
-  // Only show announcement if:
-  // 1. Announcement exists
-  // 2. Either not in production OR announcement doesn't contain "UAT"/"TEST"
+  // Only show announcement if addon is enabled and announcement exists
   const showAnnouncement = typeof announcement !== 'undefined' && announcement &&
     (!isProduction || (!announcement.content.includes('UAT') && !announcement.content.includes('TEST')));
+
+  // Build nav structure from addon nav items + core items
+  const navItems = (typeof addonNavItems !== 'undefined' ? addonNavItems : []);
+
+  // Separate addon nav items by group
+  const addonMain = navItems.filter(i => i.group === 'main');
+  const addonTools = navItems.filter(i => i.group === 'tools');
+  const addonDMZone = navItems.filter(i => i.group === 'dmzone');
+  const addonAdmin = navItems.filter(i => i.group === 'admin');
 %>
 <% if (showAnnouncement) { %>
   <div class="announcement-banner">
     <div class="container">
-      <span class="announcement-icon">📢</span>
+      <span class="announcement-icon">&#128227;</span>
       <span class="announcement-text"><%= announcement.content %></span>
     </div>
   </div>
@@ -18,9 +25,11 @@
     <a href="/" class="nav-brand">Quest Planner</a>
     <% if (user) { %>
       <div class="nav-links">
+        <% if (addonEnabled('sound-board')) { %>
         <button type="button" class="nav-sound-btn" id="nav-sound-btn" title="Sound Board" aria-label="Sound Board">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
         </button>
+        <% } %>
         <div class="notif-wrapper" id="notif-wrapper">
           <button type="button" class="nav-bell" id="notif-bell" title="Notifications" aria-label="Notifications" aria-expanded="false" aria-haspopup="true">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -54,7 +63,7 @@
           </svg>
         </button>
         <div class="hamburger-menu" id="hamburger-menu">
-          <!-- CORE (no header, top-level items) -->
+          <!-- CORE (top-level items) -->
           <a href="/" class="hamburger-item">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
             Sessions
@@ -63,83 +72,73 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             All Players
           </a>
-          <a href="/board" class="hamburger-item">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-            Bulletin Board
-          </a>
-          <a href="/campaigns" class="hamburger-item">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
-            Campaigns
-          </a>
+
+          <%# Addon main group items (Bulletin Board, Campaigns, etc.) %>
+          <% for (const item of addonMain) { %>
+            <a href="<%= item.href %>" class="hamburger-item">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><%- typeof navIcons !== 'undefined' && navIcons[item.icon] ? navIcons[item.icon] : '<circle cx="12" cy="12" r="10"></circle>' %></svg>
+              <%= item.label %>
+            </a>
+          <% } %>
 
           <div class="hamburger-divider"></div>
 
-          <!-- TOOLS (collapsible) -->
+          <%# TOOLS group (core + addon) %>
+          <% const coreTools = [
+            { label: 'The Vault', href: '/vault', svgContent: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path><path d="M8 7h8"></path><path d="M8 11h8"></path><path d="M8 15h5"></path>' }
+          ]; %>
+          <% if (addonTools.length > 0 || coreTools.length > 0) { %>
           <button type="button" class="hamburger-group-toggle" data-group="tools">
-            <span class="hamburger-group-label">⚒️ Tools</span>
+            <span class="hamburger-group-label">&#9874;&#65039; Tools</span>
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hamburger-group-arrow"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </button>
           <div class="hamburger-group-content" data-group-content="tools">
-            <a href="/map" class="hamburger-item hamburger-item-nested">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-              Maps
-            </a>
-            <a href="/loot" class="hamburger-item hamburger-item-nested">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-              Party Loot
-            </a>
-            <a href="/journal" class="hamburger-item hamburger-item-nested">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-              Quest Journal
-            </a>
-            <a href="/quests" class="hamburger-item hamburger-item-nested">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="15" x2="15" y2="15"></line></svg>
-              Quest Board
-            </a>
-            <a href="/vault" class="hamburger-item hamburger-item-nested">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path><path d="M8 7h8"></path><path d="M8 11h8"></path><path d="M8 15h5"></path></svg>
-              The Vault
-            </a>
-            <a href="/handouts" class="hamburger-item hamburger-item-nested">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-              Handouts
-            </a>
-          </div>
-
-          <% if (user.role === 'dm' || user.role === 'admin') { %>
-          <!-- DM ZONE (collapsible, DM/Admin only) -->
-          <button type="button" class="hamburger-group-toggle" data-group="dm">
-            <span class="hamburger-group-label">🎲 DM Zone</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hamburger-group-arrow"><polyline points="6 9 12 15 18 9"></polyline></svg>
-          </button>
-          <div class="hamburger-group-content" data-group-content="dm">
-            <a href="/dm-tools" class="hamburger-item hamburger-item-nested">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="3"></rect><circle cx="8" cy="8" r="1.5" fill="currentColor"></circle><circle cx="16" cy="8" r="1.5" fill="currentColor"></circle><circle cx="8" cy="16" r="1.5" fill="currentColor"></circle><circle cx="16" cy="16" r="1.5" fill="currentColor"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor"></circle></svg>
-              DM Tools
-            </a>
-            <a href="/encounters" class="hamburger-item hamburger-item-nested">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"></path><path d="M13 19l6-6"></path><path d="M16 16l4 4"></path><path d="M19 21l2-2"></path></svg>
-              Encounter Builder
-            </a>
-            <a href="/generators" class="hamburger-item hamburger-item-nested">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-              Generators
-            </a>
-            <a href="/analytics" class="hamburger-item hamburger-item-nested">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-              Analytics
-            </a>
-            <a href="/admin/announcements" class="hamburger-item hamburger-item-nested">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"></path></svg>
-              Announcements
-            </a>
+            <% for (const item of addonTools) { %>
+              <a href="<%= item.href %>" class="hamburger-item hamburger-item-nested">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><%- typeof navIcons !== 'undefined' && navIcons[item.icon] ? navIcons[item.icon] : '<circle cx="12" cy="12" r="10"></circle>' %></svg>
+                <%= item.label %>
+              </a>
+            <% } %>
+            <% for (const item of coreTools) { %>
+              <a href="<%= item.href %>" class="hamburger-item hamburger-item-nested">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><%- item.svgContent %></svg>
+                <%= item.label %>
+              </a>
+            <% } %>
           </div>
           <% } %>
 
+          <% if (user.role === 'dm' || user.role === 'admin') { %>
+          <%# DM ZONE group (core + addon) %>
+          <% const coreDM = [
+            { label: 'DM Tools', href: '/dm-tools', svgContent: '<rect x="2" y="2" width="20" height="20" rx="3"></rect><circle cx="8" cy="8" r="1.5" fill="currentColor"></circle><circle cx="16" cy="8" r="1.5" fill="currentColor"></circle><circle cx="8" cy="16" r="1.5" fill="currentColor"></circle><circle cx="16" cy="16" r="1.5" fill="currentColor"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor"></circle>' }
+          ]; %>
+          <% if (addonDMZone.length > 0 || coreDM.length > 0) { %>
+          <button type="button" class="hamburger-group-toggle" data-group="dm">
+            <span class="hamburger-group-label">&#127922; DM Zone</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hamburger-group-arrow"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="hamburger-group-content" data-group-content="dm">
+            <% for (const item of coreDM) { %>
+              <a href="<%= item.href %>" class="hamburger-item hamburger-item-nested">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><%- item.svgContent %></svg>
+                <%= item.label %>
+              </a>
+            <% } %>
+            <% for (const item of addonDMZone) { %>
+              <a href="<%= item.href %>" class="hamburger-item hamburger-item-nested">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><%- typeof navIcons !== 'undefined' && navIcons[item.icon] ? navIcons[item.icon] : '<circle cx="12" cy="12" r="10"></circle>' %></svg>
+                <%= item.label %>
+              </a>
+            <% } %>
+          </div>
+          <% } %>
+          <% } %>
+
           <% if (user.role === 'admin') { %>
-          <!-- ADMIN (collapsible, Admin only) -->
+          <!-- ADMIN -->
           <button type="button" class="hamburger-group-toggle" data-group="admin">
-            <span class="hamburger-group-label">⚙️ Admin</span>
+            <span class="hamburger-group-label">&#9881;&#65039; Admin</span>
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hamburger-group-arrow"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </button>
           <div class="hamburger-group-content" data-group-content="admin">
@@ -147,6 +146,16 @@
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
               Guild Settings
             </a>
+            <a href="/admin/addons" class="hamburger-item hamburger-item-nested">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>
+              Addons
+            </a>
+            <% for (const item of addonAdmin) { %>
+              <a href="<%= item.href %>" class="hamburger-item hamburger-item-nested">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><%- typeof navIcons !== 'undefined' && navIcons[item.icon] ? navIcons[item.icon] : '<circle cx="12" cy="12" r="10"></circle>' %></svg>
+                <%= item.label %>
+              </a>
+            <% } %>
           </div>
           <% } %>
 

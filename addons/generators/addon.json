@@ -1,0 +1,21 @@
+{
+  "id": "generators",
+  "name": "Random Generators",
+  "version": "1.0.0",
+  "author": "Quest Planner",
+  "type": "preinstalled",
+  "category": "DM Tools",
+  "description": "Random generators for NPCs, loot, encounters, and more. Writes to NPC and loot tables from other addons.",
+  "routes": "/generators",
+  "softDependencies": ["maps", "loot-tracker"],
+  "navItems": [
+    {
+      "label": "Generators",
+      "href": "/generators",
+      "icon": "sparkle",
+      "group": "dmzone",
+      "sort": 20,
+      "roles": ["admin", "dm"]
+    }
+  ]
+}

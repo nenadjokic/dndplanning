@@ -56,6 +56,11 @@
       navigator.serviceWorker.register('/sw.js?v=<%= appVersion %>');
     }
   </script>
+  <% if (typeof addonCSS !== 'undefined' && addonCSS.length > 0) { %>
+    <% for (const css of addonCSS) { %>
+    <link rel="stylesheet" href="<%= css %>">
+    <% } %>
+  <% } %>
   <% if (typeof user !== 'undefined' && user && typeof allUsernames !== 'undefined') { %>
     <script>window.__allUsers = <%- JSON.stringify(allUsernames) %>;</script>
   <% } %>

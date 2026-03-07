@@ -1,0 +1,16 @@
+{
+  "id": "auto-reminders",
+  "name": "Auto Session Reminders",
+  "version": "1.0.0",
+  "icon": "bell",
+  "category": "Communication",
+  "description": "Automatically send reminder notifications 24 hours and 1 hour before scheduled sessions.",
+  "author": "Quest Planner",
+  "minAppVersion": "3.0.0",
+  "routes": [],
+  "navItems": [],
+  "css": [],
+  "js": [],
+  "dependencies": [],
+  "softDependencies": ["messenger"]
+}

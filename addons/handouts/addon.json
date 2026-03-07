@@ -1,0 +1,21 @@
+{
+  "id": "handouts",
+  "name": "Handouts",
+  "version": "1.0.0",
+  "author": "Quest Planner",
+  "type": "preinstalled",
+  "category": "DM Tools",
+  "description": "Share handouts, images, and documents with players. Optionally link to NPCs and map locations.",
+  "routes": "/handouts",
+  "softDependencies": ["maps", "campaigns"],
+  "navItems": [
+    {
+      "label": "Handouts",
+      "href": "/handouts",
+      "icon": "image",
+      "group": "tools",
+      "sort": 50,
+      "roles": ["admin", "dm", "player"]
+    }
+  ]
+}

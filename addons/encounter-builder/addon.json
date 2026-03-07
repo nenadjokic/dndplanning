@@ -1,0 +1,21 @@
+{
+  "id": "encounter-builder",
+  "name": "Encounter Builder",
+  "version": "1.0.0",
+  "author": "Quest Planner",
+  "type": "preinstalled",
+  "category": "DM Tools",
+  "description": "Build and save combat encounters with party size, levels, and monster composition.",
+  "routes": "/encounters",
+  "softDependencies": ["campaigns"],
+  "navItems": [
+    {
+      "label": "Encounter Builder",
+      "href": "/encounters",
+      "icon": "sword",
+      "group": "dmzone",
+      "sort": 10,
+      "roles": ["admin", "dm"]
+    }
+  ]
+}

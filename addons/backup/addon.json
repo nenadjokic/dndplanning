@@ -1,0 +1,16 @@
+{
+  "id": "backup",
+  "name": "Database Backup",
+  "version": "1.0.0",
+  "icon": "shield",
+  "category": "Administration",
+  "description": "Automated and manual database backup with configurable schedules and retention.",
+  "author": "Quest Planner",
+  "minAppVersion": "3.0.0",
+  "routes": [],
+  "navItems": [],
+  "css": [],
+  "js": [],
+  "dependencies": [],
+  "softDependencies": []
+}

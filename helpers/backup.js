@@ -1,14 +1,19 @@
 /**
  * Database Backup Helper
- * Handles local backup creation and Google Drive uploads via OAuth2.
+ * Handles local backup creation, full archive backups (.qpb),
+ * and Google Drive uploads via OAuth2.
  */
 const fs = require('fs');
 const path = require('path');
 const { google } = require('googleapis');
+const { execSync } = require('child_process');
 
 const dataDir = path.join(__dirname, '..', 'data');
 const backupDir = path.join(dataDir, 'backups');
 const dbPath = path.join(dataDir, 'dndplanning.db');
+
+// Data directories to include in full backups (relative to dataDir)
+const DATA_DIRS = ['avatars', 'maps', 'uploads', 'thumbnails'];
 
 // Ensure backup directory exists
 if (!fs.existsSync(backupDir)) {
@@ -16,7 +21,7 @@ if (!fs.existsSync(backupDir)) {
 }
 
 /**
- * Create a local backup using SQLite backup API
+ * Create a local backup using SQLite backup API (DB only)
  */
 async function createLocalBackupSync() {
   const Database = require('better-sqlite3');
@@ -32,11 +37,146 @@ async function createLocalBackupSync() {
 }
 
 /**
+ * Create a full backup archive (.qpb) containing DB + all data files
+ * Uses tar+gzip for efficient compression
+ */
+async function createFullBackup() {
+  const Database = require('better-sqlite3');
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+  const backupName = `dndplanning-${timestamp}.qpb`;
+  const backupPath = path.join(backupDir, backupName);
+
+  // First create a clean DB backup in a temp location
+  const tempDir = path.join(dataDir, 'temp', `backup-${Date.now()}`);
+  fs.mkdirSync(tempDir, { recursive: true });
+
+  const tempDbPath = path.join(tempDir, 'dndplanning.db');
+  const source = new Database(dbPath, { readonly: true });
+  await source.backup(tempDbPath);
+  source.close();
+
+  // Build tar arguments: include DB + each data directory that exists
+  const tarItems = ['dndplanning.db'];
+  for (const dir of DATA_DIRS) {
+    const fullDir = path.join(dataDir, dir);
+    if (fs.existsSync(fullDir)) {
+      // Copy data dir into temp staging area
+      copyDirRecursive(fullDir, path.join(tempDir, dir));
+      tarItems.push(dir);
+    }
+  }
+
+  // Create tar.gz archive
+  try {
+    execSync(`tar -czf "${backupPath}" ${tarItems.map(i => `"${i}"`).join(' ')}`, {
+      cwd: tempDir,
+      timeout: 120000
+    });
+  } finally {
+    // Clean up temp directory
+    rmDirRecursive(tempDir);
+  }
+
+  const stat = fs.statSync(backupPath);
+  console.log(`[Backup] Full backup created: ${backupName} (${(stat.size / (1024 * 1024)).toFixed(2)} MB)`);
+  return { backupName, backupPath };
+}
+
+/**
+ * Extract and validate a .qpb backup archive
+ * Returns the temp directory where contents are extracted
+ */
+function extractFullBackup(archivePath) {
+  const tempDir = path.join(dataDir, 'temp', `restore-${Date.now()}`);
+  fs.mkdirSync(tempDir, { recursive: true });
+
+  try {
+    execSync(`tar -xzf "${archivePath}" -C "${tempDir}"`, { timeout: 120000 });
+  } catch (err) {
+    rmDirRecursive(tempDir);
+    throw new Error('Failed to extract backup archive: ' + err.message);
+  }
+
+  // Validate — must contain dndplanning.db
+  const extractedDb = path.join(tempDir, 'dndplanning.db');
+  if (!fs.existsSync(extractedDb)) {
+    rmDirRecursive(tempDir);
+    throw new Error('Invalid backup archive: missing dndplanning.db');
+  }
+
+  // Validate the DB has a users table
+  const Database = require('better-sqlite3');
+  const testDb = new Database(extractedDb, { readonly: true });
+  try {
+    testDb.prepare('SELECT COUNT(*) as count FROM users').get();
+  } catch (e) {
+    testDb.close();
+    rmDirRecursive(tempDir);
+    throw new Error('Invalid database in archive: missing users table');
+  }
+  testDb.close();
+
+  return tempDir;
+}
+
+/**
+ * Restore from extracted full backup directory
+ * Replaces DB + all data directories
+ */
+function restoreFromExtracted(extractedDir) {
+  // Restore database
+  const extractedDb = path.join(extractedDir, 'dndplanning.db');
+  fs.copyFileSync(extractedDb, dbPath);
+
+  // Remove stale WAL/SHM
+  try { fs.unlinkSync(dbPath + '-wal'); } catch (e) { /* ignore */ }
+  try { fs.unlinkSync(dbPath + '-shm'); } catch (e) { /* ignore */ }
+
+  // Restore data directories
+  for (const dir of DATA_DIRS) {
+    const srcDir = path.join(extractedDir, dir);
+    const destDir = path.join(dataDir, dir);
+    if (fs.existsSync(srcDir)) {
+      // Clear existing directory and replace
+      if (fs.existsSync(destDir)) {
+        rmDirRecursive(destDir);
+      }
+      copyDirRecursive(srcDir, destDir);
+      console.log(`[Backup] Restored directory: ${dir}`);
+    }
+  }
+
+  // Clean up
+  rmDirRecursive(extractedDir);
+  console.log('[Backup] Full restore complete');
+}
+
+/** Recursive directory copy */
+function copyDirRecursive(src, dest) {
+  fs.mkdirSync(dest, { recursive: true });
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirRecursive(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
+/** Recursive directory removal */
+function rmDirRecursive(dir) {
+  try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* ignore */ }
+}
+
+/**
  * Clean up old local backups beyond retention period
  */
 function cleanOldBackups(keepDays = 7) {
   const cutoff = Date.now() - keepDays * 24 * 60 * 60 * 1000;
-  const files = fs.readdirSync(backupDir).filter(f => f.startsWith('dndplanning-') && f.endsWith('.db'));
+  const files = fs.readdirSync(backupDir).filter(f => f.startsWith('dndplanning-') && (f.endsWith('.db') || f.endsWith('.qpb')));
 
   let deleted = 0;
   for (const file of files) {
@@ -277,6 +417,9 @@ async function testGoogleDriveConnection(config) {
 
 module.exports = {
   createLocalBackupSync,
+  createFullBackup,
+  extractFullBackup,
+  restoreFromExtracted,
   cleanOldBackups,
   uploadToGoogleDrive,
   runScheduledBackup,
@@ -284,5 +427,6 @@ module.exports = {
   getAuthUrl,
   exchangeCode,
   backupDir,
+  dataDir,
   dbPath
 };
