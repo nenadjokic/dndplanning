@@ -1,6 +1,6 @@
-# Quest Planner v2.1.6 — D&D Session Scheduler
+# Quest Planner v2.1.7 — D&D Session Scheduler
 
-> **Latest release:** v2.1.6 (2026-03-07)
+> **Latest release:** v2.1.7 (2026-03-07)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -865,6 +865,13 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v2.1.7 (2026-03-07) Google Drive Shared Drive Fix
+
+- **Shared Drive Support** — Fixed Google Drive backup to work with shared folders (supportsAllDrives, correct OAuth scope)
+- **Folder ID Required** — Clear error message when folder ID is missing
+
+---
 
 ### v2.1.6 (2026-03-07) Database Backup & Google Drive Auto-Backup
 

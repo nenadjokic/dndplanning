@@ -78,17 +78,21 @@ function cleanOldBackups(keepDays = 7) {
  * Upload a backup file to Google Drive
  */
 async function uploadToGoogleDrive(filePath, fileName, serviceAccountJson, folderId) {
+  if (!folderId || !folderId.trim()) {
+    throw new Error('Google Drive Folder ID is required. Service Accounts cannot upload to their own storage.');
+  }
+
   const credentials = JSON.parse(serviceAccountJson);
   const auth = new google.auth.GoogleAuth({
     credentials,
-    scopes: ['https://www.googleapis.com/auth/drive.file']
+    scopes: ['https://www.googleapis.com/auth/drive']
   });
 
   const drive = google.drive({ version: 'v3', auth });
 
   const fileMetadata = {
     name: fileName,
-    parents: folderId ? [folderId] : undefined
+    parents: [folderId.trim()]
   };
 
   const media = {
@@ -99,7 +103,8 @@ async function uploadToGoogleDrive(filePath, fileName, serviceAccountJson, folde
   const response = await drive.files.create({
     requestBody: fileMetadata,
     media,
-    fields: 'id, name, webViewLink'
+    fields: 'id, name, webViewLink',
+    supportsAllDrives: true
   });
 
   console.log(`[Backup] Uploaded to Google Drive: ${response.data.name} (${response.data.id})`);
@@ -115,22 +120,22 @@ async function uploadToGoogleDrive(filePath, fileName, serviceAccountJson, folde
  */
 async function cleanOldDriveBackups(drive, folderId, keepCount) {
   try {
-    const query = folderId
-      ? `'${folderId}' in parents and name contains 'dndplanning-' and trashed = false`
-      : `name contains 'dndplanning-' and trashed = false`;
+    const query = `'${folderId}' in parents and name contains 'dndplanning-' and trashed = false`;
 
     const list = await drive.files.list({
       q: query,
       fields: 'files(id, name, createdTime)',
       orderBy: 'createdTime desc',
-      pageSize: 100
+      pageSize: 100,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true
     });
 
     const files = list.data.files || [];
     if (files.length > keepCount) {
       const toDelete = files.slice(keepCount);
       for (const file of toDelete) {
-        await drive.files.delete({ fileId: file.id });
+        await drive.files.delete({ fileId: file.id, supportsAllDrives: true });
         console.log(`[Backup] Deleted old Drive backup: ${file.name}`);
       }
     }
@@ -176,23 +181,25 @@ async function runScheduledBackup() {
  * Test Google Drive connection
  */
 async function testGoogleDriveConnection(serviceAccountJson, folderId) {
+  if (!folderId || !folderId.trim()) {
+    throw new Error('Google Drive Folder ID is required. Enter the folder ID from the Drive folder URL.');
+  }
+
   const credentials = JSON.parse(serviceAccountJson);
   const auth = new google.auth.GoogleAuth({
     credentials,
-    scopes: ['https://www.googleapis.com/auth/drive.file']
+    scopes: ['https://www.googleapis.com/auth/drive']
   });
 
   const drive = google.drive({ version: 'v3', auth });
 
   // Try to list files in the folder to verify access
-  const query = folderId
-    ? `'${folderId}' in parents and trashed = false`
-    : `trashed = false`;
-
   await drive.files.list({
-    q: query,
+    q: `'${folderId.trim()}' in parents and trashed = false`,
     fields: 'files(id, name)',
-    pageSize: 1
+    pageSize: 1,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true
   });
 
   return { success: true, email: credentials.client_email };
