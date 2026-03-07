@@ -7,6 +7,8 @@
   <% } %>
 </div>
 
+<%- include('partials/campaign-filter', { campaigns: campaigns, activeCampaignId: activeCampaignId, filterBasePath: '/quests' }) %>
+
 <% if (isDM) { %>
 <div id="quest-form-section" class="quest-form-section card" style="display:none;">
   <h2 style="margin-bottom:1rem;">Post a Quest</h2>
@@ -82,6 +84,17 @@
       </div>
       <button type="button" class="btn btn-small btn-secondary" id="add-objective">+ Add Objective</button>
     </div>
+    <% if (campaigns.length > 0) { %>
+    <div class="form-group">
+      <label for="q-campaign">Campaign</label>
+      <select name="campaign_id" id="q-campaign">
+        <option value="">-- No Campaign --</option>
+        <% for (const c of campaigns) { %>
+          <option value="<%= c.id %>" <%= activeCampaignId == c.id ? 'selected' : '' %>><%= c.name %></option>
+        <% } %>
+      </select>
+    </div>
+    <% } %>
     <div class="form-group">
       <label for="q-dm-notes">DM Notes (hidden from players)</label>
       <textarea name="dm_notes" id="q-dm-notes" rows="2" placeholder="Secret info..."></textarea>
@@ -110,7 +123,7 @@
   <h2 style="color:var(--gold);font-size:1rem;margin-bottom:0.75rem;">Staged Quests (Hidden)</h2>
   <div class="quest-board">
     <% stagedQuests.forEach(q => { %>
-      <%- include('partials/quest-card', { q, isDM }) %>
+      <%- include('partials/quest-card', { q, isDM, campaigns }) %>
     <% }); %>
   </div>
 </div>
@@ -120,7 +133,7 @@
 <h2 style="color:var(--gold);font-size:1rem;margin-bottom:0.75rem;">Active Quests</h2>
 <div class="quest-board">
   <% activeQuests.forEach(q => { %>
-    <%- include('partials/quest-card', { q, isDM }) %>
+    <%- include('partials/quest-card', { q, isDM, campaigns }) %>
   <% }); %>
 </div>
 <% } %>
@@ -129,7 +142,7 @@
 <h2 style="color:var(--text-secondary);font-size:1rem;margin-bottom:0.75rem;margin-top:1.5rem;">Available Quests</h2>
 <div class="quest-board">
   <% availableQuests.forEach(q => { %>
-    <%- include('partials/quest-card', { q, isDM }) %>
+    <%- include('partials/quest-card', { q, isDM, campaigns }) %>
   <% }); %>
 </div>
 <% } %>
@@ -138,7 +151,7 @@
 <h2 style="color:var(--text-secondary);font-size:1rem;margin-bottom:0.75rem;margin-top:1.5rem;">Completed / Failed</h2>
 <div class="quest-board">
   <% completedQuests.forEach(q => { %>
-    <%- include('partials/quest-card', { q, isDM }) %>
+    <%- include('partials/quest-card', { q, isDM, campaigns }) %>
   <% }); %>
 </div>
 <% } %>

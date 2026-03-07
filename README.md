@@ -1,6 +1,6 @@
-# Quest Planner v2.1.8 — D&D Session Scheduler
+# Quest Planner v2.5.0 — D&D Session Scheduler
 
-> **Latest release:** v2.1.8 (2026-03-07)
+> **Latest release:** v2.5.0 (2026-03-07)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -865,6 +865,19 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v2.5.0 (2026-03-07) Campaigns, Filtering & Google Drive Fix
+
+- **Campaign System** — Create campaigns with name, description, cover image, and color; organize sessions, maps, quests, loot, handouts, and encounters per campaign
+- **Campaign Filtering** — Filter Maps, Loot, Handouts, and Quest Board by campaign; "Unsorted" option for items not linked to any campaign; campaign quick links from campaign detail page
+- **Campaign on Dashboard** — Session cards show campaign name with colored border; campaign cards section on dashboard with session/map/quest counts
+- **Campaign Assignment** — Add/edit campaign on loot items, quests, handouts, and maps; campaign dropdown on create forms with auto-selection when filtering
+- **Map Campaign Inheritance** — Child maps automatically inherit parent's campaign; reparenting cascades campaign assignment
+- **Loot Edit Modal** — DM can edit item name, description, category, quantity, rarity, and campaign from the inventory table
+- **Handout Edit Modal** — DM can edit handout title, NPC/location links, and campaign from the handouts page
+- **Google Drive Backup Fix** — Auto-creates "Quest Planner Backups" folder when user-provided folder ID fails due to OAuth scope limitations
+
+---
 
 ### v2.1.8 (2026-03-07) Google Drive OAuth2 — Simplified Setup
 

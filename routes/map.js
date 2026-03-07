@@ -86,25 +86,38 @@ function mapUpload(req, res, next) {
   upload(req, res, next);
 }
 
-// Maps index — tree view (with hidden map filtering)
+// Maps index — tree view (with hidden map filtering + campaign filter)
 router.get('/', requireLogin, (req, res) => {
   const isDM = req.user.role === 'dm' || req.user.role === 'admin';
   const isAdmin = req.user.role === 'admin';
+  const campaignFilter = req.query.campaign_id;
   let maps;
 
-  if (isAdmin) {
-    // Admin sees all maps
-    maps = db.prepare('SELECT * FROM maps ORDER BY created_at').all();
-  } else if (isDM) {
-    // DM sees non-hidden + own hidden maps
-    maps = db.prepare('SELECT * FROM maps WHERE hidden_by IS NULL OR created_by = ? ORDER BY created_at').all(req.user.id);
-  } else {
-    // Players see only non-hidden
-    maps = db.prepare('SELECT * FROM maps WHERE hidden_by IS NULL ORDER BY created_at').all();
+  let baseWhere = '';
+  const params = [];
+  if (!isAdmin && !isDM) {
+    baseWhere = 'WHERE hidden_by IS NULL';
+  } else if (isDM && !isAdmin) {
+    baseWhere = 'WHERE (hidden_by IS NULL OR created_by = ?)';
+    params.push(req.user.id);
   }
 
+  // Apply campaign filter
+  if (campaignFilter === 'unsorted') {
+    baseWhere += (baseWhere ? ' AND' : 'WHERE') + ' campaign_id IS NULL';
+  } else if (campaignFilter && campaignFilter !== '') {
+    baseWhere += (baseWhere ? ' AND' : 'WHERE') + ' campaign_id = ?';
+    params.push(parseInt(campaignFilter, 10));
+  }
+
+  maps = db.prepare('SELECT * FROM maps ' + baseWhere + ' ORDER BY created_at').all(...params);
+
   const tree = buildMapTree(maps);
-  res.render('maps', { maps, tree, isDM, isAdmin, MARKER_TYPES, currentUserId: req.user.id });
+  let campaigns = [];
+  try { campaigns = db.prepare('SELECT id, name FROM campaigns ORDER BY name').all(); } catch (e) {}
+
+  const activeCampaignId = campaignFilter || null;
+  res.render('maps', { maps, tree, isDM, isAdmin, MARKER_TYPES, currentUserId: req.user.id, campaigns, activeCampaignId });
 });
 
 // Create new top-level map
@@ -126,6 +139,40 @@ router.post('/', requireLogin, requireDM, (req, res) => {
 
   req.flash('success', 'Map created.');
   res.redirect('/map/' + mapId);
+});
+
+// Edit map metadata (name, type, description, campaign)
+router.post('/:id/edit', requireLogin, requireDM, (req, res) => {
+  const map = db.prepare('SELECT * FROM maps WHERE id = ?').get(req.params.id);
+  if (!map) return res.status(404).json({ error: 'Map not found' });
+
+  const { name, map_type, description, campaign_id } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Map name is required' });
+  }
+
+  const type = MARKER_TYPES[map_type] ? map_type : map.map_type;
+  const campId = campaign_id ? parseInt(campaign_id, 10) : null;
+
+  db.prepare('UPDATE maps SET name = ?, map_type = ?, description = ?, campaign_id = ? WHERE id = ?')
+    .run(name.trim(), type, description ? description.trim() : null, campId, map.id);
+
+  // Cascade campaign_id to all children recursively
+  function cascadeCampaign(parentId, cId) {
+    const children = db.prepare('SELECT id FROM maps WHERE parent_id = ?').all(parentId);
+    for (const child of children) {
+      db.prepare('UPDATE maps SET campaign_id = ? WHERE id = ?').run(cId, child.id);
+      cascadeCampaign(child.id, cId);
+    }
+  }
+  cascadeCampaign(map.id, campId);
+
+  if (req.headers['accept'] && req.headers['accept'].includes('application/json')) {
+    return res.json({ success: true });
+  }
+
+  req.flash('success', 'Map updated.');
+  res.redirect('/map/' + map.id);
 });
 
 // NPC Library — list all NPCs + categories (MUST be before /:id)
@@ -407,7 +454,10 @@ router.get('/:id', requireLogin, (req, res) => {
       : db.prepare('SELECT id, title, status, description, difficulty, reward, pin_x, pin_y FROM quests WHERE linked_map_id = ? AND revealed = 1').all(map.id);
   } catch (e) { /* table may not exist yet */ }
 
-  res.render('map', { map, locations, isDM, isAdmin, chain, children, tokens, npcTokens, lootChests, encounters, showPartyMarker, canAddChild, MARKER_TYPES, currentUserId: req.user.id, mapLinks, allPlayers, mapQuests });
+  let campaigns = [];
+  try { campaigns = db.prepare('SELECT id, name FROM campaigns ORDER BY name').all(); } catch (e) {}
+
+  res.render('map', { map, locations, isDM, isAdmin, chain, children, tokens, npcTokens, lootChests, encounters, showPartyMarker, canAddChild, MARKER_TYPES, currentUserId: req.user.id, mapLinks, allPlayers, mapQuests, campaigns });
 });
 
 // Upload map image
@@ -1305,7 +1355,10 @@ router.post('/:id/reparent', requireLogin, requireDM, express.json(), (req, res)
   const parentDepth = getMapDepth(parentId);
   if (parentDepth >= 2) return res.status(400).json({ error: 'Maximum depth reached' });
 
-  db.prepare('UPDATE maps SET parent_id = ?, pin_x = 50, pin_y = 50 WHERE id = ?').run(parentId, map.id);
+  // Inherit parent's campaign_id
+  const parentMap = db.prepare('SELECT campaign_id FROM maps WHERE id = ?').get(parentId);
+  const parentCampId = parentMap ? parentMap.campaign_id : null;
+  db.prepare('UPDATE maps SET parent_id = ?, pin_x = 50, pin_y = 50, campaign_id = ? WHERE id = ?').run(parentId, parentCampId, map.id);
   res.json({ success: true });
 });
 

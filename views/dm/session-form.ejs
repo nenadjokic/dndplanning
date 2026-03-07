@@ -44,6 +44,18 @@
       </div>
     </div>
 
+    <% if (typeof campaigns !== 'undefined' && campaigns.length > 0) { %>
+    <div class="form-group">
+      <label for="campaign_id">Campaign (optional)</label>
+      <select id="campaign_id" name="campaign_id">
+        <option value="">-- No campaign --</option>
+        <% for (const c of campaigns) { %>
+          <option value="<%= c.id %>" <%= (typeof preselectedCampaign !== 'undefined' && preselectedCampaign === c.id) ? 'selected' : '' %>><%= c.name %></option>
+        <% } %>
+      </select>
+    </div>
+    <% } %>
+
     <!-- Recurring toggle -->
     <div class="form-group">
       <label class="recurring-toggle-label">

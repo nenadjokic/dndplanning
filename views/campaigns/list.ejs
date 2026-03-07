@@ -1,0 +1,46 @@
+<%- include('../partials/head', { pageTitle: 'Campaigns' }) %>
+
+<div class="page-header">
+  <h1>Campaigns</h1>
+  <% if (isDM) { %>
+    <a href="/campaigns/new" class="btn btn-primary">New Campaign</a>
+  <% } %>
+</div>
+
+<% if (campaigns.length === 0) { %>
+  <div class="card">
+    <%- include('../partials/empty-state', {
+      icon: '\u2694\uFE0F',
+      title: 'No Campaigns Yet',
+      description: isDM ? 'Create your first campaign to organize your sessions, maps, and quests.' : 'No campaigns have been created yet. Ask your DM to set one up!',
+      cta: isDM ? '<a href="/campaigns/new" class="btn btn-primary">Create First Campaign</a>' : ''
+    }) %>
+  </div>
+<% } else { %>
+  <div class="campaign-grid">
+    <% campaigns.forEach(c => { %>
+      <a href="/campaigns/<%= c.id %>" class="campaign-card card" style="border-top: 3px solid <%= c.color || '#d4a843' %>;">
+        <% if (c.cover_image) { %>
+          <div class="campaign-cover" style="background-image: url('/uploads/campaigns/<%= c.cover_image %>');"></div>
+        <% } else { %>
+          <div class="campaign-cover campaign-cover-default" style="background-color: <%= c.color || '#d4a843' %>;">
+            <span class="campaign-cover-icon">&#9876;</span>
+          </div>
+        <% } %>
+        <div class="campaign-card-body">
+          <h2 class="campaign-card-title"><%= c.name %></h2>
+          <% if (c.description) { %>
+            <p class="campaign-card-desc"><%= c.description.substring(0, 120) %><%= c.description.length > 120 ? '...' : '' %></p>
+          <% } %>
+          <div class="campaign-card-stats">
+            <span><%= c.session_count %> session<%= c.session_count !== 1 ? 's' : '' %></span>
+            <span><%= c.map_count %> map<%= c.map_count !== 1 ? 's' : '' %></span>
+            <span><%= c.quest_count %> quest<%= c.quest_count !== 1 ? 's' : '' %></span>
+          </div>
+        </div>
+      </a>
+    <% }); %>
+  </div>
+<% } %>
+
+<%- include('../partials/foot') %>

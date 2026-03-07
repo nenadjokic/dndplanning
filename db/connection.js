@@ -772,6 +772,32 @@ for (const sql of [
   try { db.exec(sql); } catch (e) { /* already exists */ }
 }
 
+// Campaigns table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS campaigns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    cover_image TEXT,
+    color TEXT DEFAULT '#d4a843',
+    created_by INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+// Add campaign_id to related tables (idempotent)
+for (const sql of [
+  "ALTER TABLE sessions ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)",
+  "ALTER TABLE maps ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)",
+  "ALTER TABLE quests ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)",
+  "ALTER TABLE loot_items ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)",
+  "ALTER TABLE handouts ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)",
+  "ALTER TABLE encounters ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)",
+  "ALTER TABLE campaign_arcs ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)"
+]) {
+  try { db.exec(sql); } catch (e) { /* already exists */ }
+}
+
 // Backup config (Google Drive auto-backup via OAuth2)
 db.exec(`
   CREATE TABLE IF NOT EXISTS backup_config (

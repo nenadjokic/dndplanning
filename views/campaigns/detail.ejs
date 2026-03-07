@@ -1,0 +1,131 @@
+<%- include('../partials/head', { pageTitle: campaign.name }) %>
+
+<% if (campaign.cover_image) { %>
+  <div class="campaign-hero" style="background-image: url('/uploads/campaigns/<%= campaign.cover_image %>'); border-bottom: 3px solid <%= campaign.color || '#d4a843' %>;">
+    <div class="campaign-hero-overlay">
+      <h1 class="campaign-hero-title"><%= campaign.name %></h1>
+    </div>
+  </div>
+<% } else { %>
+  <div class="campaign-hero campaign-hero-plain" style="background-color: <%= campaign.color || '#d4a843' %>;">
+    <h1 class="campaign-hero-title"><%= campaign.name %></h1>
+  </div>
+<% } %>
+
+<div class="campaign-meta">
+  <span>Created by <strong><%= campaign.creator_name %></strong></span>
+  <span><%= formatDate(campaign.created_at, { showTime: false }) %></span>
+  <% if (isDM) { %>
+    <a href="/campaigns/<%= campaign.id %>/edit" class="btn btn-outline btn-small">Edit</a>
+    <form action="/campaigns/<%= campaign.id %>/delete" method="POST" style="display:inline;" onsubmit="return confirm('Delete this campaign? Related data will be unlinked, not deleted.')">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" class="btn btn-outline btn-small" style="color: var(--danger);">Delete</button>
+    </form>
+  <% } %>
+</div>
+
+<% if (campaign.description) { %>
+  <div class="card campaign-description">
+    <p><%- renderMarkdown(campaign.description) %></p>
+  </div>
+<% } %>
+
+<!-- Quick Stats -->
+<div class="campaign-stats-row">
+  <div class="campaign-stat-box card">
+    <div class="campaign-stat-number"><%= sessions.length %></div>
+    <div class="campaign-stat-label">Sessions</div>
+  </div>
+  <div class="campaign-stat-box card">
+    <div class="campaign-stat-number"><%= mapCount %></div>
+    <div class="campaign-stat-label">Maps</div>
+  </div>
+  <div class="campaign-stat-box card">
+    <div class="campaign-stat-number"><%= quests.length %></div>
+    <div class="campaign-stat-label">Quests</div>
+  </div>
+  <div class="campaign-stat-box card">
+    <div class="campaign-stat-number"><%= lootCount %></div>
+    <div class="campaign-stat-label">Loot Items</div>
+  </div>
+</div>
+
+<!-- Sessions -->
+<div class="section-divider"><span class="section-divider-icon">&#10022;</span></div>
+<div class="page-header">
+  <h2>Sessions</h2>
+  <% if (isDM) { %>
+    <a href="/sessions/new?campaign_id=<%= campaign.id %>" class="btn btn-secondary btn-small">New Session</a>
+  <% } %>
+</div>
+
+<% if (sessions.length > 0) { %>
+  <div class="session-grid">
+    <% sessions.forEach(s => { %>
+      <a href="/sessions/<%= s.id %>" class="card session-card session-<%= s.status %> session-cat-<%= s.category || 'dnd' %>">
+        <div class="session-category"><%= s.category === 'gamenight' ? 'Game Night' : s.category === 'rpg' ? 'RPG' : s.category === 'casual' ? 'Casual' : 'D&D' %></div>
+        <div class="session-status-badge"><%= s.status %></div>
+        <h2><%= s.title %></h2>
+        <% if ((s.status === 'confirmed' || s.status === 'completed') && s.confirmed_date) { %>
+          <div class="session-confirmed-date">
+            <%= formatDate(s.confirmed_date, { weekday: 'long', month: 'long', day: 'numeric' }) %>
+          </div>
+        <% } %>
+        <div class="session-meta">
+          DM: <%= s.dm_name %>
+        </div>
+      </a>
+    <% }); %>
+  </div>
+<% } else { %>
+  <p style="color: var(--text-secondary); font-size: 0.9rem;">No sessions in this campaign yet.</p>
+<% } %>
+
+<!-- Quests -->
+<% if (quests.length > 0) { %>
+  <div class="section-divider"><span class="section-divider-icon">&#10022;</span></div>
+  <div class="page-header">
+    <h2>Quests</h2>
+    <a href="/quests?campaign_id=<%= campaign.id %>" class="btn btn-secondary btn-small">View All</a>
+  </div>
+  <div class="quest-widget-list">
+    <% quests.forEach(q => { %>
+      <a href="/quests?campaign_id=<%= campaign.id %>" class="quest-widget-item">
+        <span class="quest-widget-title"><%= q.title %></span>
+        <span class="quest-widget-status quest-status-<%= q.status %>"><%= q.status %></span>
+        <% if (q.difficulty) { %>
+          <span class="quest-difficulty-badge quest-diff-<%= q.difficulty %>" style="font-size:0.6rem;"><%= q.difficulty %></span>
+        <% } %>
+      </a>
+    <% }); %>
+  </div>
+<% } %>
+
+<!-- Story Arcs -->
+<% if (arcs.length > 0) { %>
+  <div class="section-divider"><span class="section-divider-icon">&#10022;</span></div>
+  <div class="page-header">
+    <h2>Story Arcs</h2>
+  </div>
+  <div class="arc-list">
+    <% arcs.forEach(arc => { %>
+      <div class="arc-item card" style="border-left: 4px solid <%= arc.color || '#d4a843' %>;">
+        <h3><%= arc.name %></h3>
+        <% if (arc.description) { %>
+          <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.25rem;"><%= arc.description %></p>
+        <% } %>
+      </div>
+    <% }); %>
+  </div>
+<% } %>
+
+<!-- Quick Links -->
+<div class="section-divider"><span class="section-divider-icon">&#10022;</span></div>
+<div class="campaign-quick-links">
+  <a href="/map?campaign_id=<%= campaign.id %>" class="btn btn-outline">Maps (<%= mapCount %>)</a>
+  <a href="/loot?campaign_id=<%= campaign.id %>" class="btn btn-outline">Loot (<%= lootCount %>)</a>
+  <a href="/handouts?campaign_id=<%= campaign.id %>" class="btn btn-outline">Handouts (<%= handoutCount %>)</a>
+  <a href="/quests?campaign_id=<%= campaign.id %>" class="btn btn-outline">Quest Board</a>
+</div>
+
+<%- include('../partials/foot') %>

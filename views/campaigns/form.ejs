@@ -1,0 +1,44 @@
+<%- include('../partials/head', { pageTitle: campaign ? 'Edit Campaign' : 'New Campaign' }) %>
+
+<div class="page-header">
+  <h1><%= campaign ? 'Edit Campaign' : 'Create Campaign' %></h1>
+  <a href="<%= campaign ? '/campaigns/' + campaign.id : '/campaigns' %>" class="btn btn-outline">Back</a>
+</div>
+
+<div class="card">
+  <form action="<%= campaign ? '/campaigns/' + campaign.id : '/campaigns' %>" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <div class="form-group">
+      <label for="name">Campaign Name</label>
+      <input type="text" id="name" name="name" required placeholder="e.g. Curse of Strahd" value="<%= campaign ? campaign.name : '' %>" autofocus>
+    </div>
+
+    <div class="form-group">
+      <label for="description">Description (optional)</label>
+      <textarea id="description" name="description" rows="3" placeholder="A brief description of your campaign..."><%= campaign ? (campaign.description || '') : '' %></textarea>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="cover_image">Cover Image (optional)</label>
+        <input type="file" id="cover_image" name="cover_image" accept="image/*">
+        <p class="form-hint">Recommended: 800x400px. Max 5MB.</p>
+        <% if (campaign && campaign.cover_image) { %>
+          <div style="margin-top:0.5rem;">
+            <img src="/uploads/campaigns/<%= campaign.cover_image %>" alt="Current cover" style="max-width:200px; border-radius:6px;">
+          </div>
+        <% } %>
+      </div>
+
+      <div class="form-group">
+        <label for="color">Campaign Color</label>
+        <input type="color" id="color" name="color" value="<%= campaign ? (campaign.color || '#d4a843') : '#d4a843' %>" style="width:60px; height:38px; cursor:pointer;">
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary"><%= campaign ? 'Save Changes' : 'Create Campaign' %></button>
+  </form>
+</div>
+
+<%- include('../partials/foot') %>

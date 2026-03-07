@@ -5,6 +5,8 @@
   <a href="/" class="btn btn-outline">Back to Dashboard</a>
 </div>
 
+<%- include('partials/campaign-filter', { campaigns: campaigns, activeCampaignId: activeCampaignId, filterBasePath: '/loot' }) %>
+
 <div class="loot-section-nav">
   <a href="#loot-treasury">Treasury</a>
   <a href="#loot-add">Add Loot</a>
@@ -166,6 +168,17 @@
       </div>
     </div>
     <input type="hidden" name="vault_item_name" id="vault-item-name" value="">
+    <% if (campaigns.length > 0) { %>
+    <div class="form-group">
+      <label for="loot-campaign">Campaign</label>
+      <select name="campaign_id" id="loot-campaign">
+        <option value="">-- No Campaign --</option>
+        <% for (const c of campaigns) { %>
+          <option value="<%= c.id %>" <%= activeCampaignId == c.id ? 'selected' : '' %>><%= c.name %></option>
+        <% } %>
+      </select>
+    </div>
+    <% } %>
     <div style="display:flex;gap:1rem;align-items:center;margin-bottom:0.5rem;">
       <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;">
         <input type="checkbox" name="hidden" value="on"> Stage as hidden (reveal later)
@@ -267,6 +280,7 @@
           <th>Cat</th>
           <th>Qty</th>
           <th>Held By</th>
+          <% if (campaigns.length > 0) { %><th>Campaign</th><% } %>
           <th>Attuned</th>
           <th>Actions</th>
         </tr>
@@ -283,6 +297,7 @@
             <td data-label="Type"><span class="loot-category-badge loot-cat-<%= item.category %>"><%= item.category %></span></td>
             <td data-label="Qty"><%= item.quantity %></td>
             <td data-label="Held By" class="loot-holder"><%= item.holder_name || 'Party Bag' %></td>
+            <% if (campaigns.length > 0) { %><td data-label="Campaign"><%= item.campaign_name || '-' %></td><% } %>
             <td data-label="Attuned">
               <% if (item.attuned_char_name) { %>
                 <span class="attunement-badge"><%= item.attuned_char_name %> (<%= (attunementCounts[item.attuned_to] || 0) %>/3)</span>
@@ -323,6 +338,7 @@
                   </form>
                 <% } %>
                 <% if (isDM) { %>
+                  <button type="button" class="btn btn-small btn-outline" onclick="openLootEdit(<%= item.id %>, '<%= item.name.replace(/'/g, "\\'") %>', '<%= (item.description || '').replace(/'/g, "\\'").replace(/\n/g, '\\n') %>', '<%= item.category %>', <%= item.quantity %>, '<%= item.rarity || '' %>', '<%= item.campaign_id || '' %>')">Edit</button>
                   <form action="/loot/<%= item.id %>/delete" method="POST" class="inline-form">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Remove?')">&times;</button>
@@ -432,5 +448,64 @@
   modal.addEventListener('click', function(e) { if (e.target === modal) modal.style.display = 'none'; });
 })();
 </script>
+
+<% if (isDM) { %>
+<!-- Loot Edit Modal -->
+<div id="loot-edit-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;">
+  <div class="card" style="max-width:420px;width:90%;margin:auto;position:relative;">
+    <button type="button" onclick="document.getElementById('loot-edit-modal').style.display='none'" style="position:absolute;top:0.5rem;right:0.75rem;background:none;border:none;color:var(--text-secondary);font-size:1.2rem;cursor:pointer;">&times;</button>
+    <h3>Edit Item</h3>
+    <form id="loot-edit-form" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="form-group"><label>Name</label><input type="text" name="name" id="le-name" required></div>
+      <div class="form-group"><label>Description</label><textarea name="description" id="le-desc" rows="2"></textarea></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;">
+        <div class="form-group"><label>Category</label>
+          <select name="category" id="le-cat">
+            <option value="item">Item</option><option value="weapon">Weapon</option><option value="armor">Armor</option>
+            <option value="potion">Potion</option><option value="scroll">Scroll</option><option value="wondrous">Wondrous</option>
+            <option value="quest">Quest Item</option><option value="gold">Gold</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Quantity</label><input type="number" name="quantity" id="le-qty" min="1" value="1"></div>
+        <div class="form-group"><label>Rarity</label>
+          <select name="rarity" id="le-rarity">
+            <option value="">None</option><option value="common">Common</option><option value="uncommon">Uncommon</option>
+            <option value="rare">Rare</option><option value="very rare">Very Rare</option>
+            <option value="legendary">Legendary</option><option value="artifact">Artifact</option>
+          </select>
+        </div>
+      </div>
+      <% if (campaigns.length > 0) { %>
+      <div class="form-group"><label>Campaign</label>
+        <select name="campaign_id" id="le-campaign">
+          <option value="">-- No Campaign --</option>
+          <% for (const c of campaigns) { %>
+            <option value="<%= c.id %>"><%= c.name %></option>
+          <% } %>
+        </select>
+      </div>
+      <% } %>
+      <button type="submit" class="btn btn-primary btn-small">Save</button>
+    </form>
+  </div>
+</div>
+<script>
+function openLootEdit(id, name, desc, cat, qty, rarity, campId) {
+  document.getElementById('loot-edit-form').action = '/loot/' + id + '/edit';
+  document.getElementById('le-name').value = name;
+  document.getElementById('le-desc').value = desc;
+  document.getElementById('le-cat').value = cat;
+  document.getElementById('le-qty').value = qty;
+  document.getElementById('le-rarity').value = rarity;
+  var campSel = document.getElementById('le-campaign');
+  if (campSel) campSel.value = campId || '';
+  document.getElementById('loot-edit-modal').style.display = 'flex';
+}
+document.getElementById('loot-edit-modal').addEventListener('click', function(e) {
+  if (e.target === this) this.style.display = 'none';
+});
+</script>
+<% } %>
 
 <%- include('partials/foot') %>

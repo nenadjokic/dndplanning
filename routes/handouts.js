@@ -36,28 +36,39 @@ const upload = multer({
 // Handout library
 router.get('/', requireLogin, (req, res) => {
   const isDM = req.user.role === 'dm' || req.user.role === 'admin';
+  const campaignFilter = req.query.campaign_id;
 
-  const handouts = isDM
-    ? db.prepare(`SELECT h.*, u.username as creator_name,
-        nt.name as npc_name, ml.name as location_name
+  // Build WHERE conditions
+  const conditions = [];
+  const params = [];
+  if (!isDM) conditions.push('h.revealed = 1');
+  if (campaignFilter === 'unsorted') {
+    conditions.push('h.campaign_id IS NULL');
+  } else if (campaignFilter && campaignFilter !== '') {
+    conditions.push('h.campaign_id = ?');
+    params.push(parseInt(campaignFilter, 10));
+  }
+  const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+
+  const handouts = db.prepare(`SELECT h.*, u.username as creator_name,
+        nt.name as npc_name, ml.name as location_name,
+        camp.name as campaign_name
        FROM handouts h
        JOIN users u ON h.created_by = u.id
        LEFT JOIN npc_tokens nt ON h.linked_npc_id = nt.id
        LEFT JOIN map_locations ml ON h.linked_location_id = ml.id
-       ORDER BY h.created_at DESC`).all()
-    : db.prepare(`SELECT h.*, u.username as creator_name,
-        nt.name as npc_name, ml.name as location_name
-       FROM handouts h
-       JOIN users u ON h.created_by = u.id
-       LEFT JOIN npc_tokens nt ON h.linked_npc_id = nt.id
-       LEFT JOIN map_locations ml ON h.linked_location_id = ml.id
-       WHERE h.revealed = 1
-       ORDER BY h.created_at DESC`).all();
+       LEFT JOIN campaigns camp ON h.campaign_id = camp.id
+       ${whereClause}
+       ORDER BY h.created_at DESC`).all(...params);
 
   const npcs = isDM ? db.prepare('SELECT id, name FROM npc_tokens ORDER BY name').all() : [];
   const locations = isDM ? db.prepare('SELECT id, name FROM map_locations ORDER BY name').all() : [];
 
-  res.render('handouts', { handouts, isDM, npcs, locations });
+  let campaigns = [];
+  try { campaigns = db.prepare('SELECT id, name FROM campaigns ORDER BY name').all(); } catch (e) {}
+  const activeCampaignId = campaignFilter || null;
+
+  res.render('handouts', { handouts, isDM, npcs, locations, campaigns, activeCampaignId });
 });
 
 // Upload handout (DM)
@@ -65,7 +76,7 @@ router.post('/', requireLogin, requireDM, upload.single('image'), (req, res) => 
   const validateCSRF = req.app.locals.validateCSRF;
   if (!validateCSRF(req, res)) return;
 
-  const { title, type, content, linked_npc_id, linked_location_id } = req.body;
+  const { title, type, content, linked_npc_id, linked_location_id, campaign_id } = req.body;
   if (!title || !title.trim()) {
     req.flash('error', 'Title is required.');
     return res.redirect('/handouts');
@@ -82,9 +93,11 @@ router.post('/', requireLogin, requireDM, upload.single('image'), (req, res) => 
     return res.redirect('/handouts');
   }
 
-  db.prepare(`INSERT INTO handouts (title, type, content, image_path, linked_npc_id, linked_location_id, created_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?)`)
-    .run(title.trim(), handoutType, textContent, imagePath, npcId, locId, req.user.id);
+  const campId = campaign_id ? parseInt(campaign_id, 10) : null;
+
+  db.prepare(`INSERT INTO handouts (title, type, content, image_path, linked_npc_id, linked_location_id, created_by, campaign_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(title.trim(), handoutType, textContent, imagePath, npcId, locId, req.user.id, campId);
 
   req.flash('success', 'Handout created.');
   res.redirect('/handouts');
@@ -119,14 +132,15 @@ router.post('/:id/hide', requireLogin, requireDM, (req, res) => {
 
 // Edit handout
 router.post('/:id/edit', requireLogin, requireDM, (req, res) => {
-  const { title, linked_npc_id, linked_location_id } = req.body;
+  const { title, linked_npc_id, linked_location_id, campaign_id } = req.body;
   const handout = db.prepare('SELECT id FROM handouts WHERE id = ?').get(req.params.id);
   if (!handout) {
     req.flash('error', 'Handout not found.');
     return res.redirect('/handouts');
   }
-  db.prepare('UPDATE handouts SET title = ?, linked_npc_id = ?, linked_location_id = ? WHERE id = ?')
-    .run((title && title.trim()) || 'Untitled', linked_npc_id ? parseInt(linked_npc_id, 10) : null, linked_location_id ? parseInt(linked_location_id, 10) : null, handout.id);
+  const campId = campaign_id ? parseInt(campaign_id, 10) : null;
+  db.prepare('UPDATE handouts SET title = ?, linked_npc_id = ?, linked_location_id = ?, campaign_id = ? WHERE id = ?')
+    .run((title && title.trim()) || 'Untitled', linked_npc_id ? parseInt(linked_npc_id, 10) : null, linked_location_id ? parseInt(linked_location_id, 10) : null, campId, handout.id);
   req.flash('success', 'Handout updated.');
   res.redirect('/handouts');
 });

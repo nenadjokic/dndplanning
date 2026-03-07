@@ -20,11 +20,16 @@ router.get('/new', requireLogin, requireDM, (req, res) => {
 
   const mapLocations = db.prepare('SELECT ml.id, ml.name, m.name as map_name FROM map_locations ml LEFT JOIN maps m ON ml.map_id = m.id ORDER BY m.name, ml.name').all();
 
-  res.render('dm/session-form', { session: null, slots: [], unavailabilities, mapLocations });
+  let campaigns = [];
+  try { campaigns = db.prepare('SELECT id, name FROM campaigns ORDER BY name').all(); } catch (e) {}
+
+  const preselectedCampaign = req.query.campaign_id ? parseInt(req.query.campaign_id, 10) : null;
+
+  res.render('dm/session-form', { session: null, slots: [], unavailabilities, mapLocations, campaigns, preselectedCampaign });
 });
 
 router.post('/', requireLogin, requireDM, (req, res) => {
-  const { title, description, slot_dates, slot_labels, category, location_id, recurrence_day, recurrence_time, min_players } = req.body;
+  const { title, description, slot_dates, slot_labels, category, location_id, recurrence_day, recurrence_time, min_players, campaign_id } = req.body;
   const validCategories = ['dnd', 'rpg', 'gamenight', 'casual'];
   const sessionCategory = validCategories.includes(category) ? category : 'dnd';
   const slotDatesDate = req.body['slot_dates_date'];
@@ -73,11 +78,13 @@ router.post('/', requireLogin, requireDM, (req, res) => {
   // Parse min_players
   const minPlayers = min_players ? Math.max(1, Math.min(20, parseInt(min_players, 10) || 0)) : null;
 
-  const insertSession = db.prepare('INSERT INTO sessions (title, description, created_by, category, location_id, recurrence_rule, min_players) VALUES (?, ?, ?, ?, ?, ?, ?)');
+  const campId = campaign_id ? parseInt(campaign_id, 10) : null;
+
+  const insertSession = db.prepare('INSERT INTO sessions (title, description, created_by, category, location_id, recurrence_rule, min_players, campaign_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
   const insertSlot = db.prepare('INSERT INTO slots (session_id, date_time, label) VALUES (?, ?, ?)');
 
   const createSession = db.transaction(() => {
-    const result = insertSession.run(title, description || null, req.user.id, sessionCategory, locId, recurrenceRule, minPlayers || null);
+    const result = insertSession.run(title, description || null, req.user.id, sessionCategory, locId, recurrenceRule, minPlayers || null, campId);
     const sessionId = result.lastInsertRowid;
 
     for (let i = 0; i < dates.length; i++) {
@@ -602,8 +609,8 @@ router.post('/:id/generate-next', requireLogin, requireDM, (req, res) => {
   const slotDateTime = dateStr + 'T' + timeStr;
 
   const createNext = db.transaction(() => {
-    const result = db.prepare('INSERT INTO sessions (title, description, created_by, category, location_id, recurrence_rule, parent_session_id, min_players) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
-      session.title, session.description, req.user.id, session.category, session.location_id, session.recurrence_rule, session.id, session.min_players
+    const result = db.prepare('INSERT INTO sessions (title, description, created_by, category, location_id, recurrence_rule, parent_session_id, min_players, campaign_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+      session.title, session.description, req.user.id, session.category, session.location_id, session.recurrence_rule, session.id, session.min_players, session.campaign_id || null
     );
     const newId = result.lastInsertRowid;
     db.prepare('INSERT INTO slots (session_id, date_time) VALUES (?, ?)').run(newId, slotDateTime);
@@ -664,8 +671,8 @@ router.post('/:id/skip', requireLogin, requireDM, (req, res) => {
   const slotDateTime = dateStr + 'T' + timeStr;
 
   const createNext = db.transaction(() => {
-    const result = db.prepare('INSERT INTO sessions (title, description, created_by, category, location_id, recurrence_rule, parent_session_id, min_players) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
-      session.title, session.description, req.user.id, session.category, session.location_id, session.recurrence_rule, session.id, session.min_players
+    const result = db.prepare('INSERT INTO sessions (title, description, created_by, category, location_id, recurrence_rule, parent_session_id, min_players, campaign_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+      session.title, session.description, req.user.id, session.category, session.location_id, session.recurrence_rule, session.id, session.min_players, session.campaign_id || null
     );
     const newId = result.lastInsertRowid;
     db.prepare('INSERT INTO slots (session_id, date_time) VALUES (?, ?)').run(newId, slotDateTime);

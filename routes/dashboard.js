@@ -36,9 +36,11 @@ router.get('/', requireLogin, (req, res) => {
 
   if (req.user.role === 'dm' || req.user.role === 'admin') {
     const sessions = db.prepare(`
-      SELECT s.*, sl.date_time as confirmed_date, sl.label as confirmed_label
+      SELECT s.*, sl.date_time as confirmed_date, sl.label as confirmed_label,
+        camp.name as campaign_name, camp.color as campaign_color
       FROM sessions s
       LEFT JOIN slots sl ON s.confirmed_slot_id = sl.id
+      LEFT JOIN campaigns camp ON s.campaign_id = camp.id
       ORDER BY
         CASE s.status
           WHEN 'open' THEN 0
@@ -85,16 +87,30 @@ router.get('/', requireLogin, (req, res) => {
       voteProgress[sid] = { voted: voted.cnt, total: totalPlayers };
     }
 
-    return res.render('dm/dashboard', { sessions, firstLogin, birthdayUsers, showWhatsNew, boardPosts, latestRecap, activeQuests, voteProgress });
+    // Campaigns
+    let campaigns = [];
+    try {
+      campaigns = db.prepare(`
+        SELECT c.*,
+          (SELECT COUNT(*) FROM sessions s WHERE s.campaign_id = c.id) as session_count,
+          (SELECT COUNT(*) FROM maps m WHERE m.campaign_id = c.id) as map_count,
+          (SELECT COUNT(*) FROM quests q WHERE q.campaign_id = c.id) as quest_count
+        FROM campaigns c ORDER BY c.created_at DESC
+      `).all();
+    } catch (e) { /* table may not exist yet */ }
+
+    return res.render('dm/dashboard', { sessions, firstLogin, birthdayUsers, showWhatsNew, boardPosts, latestRecap, activeQuests, voteProgress, campaigns });
   }
 
   // Player dashboard
   const sessions = db.prepare(`
     SELECT s.*, u.username as dm_name,
-      sl.date_time as confirmed_date, sl.label as confirmed_label
+      sl.date_time as confirmed_date, sl.label as confirmed_label,
+      camp.name as campaign_name, camp.color as campaign_color
     FROM sessions s
     JOIN users u ON s.created_by = u.id
     LEFT JOIN slots sl ON s.confirmed_slot_id = sl.id
+    LEFT JOIN campaigns camp ON s.campaign_id = camp.id
     ORDER BY
       CASE s.status
         WHEN 'open' THEN 0
@@ -135,7 +151,19 @@ router.get('/', requireLogin, (req, res) => {
       LIMIT 3`).all();
   } catch (e) { /* table may not exist yet */ }
 
-  res.render('player/dashboard', { sessions, votedSessionIds, firstLogin, birthdayUsers, showWhatsNew, boardPosts, latestRecap, activeQuests });
+  // Campaigns
+  let campaigns = [];
+  try {
+    campaigns = db.prepare(`
+      SELECT c.*,
+        (SELECT COUNT(*) FROM sessions s WHERE s.campaign_id = c.id) as session_count,
+        (SELECT COUNT(*) FROM maps m WHERE m.campaign_id = c.id) as map_count,
+        (SELECT COUNT(*) FROM quests q WHERE q.campaign_id = c.id) as quest_count
+      FROM campaigns c ORDER BY c.created_at DESC
+    `).all();
+  } catch (e) { /* table may not exist yet */ }
+
+  res.render('player/dashboard', { sessions, votedSessionIds, firstLogin, birthdayUsers, showWhatsNew, boardPosts, latestRecap, activeQuests, campaigns });
 });
 
 module.exports = router;

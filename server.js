@@ -67,6 +67,7 @@ const encounterRoutes = require('./routes/encounters');
 const generatorsRoutes = require('./routes/generators');
 const handoutsRoutes = require('./routes/handouts');
 const questsRoutes = require('./routes/quests');
+const campaignsRoutes = require('./routes/campaigns');
 const adminUpdatesRoutes = require('./routes/admin-updates');
 
 const app = express();
@@ -103,6 +104,7 @@ app.use('/maps', express.static(path.join(__dirname, 'data', 'maps')));
 app.use('/thumbnails', express.static(path.join(__dirname, 'data', 'thumbnails')));
 app.use('/uploads', express.static(path.join(__dirname, 'data', 'uploads')));
 app.use('/uploads/handouts', express.static(path.join(__dirname, 'data', 'uploads', 'handouts')));
+app.use('/uploads/campaigns', express.static(path.join(__dirname, 'data', 'uploads', 'campaigns')));
 
 app.use(session({
   store: new SQLiteStore({
@@ -260,6 +262,7 @@ app.use('/encounters', encounterRoutes);
 app.use('/generators', generatorsRoutes);
 app.use('/handouts', handoutsRoutes);
 app.use('/quests', questsRoutes);
+app.use('/campaigns', campaignsRoutes);
 app.use('/admin', adminUpdatesRoutes);
 
 // PWA install page

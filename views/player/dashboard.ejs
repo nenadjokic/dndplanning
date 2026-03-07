@@ -41,9 +41,11 @@
   <div class="session-grid">
     <% sessions.forEach((s, i) => { %>
       <a href="/sessions/<%= s.id %>" class="card session-card session-<%= s.status %> session-cat-<%= s.category || 'dnd' %>" data-session-index="<%= i %>"<% if (i >= 9) { %> style="display:none"<% } %>>
-        <div class="session-category"><%= s.category === 'gamenight' ? 'Game Night' : s.category === 'rpg' ? 'RPG' : s.category === 'casual' ? 'Casual' : 'D&D' %></div>
-        <div class="session-status-badge"><%= s.status %></div>
+        <div class="session-category"><%= s.category === 'gamenight' ? 'Game Night' : s.category === 'rpg' ? 'RPG' : s.category === 'casual' ? 'Casual' : 'D&D' %> &middot; <%= s.status %></div>
         <% if (s.recurrence_rule) { %><span class="session-recurring-badge session-recurring-badge-sm">Recurring</span><% } %>
+        <% if (s.campaign_name) { %>
+          <div class="session-campaign-label" style="border-left: 3px solid <%= s.campaign_color || '#d4a843' %>;"><%= s.campaign_name %></div>
+        <% } %>
         <h2><%= s.title %></h2>
         <% if (s.description) { %>
           <p class="session-desc"><%= s.description %></p>
@@ -83,6 +85,35 @@
       })();
     </script>
   <% } %>
+<% } %>
+
+<% if (typeof campaigns !== 'undefined' && campaigns.length > 0) { %>
+<div class="section-divider"><span class="section-divider-icon">&#10022;</span></div>
+<div class="page-header">
+  <h2>Campaigns</h2>
+  <a href="/campaigns" class="btn btn-secondary">View All</a>
+</div>
+<div class="campaign-grid campaign-grid-dashboard">
+  <% campaigns.forEach(c => { %>
+    <a href="/campaigns/<%= c.id %>" class="campaign-card card" style="border-top: 3px solid <%= c.color || '#d4a843' %>;">
+      <% if (c.cover_image) { %>
+        <div class="campaign-cover campaign-cover-sm" style="background-image: url('/uploads/campaigns/<%= c.cover_image %>');"></div>
+      <% } else { %>
+        <div class="campaign-cover campaign-cover-sm campaign-cover-default" style="background-color: <%= c.color || '#d4a843' %>;">
+          <span class="campaign-cover-icon">&#9876;</span>
+        </div>
+      <% } %>
+      <div class="campaign-card-body">
+        <h2 class="campaign-card-title"><%= c.name %></h2>
+        <div class="campaign-card-stats">
+          <span><%= c.session_count %> sessions</span>
+          <span><%= c.map_count %> maps</span>
+          <span><%= c.quest_count %> quests</span>
+        </div>
+      </div>
+    </a>
+  <% }); %>
+</div>
 <% } %>
 
 <% if (typeof activeQuests !== 'undefined' && activeQuests.length > 0) { %>

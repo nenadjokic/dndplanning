@@ -7,29 +7,33 @@ const router = express.Router();
 // Quest board page
 router.get('/', requireLogin, (req, res) => {
   const isDM = req.user.role === 'dm' || req.user.role === 'admin';
+  const campaignFilter = req.query.campaign_id;
 
-  const quests = isDM
-    ? db.prepare(`SELECT q.*, u.username as creator_name,
+  // Build WHERE conditions
+  const conditions = [];
+  const params = [];
+  if (!isDM) conditions.push('q.revealed = 1');
+  if (campaignFilter === 'unsorted') {
+    conditions.push('q.campaign_id IS NULL');
+  } else if (campaignFilter && campaignFilter !== '') {
+    conditions.push('q.campaign_id = ?');
+    params.push(parseInt(campaignFilter, 10));
+  }
+  const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+
+  const quests = db.prepare(`SELECT q.*, u.username as creator_name,
         nt.name as npc_name, m.name as map_name, ml.name as location_name,
-        ca.name as arc_name, ca.color as arc_color
+        ca.name as arc_name, ca.color as arc_color,
+        camp.name as campaign_name
        FROM quests q
        JOIN users u ON q.created_by = u.id
        LEFT JOIN npc_tokens nt ON q.quest_giver_npc_id = nt.id
        LEFT JOIN maps m ON q.linked_map_id = m.id
        LEFT JOIN map_locations ml ON q.linked_location_id = ml.id
        LEFT JOIN campaign_arcs ca ON q.arc_id = ca.id
-       ORDER BY q.sort_order, q.created_at DESC`).all()
-    : db.prepare(`SELECT q.*, u.username as creator_name,
-        nt.name as npc_name, m.name as map_name, ml.name as location_name,
-        ca.name as arc_name, ca.color as arc_color
-       FROM quests q
-       JOIN users u ON q.created_by = u.id
-       LEFT JOIN npc_tokens nt ON q.quest_giver_npc_id = nt.id
-       LEFT JOIN maps m ON q.linked_map_id = m.id
-       LEFT JOIN map_locations ml ON q.linked_location_id = ml.id
-       LEFT JOIN campaign_arcs ca ON q.arc_id = ca.id
-       WHERE q.revealed = 1
-       ORDER BY q.sort_order, q.created_at DESC`).all();
+       LEFT JOIN campaigns camp ON q.campaign_id = camp.id
+       ${whereClause}
+       ORDER BY q.sort_order, q.created_at DESC`).all(...params);
 
   // Fetch objectives for each quest
   for (const q of quests) {
@@ -42,23 +46,29 @@ router.get('/', requireLogin, (req, res) => {
   const locations = isDM ? db.prepare('SELECT id, name, map_id FROM map_locations ORDER BY name').all() : [];
   const arcs = isDM ? db.prepare('SELECT id, name, color FROM campaign_arcs ORDER BY sort_order, name').all() : [];
 
-  res.render('quests', { quests, isDM, npcs, maps, locations, arcs });
+  let campaigns = [];
+  try { campaigns = db.prepare('SELECT id, name FROM campaigns ORDER BY name').all(); } catch (e) {}
+  const activeCampaignId = campaignFilter || null;
+
+  res.render('quests', { quests, isDM, npcs, maps, locations, arcs, campaigns, activeCampaignId });
 });
 
 // Create quest (DM only)
 router.post('/', requireLogin, requireDM, (req, res) => {
   const { title, description, difficulty, reward, quest_giver_npc_id, quest_giver_name,
-    linked_map_id, linked_location_id, arc_id, dm_notes, revealed, objectives } = req.body;
+    linked_map_id, linked_location_id, arc_id, dm_notes, revealed, objectives, campaign_id } = req.body;
 
   if (!title || !title.trim()) {
     req.flash('error', 'Quest title is required.');
     return res.redirect('/quests');
   }
 
+  const campId = campaign_id ? parseInt(campaign_id, 10) : null;
+
   const result = db.prepare(`INSERT INTO quests (title, description, status, difficulty, reward,
     quest_giver_npc_id, quest_giver_name, linked_map_id, linked_location_id, arc_id,
-    revealed, dm_notes, created_by)
-    VALUES (?, ?, 'available', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    revealed, dm_notes, created_by, campaign_id)
+    VALUES (?, ?, 'available', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .run(title.trim(), description || null, difficulty || null, reward || null,
       quest_giver_npc_id ? parseInt(quest_giver_npc_id) : null,
       quest_giver_name || null,
@@ -66,7 +76,7 @@ router.post('/', requireLogin, requireDM, (req, res) => {
       linked_location_id ? parseInt(linked_location_id) : null,
       arc_id ? parseInt(arc_id) : null,
       revealed === 'on' || revealed === '1' ? 1 : 0,
-      dm_notes || null, req.user.id);
+      dm_notes || null, req.user.id, campId);
 
   // Add objectives
   if (objectives) {
@@ -96,11 +106,13 @@ router.post('/:id/edit', requireLogin, requireDM, (req, res) => {
   }
 
   const { title, description, difficulty, reward, quest_giver_npc_id, quest_giver_name,
-    linked_map_id, linked_location_id, arc_id, dm_notes, objectives } = req.body;
+    linked_map_id, linked_location_id, arc_id, dm_notes, objectives, campaign_id } = req.body;
+
+  const campId = campaign_id ? parseInt(campaign_id, 10) : null;
 
   db.prepare(`UPDATE quests SET title=?, description=?, difficulty=?, reward=?,
     quest_giver_npc_id=?, quest_giver_name=?, linked_map_id=?, linked_location_id=?,
-    arc_id=?, dm_notes=? WHERE id=?`)
+    arc_id=?, dm_notes=?, campaign_id=? WHERE id=?`)
     .run(title ? title.trim() : 'Untitled', description || null, difficulty || null,
       reward || null,
       quest_giver_npc_id ? parseInt(quest_giver_npc_id) : null,
@@ -108,7 +120,7 @@ router.post('/:id/edit', requireLogin, requireDM, (req, res) => {
       linked_map_id ? parseInt(linked_map_id) : null,
       linked_location_id ? parseInt(linked_location_id) : null,
       arc_id ? parseInt(arc_id) : null,
-      dm_notes || null, quest.id);
+      dm_notes || null, campId, quest.id);
 
   // Rebuild objectives
   db.prepare('DELETE FROM quest_objectives WHERE quest_id = ?').run(quest.id);

@@ -57,6 +57,9 @@
       <button type="button" class="btn btn-outline btn-small" id="combat-toggle-btn" style="border-color: #c0392b; color: #e74c3c;" title="Combat Tracker">
         ⚔️ Combat
       </button>
+      <button type="button" class="btn btn-outline btn-small" id="edit-map-btn" title="Edit Map">
+        ✏️ Edit
+      </button>
       <button type="button" class="btn btn-outline btn-small" id="place-chest-btn" style="border-color: var(--gold-dim); color: var(--gold);" title="Place Loot Chest">
         <span class="chest-btn-icon"></span> Chest
       </button>
@@ -622,6 +625,7 @@
             <% if (isDM) { %>
               <td>
                 <div style="display: flex; gap: 0.25rem;">
+                  <button type="button" class="btn btn-small btn-outline" data-edit-map="<%= child.id %>" data-map-name="<%= child.name %>" data-map-type="<%= child.map_type %>" data-map-desc="<%= (child.description || '').replace(/"/g, '&quot;') %>" data-map-campaign="<%= child.campaign_id || '' %>">Edit</button>
                   <form action="/map/<%= child.id %>/delete" method="POST" class="inline-form">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this sub-map and all its children?')">&times;</button>
@@ -4597,5 +4601,108 @@ function openEditLocation(id, name, desc, icon) {
 }
 <% } %>
 </script>
+
+<% if (isDM) { %>
+<!-- Edit Map Modal -->
+<div id="edit-map-modal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
+  <div class="card" style="max-width:420px; width:90%; margin:auto; position:relative;">
+    <button type="button" onclick="document.getElementById('edit-map-modal').style.display='none'" style="position:absolute;top:0.5rem;right:0.75rem;background:none;border:none;color:var(--text-secondary);font-size:1.2rem;cursor:pointer;">&times;</button>
+    <h3>Edit Map</h3>
+    <form id="edit-map-form-modal">
+      <input type="hidden" id="edit-map-id">
+      <div class="form-group">
+        <label for="edit-map-name">Name</label>
+        <input type="text" id="edit-map-name" required>
+      </div>
+      <div class="form-group">
+        <label for="edit-map-type">Type</label>
+        <select id="edit-map-type">
+          <% for (const [key, val] of Object.entries(MARKER_TYPES)) { %>
+            <option value="<%= key %>"><%= val.icon %> <%= val.label %></option>
+          <% } %>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="edit-map-desc">Description</label>
+        <textarea id="edit-map-desc" rows="2"></textarea>
+      </div>
+      <% if (typeof campaigns !== 'undefined' && campaigns.length > 0) { %>
+      <div class="form-group">
+        <label for="edit-map-campaign">Campaign</label>
+        <select id="edit-map-campaign">
+          <option value="">-- No campaign --</option>
+          <% for (const c of campaigns) { %>
+            <option value="<%= c.id %>"><%= c.name %></option>
+          <% } %>
+        </select>
+      </div>
+      <% } %>
+      <button type="submit" class="btn btn-primary btn-small">Save</button>
+    </form>
+  </div>
+</div>
+<script>
+(function() {
+  var csrfToken = '<%= csrfToken %>';
+
+  function openEditMap(id, name, type, desc, campaignId) {
+    document.getElementById('edit-map-id').value = id;
+    document.getElementById('edit-map-name').value = name;
+    document.getElementById('edit-map-type').value = type;
+    document.getElementById('edit-map-desc').value = desc || '';
+    var campSel = document.getElementById('edit-map-campaign');
+    if (campSel) campSel.value = campaignId || '';
+    document.getElementById('edit-map-modal').style.display = 'flex';
+  }
+
+  // Edit button for current map
+  var editBtn = document.getElementById('edit-map-btn');
+  if (editBtn) {
+    editBtn.addEventListener('click', function() {
+      openEditMap('<%= map.id %>', '<%= map.name.replace(/'/g, "\\'") %>', '<%= map.map_type %>', '<%= (map.description || "").replace(/'/g, "\\'").replace(/\n/g, "\\n") %>', '<%= map.campaign_id || "" %>');
+    });
+  }
+
+  // Edit buttons for sub-maps
+  document.querySelectorAll('[data-edit-map]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      openEditMap(
+        btn.getAttribute('data-edit-map'),
+        btn.getAttribute('data-map-name'),
+        btn.getAttribute('data-map-type'),
+        btn.getAttribute('data-map-desc') || '',
+        btn.getAttribute('data-map-campaign') || ''
+      );
+    });
+  });
+
+  document.getElementById('edit-map-form-modal').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var id = document.getElementById('edit-map-id').value;
+    var body = {
+      name: document.getElementById('edit-map-name').value,
+      map_type: document.getElementById('edit-map-type').value,
+      description: document.getElementById('edit-map-desc').value
+    };
+    var campSel = document.getElementById('edit-map-campaign');
+    if (campSel) body.campaign_id = campSel.value;
+
+    fetch('/map/' + id + '/edit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken, 'Accept': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      if (d.success) location.reload();
+      else alert(d.error || 'Failed to update map');
+    });
+  });
+
+  document.getElementById('edit-map-modal').addEventListener('click', function(e) {
+    if (e.target === this) this.style.display = 'none';
+  });
+})();
+</script>
+<% } %>
 
 <%- include('partials/foot') %>

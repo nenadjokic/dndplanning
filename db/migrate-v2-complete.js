@@ -875,6 +875,18 @@ try {
       )`
     },
     {
+      name: 'campaigns',
+      sql: `CREATE TABLE campaigns (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        cover_image TEXT,
+        color TEXT DEFAULT '#d4a843',
+        created_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`
+    },
+    {
       name: 'backup_config',
       sql: `CREATE TABLE backup_config (
         id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -986,7 +998,14 @@ try {
     { table: 'sessions', column: 'reminder_1h_sent', sql: 'ALTER TABLE sessions ADD COLUMN reminder_1h_sent INTEGER DEFAULT 0' },
     { table: 'users', column: 'sound_default', sql: 'ALTER TABLE users ADD COLUMN sound_default TEXT' },
     { table: 'quests', column: 'pin_x', sql: 'ALTER TABLE quests ADD COLUMN pin_x REAL DEFAULT 50' },
-    { table: 'quests', column: 'pin_y', sql: 'ALTER TABLE quests ADD COLUMN pin_y REAL DEFAULT 50' }
+    { table: 'quests', column: 'pin_y', sql: 'ALTER TABLE quests ADD COLUMN pin_y REAL DEFAULT 50' },
+    { table: 'sessions', column: 'campaign_id', sql: 'ALTER TABLE sessions ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)' },
+    { table: 'maps', column: 'campaign_id', sql: 'ALTER TABLE maps ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)' },
+    { table: 'quests', column: 'campaign_id', sql: 'ALTER TABLE quests ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)' },
+    { table: 'loot_items', column: 'campaign_id', sql: 'ALTER TABLE loot_items ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)' },
+    { table: 'handouts', column: 'campaign_id', sql: 'ALTER TABLE handouts ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)' },
+    { table: 'encounters', column: 'campaign_id', sql: 'ALTER TABLE encounters ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)' },
+    { table: 'campaign_arcs', column: 'campaign_id', sql: 'ALTER TABLE campaign_arcs ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)' }
   ];
 
   for (const col of missingColumns) {

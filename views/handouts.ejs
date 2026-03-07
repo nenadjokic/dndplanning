@@ -5,6 +5,8 @@
   <a href="/" class="btn btn-outline">Back to Chamber</a>
 </div>
 
+<%- include('partials/campaign-filter', { campaigns: campaigns, activeCampaignId: activeCampaignId, filterBasePath: '/handouts' }) %>
+
 <% if (isDM) { %>
 <div class="card" style="margin-bottom:1.5rem;">
   <h2>Share a Handout</h2>
@@ -51,6 +53,17 @@
         </select>
       </div>
     </div>
+    <% if (campaigns.length > 0) { %>
+    <div class="form-group">
+      <label>Campaign</label>
+      <select name="campaign_id">
+        <option value="">-- No Campaign --</option>
+        <% for (const c of campaigns) { %>
+          <option value="<%= c.id %>" <%= activeCampaignId == c.id ? 'selected' : '' %>><%= c.name %></option>
+        <% } %>
+      </select>
+    </div>
+    <% } %>
     <button type="submit" class="btn btn-primary">Upload Handout</button>
   </form>
 </div>
@@ -83,11 +96,13 @@
           <% if (!h.revealed && isDM) { %>
             <span class="staged-badge">Hidden</span>
           <% } %>
+          <% if (h.campaign_name) { %><span class="handout-link-badge"><%= h.campaign_name %></span><% } %>
           <% if (h.npc_name) { %><span class="handout-link-badge">NPC: <%= h.npc_name %></span><% } %>
           <% if (h.location_name) { %><span class="handout-link-badge">Loc: <%= h.location_name %></span><% } %>
         </div>
         <% if (isDM) { %>
           <div class="handout-actions">
+            <button type="button" class="btn btn-small btn-outline" onclick="openHandoutEdit(<%= h.id %>, '<%= h.title.replace(/'/g, "\\'") %>', '<%= h.linked_npc_id || '' %>', '<%= h.linked_location_id || '' %>', '<%= h.campaign_id || '' %>')">Edit</button>
             <% if (h.revealed) { %>
               <form action="/handouts/<%= h.id %>/hide" method="POST" class="inline-form">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -168,5 +183,56 @@ if (typeof EventSource !== 'undefined') {
   });
 }
 </script>
+
+<% if (isDM) { %>
+<!-- Handout Edit Modal -->
+<div id="handout-edit-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;">
+  <div class="card" style="max-width:420px;width:90%;margin:auto;position:relative;">
+    <button type="button" onclick="document.getElementById('handout-edit-modal').style.display='none'" style="position:absolute;top:0.5rem;right:0.75rem;background:none;border:none;color:var(--text-secondary);font-size:1.2rem;cursor:pointer;">&times;</button>
+    <h3>Edit Handout</h3>
+    <form id="handout-edit-form" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="form-group"><label>Title</label><input type="text" name="title" id="he-title" required></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+        <div class="form-group"><label>Link to NPC</label>
+          <select name="linked_npc_id" id="he-npc">
+            <option value="">-- None --</option>
+            <% for (const n of npcs) { %><option value="<%= n.id %>"><%= n.name %></option><% } %>
+          </select>
+        </div>
+        <div class="form-group"><label>Link to Location</label>
+          <select name="linked_location_id" id="he-loc">
+            <option value="">-- None --</option>
+            <% for (const l of locations) { %><option value="<%= l.id %>"><%= l.name %></option><% } %>
+          </select>
+        </div>
+      </div>
+      <% if (campaigns.length > 0) { %>
+      <div class="form-group"><label>Campaign</label>
+        <select name="campaign_id" id="he-campaign">
+          <option value="">-- No Campaign --</option>
+          <% for (const c of campaigns) { %><option value="<%= c.id %>"><%= c.name %></option><% } %>
+        </select>
+      </div>
+      <% } %>
+      <button type="submit" class="btn btn-primary btn-small">Save</button>
+    </form>
+  </div>
+</div>
+<script>
+function openHandoutEdit(id, title, npcId, locId, campId) {
+  document.getElementById('handout-edit-form').action = '/handouts/' + id + '/edit';
+  document.getElementById('he-title').value = title;
+  document.getElementById('he-npc').value = npcId || '';
+  document.getElementById('he-loc').value = locId || '';
+  var campSel = document.getElementById('he-campaign');
+  if (campSel) campSel.value = campId || '';
+  document.getElementById('handout-edit-modal').style.display = 'flex';
+}
+document.getElementById('handout-edit-modal').addEventListener('click', function(e) {
+  if (e.target === this) this.style.display = 'none';
+});
+</script>
+<% } %>
 
 <%- include('partials/foot') %>

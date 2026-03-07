@@ -7,28 +7,33 @@ const router = express.Router();
 // Main loot page
 router.get('/', requireLogin, (req, res) => {
   const isDM = req.user.role === 'dm' || req.user.role === 'admin';
+  const campaignFilter = req.query.campaign_id;
 
-  // Items query — DM sees all, players see only non-hidden
-  const itemsQuery = isDM
-    ? `SELECT l.*, u.username as holder_name, s.title as session_title, c.username as creator_name,
-         ch.name as attuned_char_name, ch.user_id as attuned_owner_id
-       FROM loot_items l
-       LEFT JOIN users u ON l.held_by = u.id
-       LEFT JOIN sessions s ON l.session_id = s.id
-       LEFT JOIN users c ON l.created_by = c.id
-       LEFT JOIN characters ch ON l.attuned_to = ch.id
-       ORDER BY CASE l.category WHEN 'quest' THEN 0 ELSE 1 END, l.category, l.name`
-    : `SELECT l.*, u.username as holder_name, s.title as session_title, c.username as creator_name,
-         ch.name as attuned_char_name, ch.user_id as attuned_owner_id
-       FROM loot_items l
-       LEFT JOIN users u ON l.held_by = u.id
-       LEFT JOIN sessions s ON l.session_id = s.id
-       LEFT JOIN users c ON l.created_by = c.id
-       LEFT JOIN characters ch ON l.attuned_to = ch.id
-       WHERE l.hidden = 0
-       ORDER BY CASE l.category WHEN 'quest' THEN 0 ELSE 1 END, l.category, l.name`;
+  // Build WHERE conditions
+  const conditions = [];
+  const params = [];
+  if (!isDM) conditions.push('l.hidden = 0');
+  if (campaignFilter === 'unsorted') {
+    conditions.push('l.campaign_id IS NULL');
+  } else if (campaignFilter && campaignFilter !== '') {
+    conditions.push('l.campaign_id = ?');
+    params.push(parseInt(campaignFilter, 10));
+  }
+  const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
-  const items = db.prepare(itemsQuery).all();
+  const itemsQuery = `SELECT l.*, u.username as holder_name, s.title as session_title, c.username as creator_name,
+       ch.name as attuned_char_name, ch.user_id as attuned_owner_id,
+       camp.name as campaign_name
+     FROM loot_items l
+     LEFT JOIN users u ON l.held_by = u.id
+     LEFT JOIN sessions s ON l.session_id = s.id
+     LEFT JOIN users c ON l.created_by = c.id
+     LEFT JOIN characters ch ON l.attuned_to = ch.id
+     LEFT JOIN campaigns camp ON l.campaign_id = camp.id
+     ${whereClause}
+     ORDER BY CASE l.category WHEN 'quest' THEN 0 ELSE 1 END, l.category, l.name`;
+
+  const items = db.prepare(itemsQuery).all(...params);
   const players = db.prepare("SELECT id, username FROM users ORDER BY username").all();
   const sessions = db.prepare("SELECT id, title FROM sessions ORDER BY created_at DESC LIMIT 20").all();
   const characters = db.prepare("SELECT c.id, c.name, c.user_id, u.username FROM characters c JOIN users u ON c.user_id = u.id ORDER BY u.username, c.name").all();
@@ -47,12 +52,16 @@ router.get('/', requireLogin, (req, res) => {
     }
   }
 
-  res.render('loot', { items, players, sessions, characters, isDM, partyCurrency, myCurrency, allWallets, currencyLog, attunementCounts });
+  let campaigns = [];
+  try { campaigns = db.prepare('SELECT id, name FROM campaigns ORDER BY name').all(); } catch (e) {}
+  const activeCampaignId = campaignFilter || null;
+
+  res.render('loot', { items, players, sessions, characters, isDM, partyCurrency, myCurrency, allWallets, currencyLog, attunementCounts, campaigns, activeCampaignId });
 });
 
 // Add item (DM only)
 router.post('/', requireLogin, requireDM, (req, res) => {
-  const { name, description, quantity, category, held_by, session_id, hidden, vault_item_name, rarity } = req.body;
+  const { name, description, quantity, category, held_by, session_id, hidden, vault_item_name, rarity, campaign_id } = req.body;
   if (!name || !name.trim()) {
     req.flash('error', 'Item name is required.');
     return res.redirect('/loot');
@@ -66,9 +75,11 @@ router.post('/', requireLogin, requireDM, (req, res) => {
   const validRarities = ['common', 'uncommon', 'rare', 'very rare', 'legendary', 'artifact'];
   const itemRarity = validRarities.includes(rarity) ? rarity : null;
 
-  db.prepare(`INSERT INTO loot_items (name, description, quantity, category, held_by, session_id, created_by, hidden, vault_item_name, rarity)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run(name.trim(), (description && description.trim()) || null, qty, cat, holder, sessId, req.user.id, isHidden, (vault_item_name && vault_item_name.trim()) || null, itemRarity);
+  const campId = campaign_id ? parseInt(campaign_id, 10) : null;
+
+  db.prepare(`INSERT INTO loot_items (name, description, quantity, category, held_by, session_id, created_by, hidden, vault_item_name, rarity, campaign_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(name.trim(), (description && description.trim()) || null, qty, cat, holder, sessId, req.user.id, isHidden, (vault_item_name && vault_item_name.trim()) || null, itemRarity, campId);
 
   if (!isHidden) {
     sse.broadcast('new-loot', { username: req.user.username, itemName: name.trim(), quantity: qty });
@@ -156,7 +167,7 @@ router.post('/:id/reveal', requireLogin, requireDM, (req, res) => {
 
 // Edit item (DM)
 router.post('/:id/edit', requireLogin, requireDM, (req, res) => {
-  const { name, description, quantity, category, vault_item_name, rarity } = req.body;
+  const { name, description, quantity, category, vault_item_name, rarity, campaign_id } = req.body;
   const item = db.prepare('SELECT id FROM loot_items WHERE id = ?').get(req.params.id);
   if (!item) {
     req.flash('error', 'Item not found.');
@@ -171,9 +182,10 @@ router.post('/:id/edit', requireLogin, requireDM, (req, res) => {
   const qty = Math.max(1, parseInt(quantity, 10) || 1);
   const validRarities = ['common', 'uncommon', 'rare', 'very rare', 'legendary', 'artifact'];
   const itemRarity = validRarities.includes(rarity) ? rarity : null;
+  const campId = campaign_id ? parseInt(campaign_id, 10) : null;
 
-  db.prepare('UPDATE loot_items SET name = ?, description = ?, quantity = ?, category = ?, vault_item_name = ?, rarity = ? WHERE id = ?')
-    .run(name.trim(), (description && description.trim()) || null, qty, cat, (vault_item_name && vault_item_name.trim()) || null, itemRarity, item.id);
+  db.prepare('UPDATE loot_items SET name = ?, description = ?, quantity = ?, category = ?, vault_item_name = ?, rarity = ?, campaign_id = ? WHERE id = ?')
+    .run(name.trim(), (description && description.trim()) || null, qty, cat, (vault_item_name && vault_item_name.trim()) || null, itemRarity, campId, item.id);
 
   req.flash('success', 'Item updated.');
   res.redirect('/loot');

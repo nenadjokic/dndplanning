@@ -1,0 +1,9 @@
+<% if (typeof campaigns !== 'undefined' && campaigns.length > 0) { %>
+<div class="campaign-filter-bar">
+  <a href="<%= filterBasePath %>" class="btn btn-small <%= !activeCampaignId ? 'btn-primary' : 'btn-outline' %>">All</a>
+  <% for (const c of campaigns) { %>
+    <a href="<%= filterBasePath %>?campaign_id=<%= c.id %>" class="btn btn-small <%= activeCampaignId == c.id ? 'btn-primary' : 'btn-outline' %>"><%= c.name %></a>
+  <% } %>
+  <a href="<%= filterBasePath %>?campaign_id=unsorted" class="btn btn-small <%= activeCampaignId === 'unsorted' ? 'btn-primary' : 'btn-outline' %>">Unsorted</a>
+</div>
+<% } %>

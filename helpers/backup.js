@@ -98,17 +98,73 @@ async function exchangeCode(clientId, clientSecret, redirectUri, code) {
 }
 
 /**
+ * Find or create the Quest Planner backup folder in Google Drive.
+ * Uses drive.file scope — only sees folders created by this app.
+ * If a user-provided folder ID fails, auto-creates a new folder.
+ */
+async function getOrCreateBackupFolder(drive, configFolderId) {
+  // Try user-provided folder ID first
+  if (configFolderId) {
+    try {
+      const existing = await drive.files.get({
+        fileId: configFolderId.trim(),
+        fields: 'id, name'
+      });
+      return existing.data.id;
+    } catch (err) {
+      console.log(`[Backup] Provided folder ID not accessible (${err.message}), will auto-create.`);
+    }
+  }
+
+  // Search for existing app-created folder
+  try {
+    const list = await drive.files.list({
+      q: "name = 'Quest Planner Backups' and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+      fields: 'files(id, name)',
+      pageSize: 1
+    });
+    if (list.data.files && list.data.files.length > 0) {
+      console.log(`[Backup] Found existing backup folder: ${list.data.files[0].id}`);
+      return list.data.files[0].id;
+    }
+  } catch (err) {
+    console.log(`[Backup] Could not search for folder: ${err.message}`);
+  }
+
+  // Create new folder
+  const folderRes = await drive.files.create({
+    requestBody: {
+      name: 'Quest Planner Backups',
+      mimeType: 'application/vnd.google-apps.folder'
+    },
+    fields: 'id, name'
+  });
+
+  console.log(`[Backup] Created backup folder: ${folderRes.data.id}`);
+  return folderRes.data.id;
+}
+
+/**
  * Upload a backup file to Google Drive via OAuth2
  */
 async function uploadToGoogleDrive(filePath, fileName, config) {
   const auth = getOAuth2Client(config);
   const drive = google.drive({ version: 'v3', auth });
 
-  const folderId = config.gdrive_folder_id ? config.gdrive_folder_id.trim() : null;
+  const folderId = await getOrCreateBackupFolder(drive, config.gdrive_folder_id);
+
+  // Save auto-created folder ID back to config
+  if (folderId && folderId !== (config.gdrive_folder_id || '').trim()) {
+    try {
+      const db = require('../db/connection');
+      db.prepare('UPDATE backup_config SET gdrive_folder_id = ? WHERE id = 1').run(folderId);
+      console.log(`[Backup] Saved folder ID to config: ${folderId}`);
+    } catch (e) { /* non-critical */ }
+  }
 
   const fileMetadata = {
     name: fileName,
-    parents: folderId ? [folderId] : undefined
+    parents: [folderId]
   };
 
   const media = {
@@ -125,9 +181,7 @@ async function uploadToGoogleDrive(filePath, fileName, config) {
   console.log(`[Backup] Uploaded to Google Drive: ${response.data.name} (${response.data.id})`);
 
   // Clean old Drive backups (keep last 7)
-  if (folderId) {
-    await cleanOldDriveBackups(drive, folderId, 7);
-  }
+  await cleanOldDriveBackups(drive, folderId, 7);
 
   return response.data;
 }
@@ -207,15 +261,18 @@ async function testGoogleDriveConnection(config) {
   const about = await drive.about.get({ fields: 'user' });
   const email = about.data.user.emailAddress;
 
-  // If folder ID set, verify access
-  if (config.gdrive_folder_id) {
-    await drive.files.get({
-      fileId: config.gdrive_folder_id.trim(),
-      fields: 'id, name'
-    });
+  // Verify/create backup folder
+  const folderId = await getOrCreateBackupFolder(drive, config.gdrive_folder_id);
+
+  // Save auto-created folder ID back to config
+  if (folderId && folderId !== (config.gdrive_folder_id || '').trim()) {
+    try {
+      const db = require('../db/connection');
+      db.prepare('UPDATE backup_config SET gdrive_folder_id = ? WHERE id = 1').run(folderId);
+    } catch (e) { /* non-critical */ }
   }
 
-  return { success: true, email };
+  return { success: true, email, folderId };
 }
 
 module.exports = {
