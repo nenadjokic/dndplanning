@@ -26,17 +26,6 @@ const restoreUpload = multer({
   }
 });
 
-const jsonUpload = multer({
-  dest: uploadTemp,
-  limits: { fileSize: 1 * 1024 * 1024 }, // 1MB max for JSON
-  fileFilter: (req, file, cb) => {
-    if (file.originalname.endsWith('.json')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only .json files are allowed'));
-    }
-  }
-});
 
 router.get('/users', requireLogin, requireAdmin, (req, res) => {
   const users = db.prepare('SELECT id, username, role, created_at FROM users ORDER BY created_at').all();
@@ -600,20 +589,29 @@ router.post('/backup/now', requireLogin, requireAdmin, async (req, res) => {
   }
 });
 
-// --- Google Drive Backup Config ---
+// --- Google Drive Backup (reuses Google Login OAuth credentials) ---
+
+// Helper: get Google OAuth credentials from google_oauth_config
+function getGoogleCredentials() {
+  const oauth = db.prepare('SELECT * FROM google_oauth_config WHERE id = 1').get();
+  if (!oauth || !oauth.client_id || !oauth.client_secret) return null;
+  return { client_id: oauth.client_id, client_secret: oauth.client_secret };
+}
 
 router.get('/backup/gdrive/config', requireLogin, requireAdmin, (req, res) => {
   try {
     const config = db.prepare('SELECT * FROM backup_config WHERE id = 1').get();
     if (!config) return res.json({});
 
+    const googleCreds = getGoogleCredentials();
+
     res.json({
       gdrive_enabled: config.gdrive_enabled ? true : false,
       gdrive_folder_id: config.gdrive_folder_id || '',
-      gdrive_schedule: config.gdrive_schedule || 'daily',
       gdrive_last_backup: config.gdrive_last_backup || null,
       gdrive_last_status: config.gdrive_last_status || null,
-      gdrive_has_credentials: !!config.gdrive_service_account,
+      gdrive_authorized: !!config.gdrive_refresh_token,
+      google_login_configured: !!googleCreds,
       local_keep_days: config.local_keep_days || 7
     });
   } catch (err) {
@@ -622,19 +620,17 @@ router.get('/backup/gdrive/config', requireLogin, requireAdmin, (req, res) => {
 });
 
 router.post('/backup/gdrive', requireLogin, requireAdmin, (req, res) => {
-  const { gdrive_enabled, gdrive_folder_id, gdrive_schedule, local_keep_days } = req.body;
+  const { gdrive_enabled, gdrive_folder_id, local_keep_days } = req.body;
 
   db.prepare(`
     UPDATE backup_config SET
       gdrive_enabled = ?,
       gdrive_folder_id = ?,
-      gdrive_schedule = ?,
       local_keep_days = ?
     WHERE id = 1
   `).run(
     gdrive_enabled ? 1 : 0,
     gdrive_folder_id || null,
-    gdrive_schedule || 'daily',
     parseInt(local_keep_days) || 7
   );
 
@@ -642,39 +638,50 @@ router.post('/backup/gdrive', requireLogin, requireAdmin, (req, res) => {
   res.redirect('/admin/users');
 });
 
-// Upload Google Drive service account JSON
-router.post('/backup/gdrive/credentials', requireLogin, requireAdmin, jsonUpload.single('service_account'), (req, res) => {
-  // Validate CSRF for multipart form
-  if (req._csrfDeferred) {
-    const token = req.body._csrf;
-    const sessionToken = req.session?.csrfToken;
-    if (!token || token !== sessionToken) {
-      if (req.file) try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
-      req.flash('error', 'Invalid CSRF token');
-      return res.redirect('/admin/users');
-    }
+// Start OAuth2 authorization flow (reuses Google Login credentials)
+router.get('/backup/gdrive/authorize', requireLogin, requireAdmin, (req, res) => {
+  const googleCreds = getGoogleCredentials();
+  if (!googleCreds) {
+    req.flash('error', 'Configure Google Login first (above on this page), then authorize Google Drive.');
+    return res.redirect('/admin/users');
   }
 
-  if (!req.file) {
-    req.flash('error', 'No file uploaded.');
+  const redirectUri = `${req.protocol}://${req.get('host')}/admin/backup/gdrive/callback`;
+  db.prepare('UPDATE backup_config SET gdrive_redirect_uri = ? WHERE id = 1').run(redirectUri);
+
+  const authUrl = backup.getAuthUrl(googleCreds.client_id, googleCreds.client_secret, redirectUri);
+  res.redirect(authUrl);
+});
+
+// OAuth2 callback
+router.get('/backup/gdrive/callback', requireLogin, requireAdmin, async (req, res) => {
+  const { code, error } = req.query;
+
+  if (error) {
+    req.flash('error', 'Google authorization denied: ' + error);
+    return res.redirect('/admin/users');
+  }
+
+  if (!code) {
+    req.flash('error', 'No authorization code received.');
     return res.redirect('/admin/users');
   }
 
   try {
-    const content = fs.readFileSync(req.file.path, 'utf-8');
-    const parsed = JSON.parse(content);
+    const googleCreds = getGoogleCredentials();
+    const config = db.prepare('SELECT * FROM backup_config WHERE id = 1').get();
+    const tokens = await backup.exchangeCode(
+      googleCreds.client_id,
+      googleCreds.client_secret,
+      config.gdrive_redirect_uri,
+      code
+    );
 
-    if (!parsed.client_email || !parsed.private_key) {
-      throw new Error('Invalid service account JSON: missing client_email or private_key');
-    }
-
-    db.prepare('UPDATE backup_config SET gdrive_service_account = ? WHERE id = 1').run(content);
-    fs.unlinkSync(req.file.path);
-
-    req.flash('success', `Google Drive credentials saved. Service account: ${parsed.client_email}`);
+    db.prepare('UPDATE backup_config SET gdrive_refresh_token = ? WHERE id = 1').run(tokens.refresh_token);
+    req.flash('success', 'Google Drive authorized successfully!');
   } catch (err) {
-    try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
-    req.flash('error', 'Invalid service account file: ' + err.message);
+    console.error('[Backup] OAuth callback error:', err.message);
+    req.flash('error', 'Authorization failed: ' + err.message);
   }
 
   res.redirect('/admin/users');
@@ -684,21 +691,27 @@ router.post('/backup/gdrive/credentials', requireLogin, requireAdmin, jsonUpload
 router.post('/backup/gdrive/test', requireLogin, requireAdmin, async (req, res) => {
   try {
     const config = db.prepare('SELECT * FROM backup_config WHERE id = 1').get();
-    if (!config || !config.gdrive_service_account) {
-      return res.json({ success: false, error: 'No service account credentials configured.' });
+    if (!config || !config.gdrive_refresh_token) {
+      return res.json({ success: false, error: 'Google Drive not authorized. Click "Authorize Google Drive" first.' });
     }
 
-    const result = await backup.testGoogleDriveConnection(config.gdrive_service_account, config.gdrive_folder_id);
+    const googleCreds = getGoogleCredentials();
+    if (!googleCreds) {
+      return res.json({ success: false, error: 'Google Login not configured.' });
+    }
+
+    const fullConfig = { ...config, gdrive_client_id: googleCreds.client_id, gdrive_client_secret: googleCreds.client_secret };
+    const result = await backup.testGoogleDriveConnection(fullConfig);
     res.json({ success: true, email: result.email });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
 });
 
-// Remove Google Drive credentials
-router.post('/backup/gdrive/remove-credentials', requireLogin, requireAdmin, (req, res) => {
-  db.prepare("UPDATE backup_config SET gdrive_service_account = NULL, gdrive_enabled = 0 WHERE id = 1").run();
-  req.flash('success', 'Google Drive credentials removed.');
+// Disconnect Google Drive
+router.post('/backup/gdrive/disconnect', requireLogin, requireAdmin, (req, res) => {
+  db.prepare("UPDATE backup_config SET gdrive_refresh_token = NULL, gdrive_enabled = 0 WHERE id = 1").run();
+  req.flash('success', 'Google Drive disconnected.');
   res.redirect('/admin/users');
 });
 

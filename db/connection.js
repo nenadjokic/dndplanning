@@ -772,12 +772,15 @@ for (const sql of [
   try { db.exec(sql); } catch (e) { /* already exists */ }
 }
 
-// Backup config (Google Drive auto-backup)
+// Backup config (Google Drive auto-backup via OAuth2)
 db.exec(`
   CREATE TABLE IF NOT EXISTS backup_config (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     gdrive_enabled INTEGER NOT NULL DEFAULT 0,
-    gdrive_service_account TEXT,
+    gdrive_client_id TEXT,
+    gdrive_client_secret TEXT,
+    gdrive_refresh_token TEXT,
+    gdrive_redirect_uri TEXT,
     gdrive_folder_id TEXT,
     gdrive_schedule TEXT NOT NULL DEFAULT 'daily',
     gdrive_last_backup TEXT,
@@ -786,6 +789,16 @@ db.exec(`
   );
   INSERT OR IGNORE INTO backup_config (id) VALUES (1);
 `);
+
+// Migrate old service_account column to new OAuth2 columns (idempotent)
+for (const sql of [
+  "ALTER TABLE backup_config ADD COLUMN gdrive_client_id TEXT",
+  "ALTER TABLE backup_config ADD COLUMN gdrive_client_secret TEXT",
+  "ALTER TABLE backup_config ADD COLUMN gdrive_refresh_token TEXT",
+  "ALTER TABLE backup_config ADD COLUMN gdrive_redirect_uri TEXT"
+]) {
+  try { db.exec(sql); } catch (e) { /* already exists */ }
+}
 
 // Fix existing usernames with spaces (migration)
 // Replace spaces and invalid characters with underscores

@@ -879,7 +879,10 @@ try {
       sql: `CREATE TABLE backup_config (
         id INTEGER PRIMARY KEY CHECK (id = 1),
         gdrive_enabled INTEGER NOT NULL DEFAULT 0,
-        gdrive_service_account TEXT,
+        gdrive_client_id TEXT,
+        gdrive_client_secret TEXT,
+        gdrive_refresh_token TEXT,
+        gdrive_redirect_uri TEXT,
         gdrive_folder_id TEXT,
         gdrive_schedule TEXT NOT NULL DEFAULT 'daily',
         gdrive_last_backup TEXT,

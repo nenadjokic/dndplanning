@@ -237,40 +237,13 @@
 
 <div class="card comms-section" style="margin-top: 1.5rem;">
   <h2>Google Drive Auto-Backup</h2>
-  <p class="text-muted" style="margin-bottom: 1rem;">Automatically backup your database to Google Drive daily.</p>
-
-  <div class="discord-setup-guide" style="margin-bottom: 1rem; padding: 1rem; background: rgba(66, 133, 244, 0.08); border: 1px solid rgba(66, 133, 244, 0.3); border-radius: var(--radius);">
-    <h3 style="color: #4285F4; margin-bottom: 0.5rem; font-size: 1rem;">Google Drive Setup Guide</h3>
-    <ol style="margin: 0; padding-left: 1.25rem; font-size: 0.88rem; color: var(--text-secondary); line-height: 1.7;">
-      <li>Go to <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer">console.cloud.google.com</a></li>
-      <li>Create a new project (or select existing one)</li>
-      <li>Go to <strong>APIs & Services</strong> &rarr; <strong>Library</strong> &rarr; search <strong>"Google Drive API"</strong> &rarr; <strong>Enable</strong></li>
-      <li>Go to <strong>APIs & Services</strong> &rarr; <strong>Credentials</strong></li>
-      <li>Click <strong>"+ CREATE CREDENTIALS"</strong> &rarr; <strong>"Service Account"</strong></li>
-      <li>Give it a name (e.g. "Quest Planner Backup") &rarr; <strong>Create</strong></li>
-      <li>Skip optional steps &rarr; <strong>Done</strong></li>
-      <li>Click on the newly created service account</li>
-      <li>Go to <strong>Keys</strong> tab &rarr; <strong>Add Key</strong> &rarr; <strong>Create new key</strong> &rarr; <strong>JSON</strong> &rarr; <strong>Create</strong></li>
-      <li>A JSON file will download &mdash; upload it below</li>
-      <li>In Google Drive, create a folder for backups (e.g. "Quest Planner Backups")</li>
-      <li><strong>Share that folder</strong> with the service account email (from the JSON file's <code>client_email</code>)</li>
-      <li>Copy the <strong>folder ID</strong> from the URL: <code>drive.google.com/drive/folders/<strong>FOLDER_ID</strong></code></li>
-    </ol>
-  </div>
+  <p class="text-muted" style="margin-bottom: 1rem;">Automatically backup your database to Google Drive daily. Uses the same Google credentials as Google Login above.</p>
 
   <div id="gdrive-status" style="margin-bottom: 1rem;"></div>
 
-  <form action="/admin/backup/gdrive/credentials" method="POST" enctype="multipart/form-data" style="margin-bottom: 1rem;">
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <div class="form-group">
-      <label>Service Account JSON Key</label>
-      <div style="display: flex; gap: 0.5rem; align-items: center;">
-        <input type="file" name="service_account" accept=".json" class="form-input" style="flex: 1;">
-        <button type="submit" class="btn btn-outline btn-small">Upload</button>
-      </div>
-      <small class="form-hint">Upload the JSON key file from Google Cloud Console</small>
-    </div>
-  </form>
+  <div id="gdrive-setup-note" style="display: none; margin-bottom: 1rem; padding: 0.75rem 1rem; background: rgba(255, 193, 7, 0.08); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: var(--radius); font-size: 0.88rem; color: var(--text-secondary);">
+    <strong>Setup required:</strong> Configure Google Login (above) first, then add <code id="gdrive-redirect-uri-hint"></code> as an <strong>Authorized redirect URI</strong> in your <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">Google Cloud Console</a>. Also enable the <strong>Google Drive API</strong> in APIs &amp; Services &rarr; Library.
+  </div>
 
   <form action="/admin/backup/gdrive" method="POST" id="gdrive-config-form">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -278,9 +251,9 @@
       <label><input type="checkbox" name="gdrive_enabled" value="1" id="gdrive_enabled"> Enable Google Drive Auto-Backup</label>
     </div>
     <div class="form-group">
-      <label for="gdrive_folder_id">Google Drive Folder ID</label>
+      <label for="gdrive_folder_id">Google Drive Folder ID <span style="color: var(--text-secondary); font-weight: normal;">(optional)</span></label>
       <input type="text" name="gdrive_folder_id" id="gdrive_folder_id" class="form-input" placeholder="e.g. 1AbC_dEfGhIjKlMnOpQrStUv">
-      <small class="form-hint">From the Drive folder URL: drive.google.com/drive/folders/<strong>THIS_PART</strong></small>
+      <small class="form-hint">From the Drive folder URL: drive.google.com/drive/folders/<strong>THIS_PART</strong>. If empty, backups go to Drive root.</small>
     </div>
     <div class="form-group">
       <label for="local_keep_days">Keep Local Backups (days)</label>
@@ -288,6 +261,7 @@
     </div>
     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
       <button type="submit" class="btn btn-primary">Save</button>
+      <a href="/admin/backup/gdrive/authorize" class="btn btn-outline" id="gdrive-authorize-btn">Authorize Google Drive</a>
       <button type="button" class="btn btn-outline" onclick="testGDriveConnection()">Test Connection</button>
       <button type="button" class="btn btn-outline" onclick="runBackupNow()">Backup Now</button>
     </div>
@@ -527,6 +501,10 @@ function loadBackupList() {
 }
 
 function loadGDriveConfig() {
+  // Show redirect URI hint
+  var hint = document.getElementById('gdrive-redirect-uri-hint');
+  if (hint) hint.textContent = window.location.origin + '/admin/backup/gdrive/callback';
+
   fetch('/admin/backup/gdrive/config')
     .then(function(r) { return r.json(); })
     .then(function(cfg) {
@@ -535,11 +513,18 @@ function loadGDriveConfig() {
       if (cfg.local_keep_days) document.getElementById('local_keep_days').value = cfg.local_keep_days;
 
       var statusDiv = document.getElementById('gdrive-status');
+      var setupNote = document.getElementById('gdrive-setup-note');
       var parts = [];
-      if (cfg.gdrive_has_credentials) {
-        parts.push('<span style="color: var(--success);">&#x2705; Service account credentials loaded</span>');
+
+      if (cfg.gdrive_authorized) {
+        parts.push('<span style="color: var(--success);">&#x2705; Google Drive connected</span>');
+        setupNote.style.display = 'none';
+      } else if (cfg.google_login_configured) {
+        parts.push('<span style="color: var(--warning);">&#x26A0;&#xFE0F; Click "Authorize Google Drive" to connect your account</span>');
+        setupNote.style.display = 'block';
       } else {
-        parts.push('<span style="color: var(--warning);">&#x26A0;&#xFE0F; No service account credentials uploaded</span>');
+        parts.push('<span style="color: var(--text-secondary);">Configure Google Login first (above), then authorize Google Drive</span>');
+        setupNote.style.display = 'none';
       }
       if (cfg.gdrive_last_backup) {
         var lastDate = new Date(cfg.gdrive_last_backup + 'Z');

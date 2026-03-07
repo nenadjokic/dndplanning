@@ -1,6 +1,6 @@
-# Quest Planner v2.1.7 — D&D Session Scheduler
+# Quest Planner v2.1.8 — D&D Session Scheduler
 
-> **Latest release:** v2.1.7 (2026-03-07)
+> **Latest release:** v2.1.8 (2026-03-07)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -739,13 +739,13 @@ Quest Planner has a built-in backup system accessible from **Guild Settings**.
 
 ### Google Drive Auto-Backup
 
-Automatic daily backups to Google Drive can be configured in Guild Settings:
+Automatic daily backups to Google Drive can be configured in Guild Settings. Requires Google Login to be configured first (same OAuth credentials).
 
-1. Create a [Google Cloud](https://console.cloud.google.com/) project
-2. Enable the **Google Drive API**
-3. Create a **Service Account** and download the JSON key
-4. Create a Google Drive folder and **share it** with the service account email
-5. In Guild Settings, upload the JSON key and enter the folder ID
+1. Configure **Google Login** in Guild Settings (if not already done)
+2. Enable the **Google Drive API** in [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Library
+3. Add `https://your-domain.com/admin/backup/gdrive/callback` as an **Authorized redirect URI** in your OAuth client
+4. In Guild Settings → Google Drive Auto-Backup, click **Authorize Google Drive**
+5. Optionally enter a folder ID to organize backups
 6. Enable auto-backup — runs daily at 3:00 AM, keeps last 7 backups on Drive
 
 ### Manual Backup (CLI)
@@ -866,17 +866,17 @@ Then restart the server.
 
 ## Changelog
 
-### v2.1.7 (2026-03-07) Google Drive Shared Drive Fix
+### v2.1.8 (2026-03-07) Google Drive OAuth2 — Simplified Setup
 
-- **Shared Drive Support** — Fixed Google Drive backup to work with shared folders (supportsAllDrives, correct OAuth scope)
-- **Folder ID Required** — Clear error message when folder ID is missing
+- **Google Drive OAuth2** — Replaced Service Account with OAuth2 flow; reuses Google Login credentials, just click "Authorize Google Drive"
+- **Simplified UI** — No more JSON key uploads or complex setup; one-click authorization like Home Assistant
 
 ---
 
 ### v2.1.6 (2026-03-07) Database Backup & Google Drive Auto-Backup
 
 - **Database Backup & Restore** — Download/restore database from Guild Settings with safety backup before restore and automatic server restart
-- **Google Drive Auto-Backup** — Automatic daily backup to Google Drive via Service Account; configurable folder, retention, test connection, and manual "Backup Now"
+- **Google Drive Auto-Backup** — Automatic daily backup to Google Drive; configurable folder, retention, test connection, and manual "Backup Now"
 - **Local Backup Management** — View, download, and manage local backups with configurable retention period
 
 ---
