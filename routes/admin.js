@@ -497,7 +497,7 @@ router.get('/backup/download-full', requireLogin, requireAdmin, async (req, res)
   }
 });
 
-// Restore from upload (.db for database only, .qpb for full archive)
+// Restore Step 1: Upload file, analyze contents, show preview page
 router.post('/backup/restore', requireLogin, requireAdmin, restoreUpload.single('database'), (req, res) => {
   // Validate CSRF for multipart form
   if (req._csrfDeferred) {
@@ -515,29 +515,183 @@ router.post('/backup/restore', requireLogin, requireAdmin, restoreUpload.single(
     return res.redirect('/admin/users');
   }
 
-  const uploadedPath = req.file.path;
   const originalName = (req.file.originalname || '').toLowerCase();
   const isFullBackup = originalName.endsWith('.qpb');
 
   try {
-    // Ensure backup directory exists
-    if (!fs.existsSync(backup.backupDir)) {
-      fs.mkdirSync(backup.backupDir, { recursive: true });
+    const Database = require('better-sqlite3');
+    let dbPathToCheck = req.file.path;
+    let extractedDir = null;
+
+    // For .qpb: extract to temp, find DB
+    if (isFullBackup) {
+      extractedDir = backup.extractFullBackup(req.file.path);
+      dbPathToCheck = path.join(extractedDir, 'dndplanning.db');
     }
 
-    // Create a safety backup before restoring (full archive)
-    const safetyBackupName = `pre-restore-${Date.now()}.qpb`;
-    const safetyBackupPath = path.join(backup.backupDir, safetyBackupName);
+    // Read backup contents for preview
+    const testDb = new Database(dbPathToCheck, { readonly: true });
+    let preview;
+    try {
+      const users = testDb.prepare('SELECT COUNT(*) as c FROM users').get().c;
+      let npcs = 0, maps = 0, campaigns = 0, sessions = 0, quests = 0;
+      try { npcs = testDb.prepare('SELECT COUNT(*) as c FROM npc_tokens').get().c; } catch (e) {}
+      try { maps = testDb.prepare('SELECT COUNT(*) as c FROM maps').get().c; } catch (e) {}
+      try { campaigns = testDb.prepare('SELECT COUNT(*) as c FROM campaigns').get().c; } catch (e) {}
+      try { sessions = testDb.prepare('SELECT COUNT(*) as c FROM sessions').get().c; } catch (e) {}
+      try { quests = testDb.prepare('SELECT COUNT(*) as c FROM quests').get().c; } catch (e) {}
+      // Get backup date from most recent record
+      let backupDate = null;
+      try {
+        const row = testDb.prepare("SELECT MAX(created_at) as d FROM sessions").get();
+        if (row && row.d) backupDate = row.d;
+      } catch (e) {}
+      preview = { users, npcs, maps, campaigns, sessions, quests, backupDate };
+    } finally {
+      testDb.close();
+    }
 
-    if (isFullBackup) {
-      // --- Full archive restore (.qpb) ---
-      console.log('[Backup] Restoring from full backup archive...');
+    // If we extracted for preview, keep the extracted dir for the actual restore
+    // but also keep original file path for DB-only
+    let storedPath = req.file.path;
+    if (isFullBackup && extractedDir) {
+      // Re-pack isn't needed — we'll store extractedDir path for restore
+      storedPath = extractedDir;
+      // Clean up the original uploaded file
+      try { fs.unlinkSync(req.file.path); } catch (e) {}
+    }
 
-      // Extract and validate
-      const extractedDir = backup.extractFullBackup(uploadedPath);
-      fs.unlinkSync(uploadedPath);
+    // Get file size
+    let fileSize = 0;
+    try {
+      if (isFullBackup) {
+        // Calculate extracted dir size
+        const { execSync } = require('child_process');
+        const duOutput = execSync(`du -sk "${extractedDir}"`).toString();
+        fileSize = parseInt(duOutput.split('\t')[0]) * 1024;
+      } else {
+        fileSize = fs.statSync(req.file.path).size;
+      }
+    } catch (e) {}
 
-      // Create safety backup (full) before replacing
+    // Store in session
+    req.session.restoreJob = {
+      filePath: storedPath,
+      fileName: req.file.originalname,
+      isFullBackup,
+      extractedDir: isFullBackup ? extractedDir : null,
+      preview,
+      fileSize
+    };
+    req.session.save(() => {
+      res.redirect('/admin/backup/restore-confirm');
+    });
+
+  } catch (err) {
+    try { fs.unlinkSync(req.file.path); } catch (e) {}
+    req.flash('error', 'Invalid backup file: ' + err.message);
+    return res.redirect('/admin/users');
+  }
+});
+
+// Restore Step 2: Confirmation page with backup preview
+router.get('/backup/restore-confirm', requireLogin, requireAdmin, (req, res) => {
+  const job = req.session.restoreJob;
+  if (!job || !job.filePath) {
+    req.flash('error', 'No restore job found.');
+    return res.redirect('/admin/users');
+  }
+  // Get current DB stats for comparison
+  let current = { users: 0, npcs: 0, maps: 0, campaigns: 0, sessions: 0, quests: 0 };
+  try { current.users = db.prepare('SELECT COUNT(*) as c FROM users').get().c; } catch (e) {}
+  try { current.npcs = db.prepare('SELECT COUNT(*) as c FROM npc_tokens').get().c; } catch (e) {}
+  try { current.maps = db.prepare('SELECT COUNT(*) as c FROM maps').get().c; } catch (e) {}
+  try { current.campaigns = db.prepare('SELECT COUNT(*) as c FROM campaigns').get().c; } catch (e) {}
+  try { current.sessions = db.prepare('SELECT COUNT(*) as c FROM sessions').get().c; } catch (e) {}
+  try { current.quests = db.prepare('SELECT COUNT(*) as c FROM quests').get().c; } catch (e) {}
+  res.render('admin/restore-confirm', {
+    title: 'Confirm Restore',
+    job,
+    current
+  });
+});
+
+// Restore Step 2b: Cancel restore (clean up temp files)
+router.post('/backup/restore-cancel', requireLogin, requireAdmin, (req, res) => {
+  const job = req.session.restoreJob;
+  if (job) {
+    if (job.extractedDir) {
+      try { fs.rmSync(job.extractedDir, { recursive: true, force: true }); } catch (e) {}
+    } else if (job.filePath) {
+      try { fs.unlinkSync(job.filePath); } catch (e) {}
+    }
+    delete req.session.restoreJob;
+  }
+  req.flash('info', 'Restore cancelled.');
+  res.redirect('/admin/users');
+});
+
+// Restore Step 3: Progress page (after user confirms)
+router.get('/backup/restore-progress', requireLogin, requireAdmin, (req, res) => {
+  const job = req.session.restoreJob;
+  if (!job || !job.filePath) {
+    req.flash('error', 'No restore job found.');
+    return res.redirect('/admin/users');
+  }
+  res.render('admin/restore-progress', {
+    title: 'Restoring Backup',
+    job
+  });
+});
+
+// Restore Step 4: SSE stream that performs the actual restore
+router.get('/backup/restore-stream', requireLogin, requireAdmin, (req, res) => {
+  const job = req.session.restoreJob;
+  if (!job || !job.filePath) {
+    return res.status(400).json({ error: 'No restore job' });
+  }
+
+  // SSE headers
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no'
+  });
+
+  function sendStep(step, message, progress) {
+    try { res.write(`data: ${JSON.stringify({ step, message, progress })}\n\n`); } catch (e) {}
+  }
+
+  const isFullBackup = job.isFullBackup;
+
+  // Run restore steps
+  (async () => {
+    try {
+      // Step 1: Validate
+      sendStep('validate', 'Checking backup files...', 10);
+
+      if (!fs.existsSync(job.filePath)) {
+        sendStep('error', 'Backup file not found. Please try uploading again.', 0);
+        return;
+      }
+
+      // Ensure backup directory exists
+      if (!fs.existsSync(backup.backupDir)) {
+        fs.mkdirSync(backup.backupDir, { recursive: true });
+      }
+
+      if (isFullBackup) {
+        // For .qpb: archive was already extracted during preview step
+        sendStep('extract', 'Archive already extracted and validated.', 20);
+      } else {
+        sendStep('validate', 'Database file validated.', 20);
+      }
+
+      // Step 2: Safety backup
+      sendStep('safety', 'Creating safety backup of current data...', 30);
+      const safetyBackupName = `pre-restore-${Date.now()}.qpb`;
+      const safetyBackupPath = path.join(backup.backupDir, safetyBackupName);
       try {
         const { execSync } = require('child_process');
         const tarItems = ['dndplanning.db'];
@@ -547,63 +701,55 @@ router.post('/backup/restore', requireLogin, requireAdmin, restoreUpload.single(
         execSync(`tar -czf "${safetyBackupPath}" ${tarItems.map(i => `"${i}"`).join(' ')}`, {
           cwd: backup.dataDir, timeout: 120000
         });
-        console.log(`[Backup] Safety backup created: ${safetyBackupName}`);
+        sendStep('safety', 'Safety backup created: ' + safetyBackupName, 50);
       } catch (safetyErr) {
-        console.warn('[Backup] Could not create safety backup:', safetyErr.message);
+        sendStep('safety', 'Warning: Could not create safety backup. Continuing...', 50);
       }
 
-      // Close DB and restore everything
+      // Step 3: Close database
+      sendStep('close-db', 'Closing database connection...', 60);
       try { db.close(); } catch (e) { /* may already be closed */ }
-      backup.restoreFromExtracted(extractedDir);
-    } else {
-      // --- Database-only restore (.db) ---
-      console.log('[Backup] Restoring from database file...');
 
-      // Validate the uploaded file
-      const Database = require('better-sqlite3');
-      const testDb = new Database(uploadedPath, { readonly: true });
-      try {
-        testDb.prepare('SELECT COUNT(*) as count FROM users').get();
-      } catch (e) {
-        testDb.close();
-        fs.unlinkSync(uploadedPath);
-        req.flash('error', 'Invalid database file: missing users table.');
-        return res.redirect('/admin/users');
+      // Step 4: Restore files
+      if (isFullBackup) {
+        sendStep('restore', 'Restoring database...', 65);
+        sendStep('restore', 'Restoring avatars, maps, and uploads...', 75);
+        // extractedDir was stored in job from the preview step
+        backup.restoreFromExtracted(job.extractedDir || job.filePath);
+        sendStep('restore', 'All files restored successfully.', 90);
+      } else {
+        sendStep('restore', 'Replacing database file...', 70);
+        fs.copyFileSync(job.filePath, backup.dbPath);
+        try { fs.unlinkSync(job.filePath); } catch (e) {}
+        try { fs.unlinkSync(backup.dbPath + '-wal'); } catch (e) { /* ignore */ }
+        try { fs.unlinkSync(backup.dbPath + '-shm'); } catch (e) { /* ignore */ }
+        sendStep('restore', 'Database replaced successfully.', 90);
       }
-      testDb.close();
 
-      // Safety backup (DB only)
-      const dbSafetyPath = path.join(backup.backupDir, `pre-restore-${Date.now()}.db`);
-      fs.copyFileSync(backup.dbPath, dbSafetyPath);
-      console.log(`[Backup] Safety backup created: ${path.basename(dbSafetyPath)}`);
+      // Step 6: Signal restart
+      const restoreType = isFullBackup ? 'Full backup' : 'Database';
+      console.log(`[Backup] ${restoreType} restored. Restarting...`);
+      sendStep('restart', 'Restore complete! Server is restarting...', 100);
 
-      // Close DB and replace
-      try { db.close(); } catch (e) { /* may already be closed */ }
-      fs.copyFileSync(uploadedPath, backup.dbPath);
-      fs.unlinkSync(uploadedPath);
-      try { fs.unlinkSync(backup.dbPath + '-wal'); } catch (e) { /* ignore */ }
-      try { fs.unlinkSync(backup.dbPath + '-shm'); } catch (e) { /* ignore */ }
+      // Clean up session job
+      delete req.session.restoreJob;
+
+      // Give SSE time to flush, then exit
+      setTimeout(() => {
+        console.log('[Backup] Exiting for restart after restore...');
+        process.exit(0);
+      }, 2000);
+
+    } catch (err) {
+      console.error('[Backup] Restore failed:', err.message);
+      sendStep('error', 'Restore failed: ' + err.message, 0);
     }
+  })();
 
-    const restoreType = isFullBackup ? 'Full backup' : 'Database';
-    console.log(`[Backup] ${restoreType} restored. Restarting...`);
-    req.flash('success', `${restoreType} restored successfully! The server will restart to apply changes.`);
-    res.redirect('/admin/users');
-
-    // Graceful restart: exit with code 0 so Docker/PM2/systemd restarts us.
-    // In Docker: PID 1 exits → container restarts via restart policy.
-    // Standalone: PM2 or systemd will restart the process.
-    // Delay to let the redirect response flush to the browser.
-    setTimeout(() => {
-      console.log('[Backup] Exiting for restart after restore...');
-      process.exit(0);
-    }, 1500);
-  } catch (err) {
-    try { fs.unlinkSync(uploadedPath); } catch (e) { /* ignore */ }
-    console.error('[Backup] Restore failed:', err.message);
-    req.flash('error', 'Failed to restore: ' + err.message);
-    res.redirect('/admin/users');
-  }
+  // Handle client disconnect
+  req.on('close', () => {
+    // Client disconnected — restore may still be in progress
+  });
 });
 
 // List local backups

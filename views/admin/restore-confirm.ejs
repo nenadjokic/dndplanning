@@ -1,0 +1,207 @@
+<%- include('../partials/head') %>
+<style>
+  .confirm-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-darker);
+    padding: 2rem;
+  }
+  .confirm-card {
+    background: var(--bg-card);
+    border: 1px solid var(--gold-dim);
+    border-radius: 12px;
+    padding: 2.5rem;
+    max-width: 620px;
+    width: 100%;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .confirm-title {
+    font-family: var(--font-heading);
+    color: var(--gold);
+    font-size: 1.4rem;
+    margin: 0 0 0.3rem 0;
+    text-align: center;
+  }
+  .confirm-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+  .confirm-file-info {
+    background: var(--bg-darker);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+  }
+  .confirm-file-name {
+    color: var(--text-primary);
+    font-weight: 600;
+    word-break: break-all;
+  }
+  .confirm-file-meta {
+    color: var(--text-secondary);
+    white-space: nowrap;
+    margin-left: 1rem;
+  }
+  .confirm-comparison {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+  }
+  .confirm-comparison th {
+    font-family: var(--font-heading);
+    color: var(--gold);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--gold-dim);
+    text-align: center;
+  }
+  .confirm-comparison th:first-child {
+    text-align: left;
+  }
+  .confirm-comparison td {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    text-align: center;
+  }
+  .confirm-comparison td:first-child {
+    text-align: left;
+    color: var(--text-secondary);
+  }
+  .confirm-comparison .val-current {
+    color: var(--text-primary);
+  }
+  .confirm-comparison .val-backup {
+    color: var(--gold);
+    font-weight: 600;
+  }
+  .confirm-comparison .val-diff-up {
+    color: #27ae60;
+    font-size: 0.75rem;
+  }
+  .confirm-comparison .val-diff-down {
+    color: #e74c3c;
+    font-size: 0.75rem;
+  }
+  .confirm-warning {
+    background: rgba(231, 76, 60, 0.1);
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.8rem;
+    color: #e74c3c;
+    line-height: 1.5;
+  }
+  .confirm-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+  }
+  .confirm-actions .btn {
+    padding: 0.6rem 2rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border: none;
+    font-family: var(--font-heading);
+    text-decoration: none;
+    display: inline-block;
+  }
+  .btn-confirm-restore {
+    background: #e74c3c;
+    color: #fff;
+  }
+  .btn-confirm-restore:hover {
+    background: #c0392b;
+  }
+  .btn-confirm-cancel {
+    background: transparent;
+    border: 1px solid var(--text-secondary) !important;
+    color: var(--text-secondary);
+  }
+  .btn-confirm-cancel:hover {
+    border-color: var(--text-primary) !important;
+    color: var(--text-primary);
+  }
+</style>
+
+<div class="confirm-page">
+  <div class="confirm-card">
+    <h1 class="confirm-title">Confirm Restore</h1>
+    <p class="confirm-subtitle">Review the backup contents before restoring</p>
+
+    <div class="confirm-file-info">
+      <span class="confirm-file-name"><%= job.fileName %></span>
+      <span class="confirm-file-meta">
+        <%= job.isFullBackup ? 'Full (.qpb)' : 'DB only (.db)' %>
+        <% if (job.fileSize) { %>
+          &middot; <%= (job.fileSize / (1024 * 1024)).toFixed(1) %> MB
+        <% } %>
+      </span>
+    </div>
+
+    <table class="confirm-comparison">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Current</th>
+          <th>Backup</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <%
+          var rows = [
+            { label: 'Users', cur: current.users, bak: job.preview.users },
+            { label: 'NPCs', cur: current.npcs, bak: job.preview.npcs },
+            { label: 'Maps', cur: current.maps, bak: job.preview.maps },
+            { label: 'Campaigns', cur: current.campaigns, bak: job.preview.campaigns },
+            { label: 'Sessions', cur: current.sessions, bak: job.preview.sessions },
+            { label: 'Quests', cur: current.quests, bak: job.preview.quests }
+          ];
+          rows.forEach(function(r) {
+        %>
+        <tr>
+          <td><%= r.label %></td>
+          <td class="val-current"><%= r.cur %></td>
+          <td class="val-backup"><%= r.bak %></td>
+          <td>
+            <% if (r.bak > r.cur) { %>
+              <span class="val-diff-up">+<%= r.bak - r.cur %></span>
+            <% } else if (r.bak < r.cur) { %>
+              <span class="val-diff-down"><%= r.bak - r.cur %></span>
+            <% } %>
+          </td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+
+    <div class="confirm-warning">
+      This will replace your current database<%= job.isFullBackup ? ', avatars, maps, and uploads' : '' %> with the backup contents.
+      A safety backup will be created automatically before restoring.
+      This action cannot be easily undone.
+    </div>
+
+    <div class="confirm-actions">
+      <form method="POST" action="/admin/backup/restore-cancel" style="display:inline;">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" class="btn btn-confirm-cancel">Cancel</button>
+      </form>
+      <a href="/admin/backup/restore-progress" class="btn btn-confirm-restore">Restore Now</a>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/foot') %>

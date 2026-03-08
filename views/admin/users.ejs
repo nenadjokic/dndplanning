@@ -473,20 +473,13 @@ function updateDndData() {
 
 function confirmRestore(input) {
   if (!input.files || !input.files[0]) return;
-  var fileName = input.files[0].name;
-  var isFullBackup = fileName.toLowerCase().endsWith('.qpb');
-  var msg = isFullBackup
-    ? 'WARNING: This will replace your ENTIRE database AND all data files (images, maps, uploads) with the contents of this backup archive!\n\n'
-    : 'WARNING: This will replace your database with the uploaded file!\n\n';
-  msg += 'File: ' + fileName + '\n\n';
-  msg += 'A safety backup will be created automatically before restoring.\n';
-  msg += 'The server will restart after restore.\n\n';
-  msg += 'Are you sure you want to proceed?';
-  if (confirm(msg)) {
-    document.getElementById('restore-form').submit();
-  } else {
-    input.value = '';
+  var btn = document.querySelector('[onclick*="restore-file"]');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Uploading backup...';
+    btn.style.opacity = '0.6';
   }
+  document.getElementById('restore-form').submit();
 }
 
 function loadBackupList() {

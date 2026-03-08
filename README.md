@@ -1,6 +1,6 @@
-# Quest Planner v3.0.5 — D&D Session Scheduler
+# Quest Planner v3.0.6 — D&D Session Scheduler
 
-> **Latest release:** v3.0.5 (2026-03-08)
+> **Latest release:** v3.0.6 (2026-03-08)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -870,6 +870,12 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v3.0.6 (2026-03-08) Restore Preview & Progress Tracking
+
+- **Restore Preview** — Before restoring a backup, see a side-by-side comparison of current vs backup data (users, NPCs, maps, campaigns, sessions, quests) with color-coded diffs
+- **Restore Progress Page** — Real-time SSE progress tracking with step-by-step updates (validate, extract, safety backup, restore, restart), countdown timer, and auto-refresh when server returns
+- **Upload Feedback** — "Restore from File" button shows loading state during file upload
 
 ### v3.0.5 (2026-03-08) NPC Manager & Safety Fixes
 

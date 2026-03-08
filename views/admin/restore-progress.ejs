@@ -1,0 +1,367 @@
+<%- include('../partials/head') %>
+<style>
+  .restore-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-darker);
+    padding: 2rem;
+  }
+  .restore-card {
+    background: var(--bg-card);
+    border: 1px solid var(--gold-dim);
+    border-radius: 12px;
+    padding: 2.5rem;
+    max-width: 560px;
+    width: 100%;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .restore-title {
+    font-family: var(--font-heading);
+    color: var(--gold);
+    font-size: 1.4rem;
+    margin: 0 0 0.5rem 0;
+    text-align: center;
+  }
+  .restore-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+  .restore-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--bg-darker);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+  .restore-progress-fill {
+    height: 100%;
+    background: var(--gold);
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.4s ease;
+  }
+  .restore-progress-fill.error {
+    background: #e74c3c;
+  }
+  .restore-progress-fill.complete {
+    background: #27ae60;
+  }
+  .restore-steps {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem 0;
+  }
+  .restore-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.4rem 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    opacity: 0.4;
+    transition: opacity 0.3s;
+  }
+  .restore-step.active {
+    opacity: 1;
+    color: var(--gold);
+  }
+  .restore-step.done {
+    opacity: 1;
+    color: var(--text-primary);
+  }
+  .restore-step.error {
+    opacity: 1;
+    color: #e74c3c;
+  }
+  .restore-step-icon {
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+    font-size: 0.9rem;
+  }
+  .restore-step.active .restore-step-icon {
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .restore-step-text {
+    flex: 1;
+  }
+  .restore-step-detail {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.1rem;
+  }
+  .restore-countdown {
+    text-align: center;
+    margin-top: 1rem;
+    display: none;
+  }
+  .restore-countdown-number {
+    font-family: var(--font-heading);
+    font-size: 2.5rem;
+    color: var(--gold);
+    line-height: 1;
+  }
+  .restore-countdown-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 0.3rem;
+  }
+  .restore-status {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+  }
+  .restore-error-msg {
+    background: rgba(231, 76, 60, 0.1);
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    color: #e74c3c;
+    font-size: 0.85rem;
+    margin-top: 1rem;
+    display: none;
+  }
+  .restore-back-btn {
+    display: none;
+    margin-top: 1rem;
+    text-align: center;
+  }
+</style>
+
+<div class="restore-page">
+  <div class="restore-card">
+    <h1 class="restore-title">Restoring Backup</h1>
+    <p class="restore-subtitle">
+      <strong><%= job.fileName %></strong>
+      <br><%= job.isFullBackup ? 'Full archive (.qpb)' : 'Database only (.db)' %>
+    </p>
+
+    <div class="restore-progress-bar">
+      <div class="restore-progress-fill" id="progress-fill"></div>
+    </div>
+
+    <ul class="restore-steps">
+      <li class="restore-step active" id="step-validate">
+        <span class="restore-step-icon">&#9679;</span>
+        <div>
+          <div class="restore-step-text">Validating backup file</div>
+          <div class="restore-step-detail" id="detail-validate"></div>
+        </div>
+      </li>
+      <% if (job.isFullBackup) { %>
+      <li class="restore-step" id="step-extract">
+        <span class="restore-step-icon">&#9679;</span>
+        <div>
+          <div class="restore-step-text">Extracting archive</div>
+          <div class="restore-step-detail" id="detail-extract"></div>
+        </div>
+      </li>
+      <% } %>
+      <li class="restore-step" id="step-safety">
+        <span class="restore-step-icon">&#9679;</span>
+        <div>
+          <div class="restore-step-text">Creating safety backup</div>
+          <div class="restore-step-detail" id="detail-safety"></div>
+        </div>
+      </li>
+      <li class="restore-step" id="step-close-db">
+        <span class="restore-step-icon">&#9679;</span>
+        <div>
+          <div class="restore-step-text">Closing database</div>
+          <div class="restore-step-detail" id="detail-close-db"></div>
+        </div>
+      </li>
+      <li class="restore-step" id="step-restore">
+        <span class="restore-step-icon">&#9679;</span>
+        <div>
+          <div class="restore-step-text">Restoring files</div>
+          <div class="restore-step-detail" id="detail-restore"></div>
+        </div>
+      </li>
+      <li class="restore-step" id="step-restart">
+        <span class="restore-step-icon">&#9679;</span>
+        <div>
+          <div class="restore-step-text">Restarting server</div>
+          <div class="restore-step-detail" id="detail-restart"></div>
+        </div>
+      </li>
+    </ul>
+
+    <div class="restore-countdown" id="countdown-section">
+      <div class="restore-countdown-number" id="countdown-number">60</div>
+      <div class="restore-countdown-label">Server is restarting... auto-refresh in</div>
+    </div>
+
+    <div class="restore-status" id="status-text">Starting restore process...</div>
+
+    <div class="restore-error-msg" id="error-msg"></div>
+
+    <div class="restore-back-btn" id="back-btn">
+      <a href="/admin/users" class="btn btn-outline">Back to Guild Settings</a>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var progressFill = document.getElementById('progress-fill');
+  var statusText = document.getElementById('status-text');
+  var countdownSection = document.getElementById('countdown-section');
+  var countdownNumber = document.getElementById('countdown-number');
+  var errorMsg = document.getElementById('error-msg');
+  var backBtn = document.getElementById('back-btn');
+  var currentStep = null;
+  var restoreCompleted = false;
+
+  function setStepState(stepId, state) {
+    var el = document.getElementById('step-' + stepId);
+    if (!el) return;
+    el.className = 'restore-step ' + state;
+    var icon = el.querySelector('.restore-step-icon');
+    if (state === 'done') icon.innerHTML = '&#10003;';
+    else if (state === 'active') icon.innerHTML = '&#9679;';
+    else if (state === 'error') icon.innerHTML = '&#10007;';
+  }
+
+  function setStepDetail(stepId, text) {
+    var el = document.getElementById('detail-' + stepId);
+    if (el) el.textContent = text;
+  }
+
+  function markPreviousDone(newStep) {
+    var steps = ['validate', 'extract', 'safety', 'close-db', 'restore', 'restart'];
+    var idx = steps.indexOf(newStep);
+    for (var i = 0; i < idx; i++) {
+      var el = document.getElementById('step-' + steps[i]);
+      if (el && !el.classList.contains('done') && !el.classList.contains('error')) {
+        setStepState(steps[i], 'done');
+      }
+    }
+  }
+
+  // Connect to SSE stream
+  var eventSource = new EventSource('/admin/backup/restore-stream');
+
+  eventSource.onmessage = function(e) {
+    var data = JSON.parse(e.data);
+
+    if (data.step === 'error') {
+      // Error occurred
+      if (currentStep) setStepState(currentStep, 'error');
+      progressFill.classList.add('error');
+      statusText.textContent = 'Restore failed!';
+      errorMsg.textContent = data.message;
+      errorMsg.style.display = 'block';
+      backBtn.style.display = 'block';
+      eventSource.close();
+      return;
+    }
+
+    // Update progress bar
+    progressFill.style.width = data.progress + '%';
+
+    // Mark previous steps as done
+    markPreviousDone(data.step);
+
+    // Activate current step
+    currentStep = data.step;
+    setStepState(data.step, 'active');
+    setStepDetail(data.step, data.message);
+    statusText.textContent = data.message;
+
+    if (data.step === 'restart') {
+      restoreCompleted = true;
+      setStepState('restart', 'done');
+      progressFill.classList.add('complete');
+      statusText.textContent = 'Server is restarting...';
+      // Start countdown
+      startCountdown();
+    }
+  };
+
+  eventSource.onerror = function() {
+    eventSource.close();
+    if (restoreCompleted || progressFill.style.width === '100%') {
+      // Expected disconnect after restart
+      if (!countdownSection.style.display || countdownSection.style.display === 'none') {
+        // Mark all steps done
+        markPreviousDone('restart');
+        setStepState('restart', 'done');
+        progressFill.style.width = '100%';
+        progressFill.classList.add('complete');
+        statusText.textContent = 'Server is restarting...';
+        startCountdown();
+      }
+    } else {
+      // Unexpected disconnect during restore
+      statusText.textContent = 'Connection lost. Server may be restarting...';
+      startCountdown();
+    }
+  };
+
+  var countdownStarted = false;
+  function startCountdown() {
+    if (countdownStarted) return;
+    countdownStarted = true;
+    countdownSection.style.display = 'block';
+    var seconds = 30;
+    countdownNumber.textContent = seconds;
+
+    var interval = setInterval(function() {
+      seconds--;
+      countdownNumber.textContent = seconds;
+
+      if (seconds <= 0) {
+        clearInterval(interval);
+        tryReconnect();
+      }
+
+      // Start trying to reconnect at 15 seconds
+      if (seconds === 15) {
+        tryReconnect();
+      }
+    }, 1000);
+  }
+
+  var reconnectAttempts = 0;
+  function tryReconnect() {
+    statusText.textContent = 'Checking if server is back...';
+    fetch('/', { method: 'HEAD', cache: 'no-store' })
+      .then(function(r) {
+        if (r.ok || r.status === 302) {
+          statusText.textContent = 'Server is back! Redirecting...';
+          countdownNumber.textContent = '0';
+          setTimeout(function() {
+            window.location.href = '/admin/users';
+          }, 500);
+        } else {
+          retryReconnect();
+        }
+      })
+      .catch(function() {
+        retryReconnect();
+      });
+  }
+
+  function retryReconnect() {
+    reconnectAttempts++;
+    if (reconnectAttempts > 12) {
+      statusText.textContent = 'Server is taking longer than expected. Please refresh manually.';
+      backBtn.style.display = 'block';
+      return;
+    }
+    statusText.textContent = 'Server not ready yet, retrying...';
+    setTimeout(tryReconnect, 5000);
+  }
+})();
+</script>
