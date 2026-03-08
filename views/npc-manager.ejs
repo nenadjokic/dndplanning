@@ -1,10 +1,10 @@
 <%- include('partials/head') %>
-<%- include('partials/nav') %>
 
 <div class="container" style="padding-top:1rem; padding-bottom:2rem;">
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;">
     <h1 style="font-family:var(--font-heading);color:var(--gold);margin:0;font-size:1.5rem;">NPC Manager</h1>
     <div style="display:flex;gap:0.5rem;align-items:center;">
+      <button type="button" class="btn btn-primary btn-small" id="create-npc-btn">+ New NPC</button>
       <input type="text" id="npc-search" placeholder="Search NPCs..." style="font-size:0.85rem;padding:0.3rem 0.6rem;min-width:180px;">
       <select id="npc-filter-cat" style="font-size:0.85rem;padding:0.3rem 0.6rem;">
         <option value="">All Categories</option>
@@ -40,7 +40,7 @@
     <div id="cat-list" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem;">
       <% for (const cat of categories) { %>
       <div class="npc-mgr-cat-tag" data-cat-id="<%= cat.id %>">
-        <span class="npc-mgr-cat-name"><%= cat.name %></span>
+        <span class="npc-mgr-cat-name" title="Click to rename" data-cat-id="<%= cat.id %>" style="cursor:pointer;"><%= cat.name %></span>
         <span class="npc-mgr-cat-count">(<%= cat.npc_count %>)</span>
         <button type="button" class="npc-mgr-cat-del-npcs" title="Delete all NPCs in this category" data-cat-id="<%= cat.id %>" data-cat-name="<%= cat.name %>">Delete NPCs</button>
         <button type="button" class="npc-mgr-cat-del" title="Delete category (NPCs keep)" data-cat-id="<%= cat.id %>" data-cat-name="<%= cat.name %>">&times;</button>
@@ -63,13 +63,13 @@
           <th>Category</th>
           <th style="width:80px;">HP</th>
           <th style="width:80px;">On Maps</th>
-          <th style="width:120px;">Actions</th>
+          <th style="width:80px;">Actions</th>
         </tr>
       </thead>
       <tbody id="npc-tbody">
         <% for (const npc of npcs) { %>
-        <tr class="npc-row" data-npc-id="<%= npc.id %>" data-cat-id="<%= npc.category_id || '' %>" data-cat-ids="<%= (npc.category_ids || []).join(',') %>" data-name="<%= npc.name.toLowerCase() %>">
-          <td><input type="checkbox" class="npc-select-cb" value="<%= npc.id %>"></td>
+        <tr class="npc-row" data-npc-id="<%= npc.id %>" data-cat-id="<%= npc.category_id || '' %>" data-cat-ids="<%= (npc.category_ids || []).join(',') %>" data-name="<%= npc.name.toLowerCase() %>" style="cursor:pointer;">
+          <td onclick="event.stopPropagation()"><input type="checkbox" class="npc-select-cb" value="<%= npc.id %>"></td>
           <td>
             <% if (npc.avatar) { %>
             <img src="<%= npc.avatar %>" alt="" class="npc-mgr-avatar">
@@ -88,14 +88,13 @@
           </td>
           <td><%= npc.max_hp > 0 ? npc.max_hp : '--' %></td>
           <td><%= npc.placement_count %></td>
-          <td>
-            <button type="button" class="btn btn-outline btn-small npc-edit-btn" data-npc-id="<%= npc.id %>">Edit</button>
+          <td onclick="event.stopPropagation()">
             <button type="button" class="btn btn-danger btn-small npc-delete-btn" data-npc-id="<%= npc.id %>" data-npc-name="<%= npc.name %>">Del</button>
           </td>
         </tr>
         <% } %>
         <% if (npcs.length === 0) { %>
-        <tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:2rem;">No NPCs yet. Create one from the Map view or import with Tome of Adventures.</td></tr>
+        <tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:2rem;">No NPCs yet. Click "+ New NPC" to create one.</td></tr>
         <% } %>
       </tbody>
     </table>
@@ -105,46 +104,76 @@
   </div>
 </div>
 
-<!-- Edit NPC Modal -->
-<div class="modal-overlay" id="edit-npc-modal" style="display:none;">
-  <div class="modal" style="max-width:500px;">
-    <div class="modal-header">
-      <h3 id="edit-modal-title">Edit NPC</h3>
-      <button type="button" class="modal-close" id="edit-modal-close">&times;</button>
+<!-- NPC Edit/Create Modal (matches map NPC form) -->
+<div id="npc-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--bg-card);border:1px solid var(--gold-dim);border-radius:12px;padding:1.5rem;max-width:520px;width:90%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h3 id="npc-modal-title" style="font-family:var(--font-heading);color:var(--gold);margin:0;font-size:1.1rem;">Edit NPC</h3>
+      <button type="button" id="npc-modal-close" style="background:none;border:none;color:var(--text-secondary);font-size:1.5rem;cursor:pointer;padding:0;line-height:1;">&times;</button>
     </div>
-    <form id="edit-npc-form" enctype="multipart/form-data">
-      <div class="form-group">
-        <label for="edit-npc-name">Name</label>
-        <input type="text" id="edit-npc-name" name="name" required>
-      </div>
-      <div class="form-group">
-        <label for="edit-npc-hp">Max HP</label>
-        <input type="number" id="edit-npc-hp" name="max_hp" min="0" value="0">
-      </div>
-      <div class="form-group">
-        <label>Categories</label>
-        <div id="edit-npc-categories" style="display:flex;flex-wrap:wrap;gap:0.5rem;">
-          <% for (const cat of categories) { %>
-          <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;cursor:pointer;">
-            <input type="checkbox" name="category_ids" value="<%= cat.id %>"> <%= cat.name %>
-          </label>
-          <% } %>
+    <div id="npc-modal-body">
+      <!-- Source selector -->
+      <div id="npc-source-section" style="margin-bottom:0.75rem;">
+        <label style="font-size:0.85rem;color:var(--text-secondary);">Source</label>
+        <div style="display:flex;gap:0.35rem;margin-top:0.25rem;">
+          <button type="button" class="btn btn-small btn-primary npc-source-btn active" data-source="custom">Custom</button>
+          <button type="button" class="btn btn-small btn-outline npc-source-btn" data-source="bestiary">Bestiary</button>
+        </div>
+        <div id="npc-bestiary-search" style="display:none;margin-top:0.5rem;">
+          <div style="display:flex;gap:0.35rem;">
+            <input type="text" id="npc-bestiary-query" placeholder="Search monsters..." style="flex:1;padding:0.3rem 0.5rem;font-size:0.85rem;">
+            <button type="button" class="btn btn-small btn-outline" id="npc-bestiary-search-btn">Search</button>
+          </div>
+          <div id="npc-bestiary-results" style="max-height:150px;overflow-y:auto;margin-top:0.35rem;"></div>
         </div>
       </div>
-      <div class="form-group">
-        <label for="edit-npc-notes">Notes</label>
-        <textarea id="edit-npc-notes" name="notes" rows="3"></textarea>
-      </div>
-      <div class="form-group">
-        <label for="edit-npc-avatar">Avatar</label>
-        <input type="file" id="edit-npc-avatar" name="avatar" accept="image/*">
-      </div>
-      <input type="hidden" id="edit-npc-id" value="">
-      <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
-        <button type="button" class="btn btn-outline" id="edit-modal-cancel">Cancel</button>
-        <button type="submit" class="btn btn-primary">Save</button>
-      </div>
-    </form>
+      <!-- NPC Form -->
+      <form id="npc-form" enctype="multipart/form-data">
+        <input type="hidden" id="npc-form-id" value="">
+        <input type="hidden" id="npc-form-source-type" value="custom">
+        <input type="hidden" id="npc-form-source-key" value="">
+        <div class="form-group" style="margin-bottom:0.5rem;">
+          <label style="font-size:0.85rem;">Name *</label>
+          <input type="text" name="name" id="npc-form-name" required placeholder="NPC name" style="padding:0.35rem 0.5rem;font-size:0.85rem;">
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:flex-start;">
+          <div class="form-group" style="flex:1;margin-bottom:0.5rem;">
+            <label style="font-size:0.85rem;">Categories</label>
+            <div id="npc-form-cats" style="display:flex;flex-wrap:wrap;gap:0.35rem;max-height:80px;overflow-y:auto;padding:0.25rem 0;">
+              <% for (const cat of categories) { %>
+              <label style="display:flex;align-items:center;gap:0.25rem;font-size:0.8rem;cursor:pointer;">
+                <input type="checkbox" name="category_ids" value="<%= cat.id %>"> <%= cat.name %>
+              </label>
+              <% } %>
+            </div>
+          </div>
+          <div class="form-group" style="width:90px;margin-bottom:0.5rem;">
+            <label style="font-size:0.85rem;">Max HP</label>
+            <input type="number" name="max_hp" id="npc-form-hp" min="0" value="0" style="width:100%;padding:0.35rem 0.4rem;font-size:0.85rem;">
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0.5rem;">
+          <label style="font-size:0.85rem;">Avatar</label>
+          <div id="npc-avatar-current" style="display:none;margin-bottom:0.35rem;">
+            <img id="npc-avatar-current-img" src="" style="max-width:60px;max-height:60px;border-radius:50%;border:2px solid var(--gold);">
+          </div>
+          <div id="npc-avatar-auto-section" style="display:none;margin-bottom:0.35rem;">
+            <button type="button" id="npc-fetch-avatar-btn" class="btn btn-outline btn-small" style="font-size:0.8rem;width:100%;">Fetch avatar from D&amp;D 5e SRD</button>
+            <div id="npc-fetch-avatar-status" style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.2rem;"></div>
+          </div>
+          <input type="file" name="avatar" id="npc-form-avatar" accept="image/*" style="font-size:0.8rem;">
+          <div id="npc-form-avatar-preview" style="margin-top:0.25rem;"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:0.5rem;">
+          <label style="font-size:0.85rem;">Notes</label>
+          <textarea name="notes" id="npc-form-notes" rows="3" style="padding:0.35rem 0.5rem;font-size:0.85rem;" placeholder="Optional notes"></textarea>
+        </div>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+          <button type="button" class="btn btn-outline" id="npc-modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="npc-form-submit">Save</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
@@ -160,20 +189,14 @@
   function filterRows() {
     var q = (searchInput.value || '').toLowerCase().trim();
     var cat = filterCat.value;
-    var visible = 0;
     rows.forEach(function(row) {
       var name = row.getAttribute('data-name');
       var catId = row.getAttribute('data-cat-id');
       var catIds = (row.getAttribute('data-cat-ids') || '').split(',');
       var matchName = !q || name.indexOf(q) !== -1;
       var matchCat = !cat || (cat === 'uncategorized' ? (!catId && catIds.join('') === '') : (catId === cat || catIds.indexOf(cat) !== -1));
-      if (matchName && matchCat) {
-        row.style.display = '';
-        visible++;
-      } else {
-        row.style.display = 'none';
-        row.querySelector('.npc-select-cb').checked = false;
-      }
+      if (matchName && matchCat) { row.style.display = ''; }
+      else { row.style.display = 'none'; row.querySelector('.npc-select-cb').checked = false; }
     });
     updateBulkBar();
   }
@@ -190,25 +213,15 @@
       bulkBar.style.display = 'none';
     }
   }
-  document.querySelectorAll('.npc-select-cb').forEach(function(cb) {
-    cb.addEventListener('change', updateBulkBar);
-  });
+  document.querySelectorAll('.npc-select-cb').forEach(function(cb) { cb.addEventListener('change', updateBulkBar); });
   document.getElementById('header-select-all').addEventListener('change', function() {
-    var checked = this.checked;
-    rows.forEach(function(row) {
-      if (row.style.display !== 'none') {
-        row.querySelector('.npc-select-cb').checked = checked;
-      }
-    });
+    var c = this.checked;
+    rows.forEach(function(r) { if (r.style.display !== 'none') r.querySelector('.npc-select-cb').checked = c; });
     updateBulkBar();
   });
   document.getElementById('select-all-cb').addEventListener('change', function() {
-    var checked = this.checked;
-    rows.forEach(function(row) {
-      if (row.style.display !== 'none') {
-        row.querySelector('.npc-select-cb').checked = checked;
-      }
-    });
+    var c = this.checked;
+    rows.forEach(function(r) { if (r.style.display !== 'none') r.querySelector('.npc-select-cb').checked = c; });
     updateBulkBar();
   });
   document.getElementById('bulk-deselect-btn').addEventListener('click', function() {
@@ -228,9 +241,7 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
       body: JSON.stringify({ npc_ids: ids })
-    }).then(function(r) { return r.json(); }).then(function(d) {
-      if (d.success) location.reload();
-    });
+    }).then(function(r) { return r.json(); }).then(function(d) { if (d.success) location.reload(); });
   });
 
   // --- Single Delete ---
@@ -242,26 +253,61 @@
       fetch('/map/npcs/' + npcId + '/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }
-      }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.success) location.reload();
-      });
+      }).then(function(r) { return r.json(); }).then(function(d) { if (d.success) location.reload(); });
     });
   });
 
   // --- Category: Add ---
-  document.getElementById('add-cat-btn').addEventListener('click', function() {
-    var name = document.getElementById('new-cat-name').value.trim();
+  function addCategory() {
+    var input = document.getElementById('new-cat-name');
+    var name = input.value.trim();
     if (!name) return;
     fetch('/map/npcs/categories', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
       body: JSON.stringify({ name: name })
-    }).then(function(r) { return r.json(); }).then(function(d) {
-      if (d.success) location.reload();
+    }).then(function(r) { return r.json(); }).then(function(d) { if (d.success) location.reload(); });
+  }
+  document.getElementById('add-cat-btn').addEventListener('click', addCategory);
+  document.getElementById('new-cat-name').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); addCategory(); }
+  });
+
+  // --- Category: Rename ---
+  document.querySelectorAll('.npc-mgr-cat-name[data-cat-id]').forEach(function(span) {
+    span.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (span.querySelector('input')) return;
+      var catId = span.getAttribute('data-cat-id');
+      var oldName = span.textContent.trim();
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.value = oldName;
+      input.style.cssText = 'font-size:0.8rem;padding:0.1rem 0.3rem;width:' + Math.max(80, oldName.length * 8 + 20) + 'px;background:var(--bg-darker);color:var(--text-primary);border:1px solid var(--gold);border-radius:3px;';
+      span.textContent = '';
+      span.appendChild(input);
+      input.focus();
+      input.select();
+      function save() {
+        var newName = input.value.trim();
+        if (!newName || newName === oldName) { span.textContent = oldName; return; }
+        fetch('/map/npcs/categories/' + catId + '/rename', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({ name: newName })
+        }).then(function(r) { return r.json(); }).then(function(d) {
+          if (d.success) location.reload(); else span.textContent = oldName;
+        }).catch(function() { span.textContent = oldName; });
+      }
+      input.addEventListener('blur', save);
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+        if (e.key === 'Escape') { span.textContent = oldName; }
+      });
     });
   });
 
-  // --- Category: Delete (category only, keep NPCs) ---
+  // --- Category: Delete ---
   document.querySelectorAll('.npc-mgr-cat-del').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var catId = btn.getAttribute('data-cat-id');
@@ -270,9 +316,7 @@
       fetch('/map/npcs/categories/' + catId + '/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }
-      }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.success) location.reload();
-      });
+      }).then(function(r) { return r.json(); }).then(function(d) { if (d.success) location.reload(); });
     });
   });
 
@@ -287,54 +331,191 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
         body: JSON.stringify({ delete_category: delCat })
-      }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.success) location.reload();
-      });
+      }).then(function(r) { return r.json(); }).then(function(d) { if (d.success) location.reload(); });
     });
   });
 
-  // --- Edit NPC Modal ---
-  var editModal = document.getElementById('edit-npc-modal');
-  var editForm = document.getElementById('edit-npc-form');
-  document.querySelectorAll('.npc-edit-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var npcId = btn.getAttribute('data-npc-id');
-      var row = btn.closest('.npc-row');
-      var catIds = (row.getAttribute('data-cat-ids') || '').split(',');
-      // Fetch current NPC data
-      fetch('/map/npcs', {
-        headers: { 'X-CSRF-Token': csrfToken }
-      }).then(function(r) { return r.json(); }).then(function(data) {
+  // =============================================
+  // NPC Modal (Create / Edit)
+  // =============================================
+  var modal = document.getElementById('npc-modal');
+  var form = document.getElementById('npc-form');
+  var npcCurrentSource = 'custom';
+
+  function closeModal() { modal.style.display = 'none'; }
+  document.getElementById('npc-modal-close').addEventListener('click', closeModal);
+  document.getElementById('npc-modal-cancel').addEventListener('click', closeModal);
+  modal.addEventListener('click', function(e) { if (e.target === modal) closeModal(); });
+
+  function resetForm() {
+    document.getElementById('npc-form-id').value = '';
+    document.getElementById('npc-form-name').value = '';
+    document.getElementById('npc-form-hp').value = '0';
+    document.getElementById('npc-form-notes').value = '';
+    document.getElementById('npc-form-avatar').value = '';
+    document.getElementById('npc-form-source-type').value = 'custom';
+    document.getElementById('npc-form-source-key').value = '';
+    document.getElementById('npc-form-avatar-preview').innerHTML = '';
+    document.getElementById('npc-avatar-current').style.display = 'none';
+    document.getElementById('npc-avatar-auto-section').style.display = 'none';
+    document.getElementById('npc-fetch-avatar-status').textContent = '';
+    document.getElementById('npc-bestiary-results').innerHTML = '';
+    document.getElementById('npc-bestiary-query').value = '';
+    form.querySelectorAll('input[name="category_ids"]').forEach(function(cb) { cb.checked = false; });
+    setSource('custom');
+  }
+
+  // Source selector
+  function setSource(source) {
+    npcCurrentSource = source;
+    document.getElementById('npc-form-source-type').value = source;
+    document.querySelectorAll('.npc-source-btn').forEach(function(b) {
+      b.classList.toggle('active', b.getAttribute('data-source') === source);
+      b.classList.toggle('btn-primary', b.getAttribute('data-source') === source);
+      b.classList.toggle('btn-outline', b.getAttribute('data-source') !== source);
+    });
+    document.getElementById('npc-bestiary-search').style.display = source === 'bestiary' ? 'block' : 'none';
+    document.getElementById('npc-avatar-auto-section').style.display = source === 'bestiary' ? 'block' : 'none';
+  }
+  document.querySelectorAll('.npc-source-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() { setSource(btn.getAttribute('data-source')); });
+  });
+
+  // Bestiary search
+  document.getElementById('npc-bestiary-search-btn').addEventListener('click', bestiarySearch);
+  document.getElementById('npc-bestiary-query').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); bestiarySearch(); }
+  });
+  function bestiarySearch() {
+    var q = document.getElementById('npc-bestiary-query').value.trim();
+    if (!q) return;
+    var resultsDiv = document.getElementById('npc-bestiary-results');
+    resultsDiv.innerHTML = '<div style="font-size:0.8rem;color:var(--text-secondary);padding:0.25rem;">Searching...</div>';
+    fetch('https://api.open5e.com/v2/creatures/?name__icontains=' + encodeURIComponent(q) + '&format=json&fields=name,key,hp,document__title')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var items = data.results || [];
+        if (items.length === 0) {
+          resultsDiv.innerHTML = '<div style="font-size:0.8rem;color:var(--text-secondary);padding:0.25rem;">No results found</div>';
+          return;
+        }
+        resultsDiv.innerHTML = '';
+        items.slice(0, 20).forEach(function(item) {
+          var div = document.createElement('div');
+          div.style.cssText = 'padding:0.3rem 0.4rem;cursor:pointer;font-size:0.8rem;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;align-items:center;';
+          div.innerHTML = '<span style="color:var(--text-primary);">' + item.name + '</span><span style="color:var(--text-secondary);font-size:0.75rem;">HP: ' + (item.hp || '?') + '</span>';
+          div.addEventListener('mouseenter', function() { div.style.background = 'var(--bg-darker)'; });
+          div.addEventListener('mouseleave', function() { div.style.background = ''; });
+          div.addEventListener('click', function() {
+            document.getElementById('npc-form-name').value = item.name;
+            document.getElementById('npc-form-source-key').value = item.key || '';
+            if (item.hp) document.getElementById('npc-form-hp').value = item.hp;
+            document.getElementById('npc-form-avatar-preview').innerHTML = '';
+            resultsDiv.innerHTML = '<div style="font-size:0.8rem;color:var(--gold);padding:0.25rem;">Selected: ' + item.name + '</div>';
+            // Auto-fetch details for notes
+            if (item.key) {
+              fetch('https://api.open5e.com/v2/creatures/' + item.key + '/?format=json')
+                .then(function(r) { return r.json(); })
+                .then(function(detail) {
+                  var notes = [];
+                  if (detail.size) notes.push('Size: ' + detail.size.name);
+                  if (detail.type) notes.push('Type: ' + detail.type.name);
+                  if (detail.alignment) notes.push('Alignment: ' + detail.alignment);
+                  if (detail.armor_class) notes.push('AC: ' + detail.armor_class);
+                  if (detail.challenge_rating) notes.push('CR: ' + detail.challenge_rating);
+                  if (notes.length) document.getElementById('npc-form-notes').value = notes.join(' | ');
+                }).catch(function() {});
+            }
+          });
+          resultsDiv.appendChild(div);
+        });
+      })
+      .catch(function() {
+        resultsDiv.innerHTML = '<div style="font-size:0.8rem;color:#e74c3c;padding:0.25rem;">Search failed</div>';
+      });
+  }
+
+  // Fetch avatar from D&D 5e SRD
+  document.getElementById('npc-fetch-avatar-btn').addEventListener('click', function() {
+    var name = document.getElementById('npc-form-name').value.trim();
+    if (!name) { document.getElementById('npc-fetch-avatar-status').textContent = 'Enter a name first'; return; }
+    var status = document.getElementById('npc-fetch-avatar-status');
+    status.textContent = 'Fetching...';
+    fetch('https://api.open5e.com/v2/creatures/?name=' + encodeURIComponent(name) + '&format=json&fields=name,key')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var match = (data.results || []).find(function(m) { return m.name.toLowerCase() === name.toLowerCase(); });
+        if (!match) { status.textContent = 'No exact match found'; return; }
+        var imageUrl = 'https://api.open5e.com/v2/creatures/' + match.key + '/image/';
+        document.getElementById('npc-form-avatar-preview').innerHTML = '<img src="' + imageUrl + '" style="max-width:60px;max-height:60px;border-radius:50%;border:2px solid var(--gold);margin-top:0.25rem;" onerror="this.parentNode.innerHTML=\'No image available\'"><input type="hidden" name="avatar_url" value="' + imageUrl + '">';
+        status.textContent = 'Avatar loaded!';
+      })
+      .catch(function() { status.textContent = 'Fetch failed'; });
+  });
+
+  // --- Open modal: CREATE ---
+  document.getElementById('create-npc-btn').addEventListener('click', function() {
+    resetForm();
+    document.getElementById('npc-modal-title').textContent = 'Create NPC';
+    document.getElementById('npc-source-section').style.display = 'block';
+    modal.style.display = 'flex';
+    setTimeout(function() { document.getElementById('npc-form-name').focus(); }, 100);
+  });
+
+  // --- Open modal: EDIT (click row or edit btn) ---
+  function openEditModal(npcId) {
+    resetForm();
+    document.getElementById('npc-modal-title').textContent = 'Edit NPC';
+    document.getElementById('npc-source-section').style.display = 'none';
+    fetch('/map/npcs', { headers: { 'X-CSRF-Token': csrfToken } })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
         var npc = data.npcs.find(function(n) { return n.id == npcId; });
         if (!npc) return;
-        document.getElementById('edit-npc-id').value = npc.id;
-        document.getElementById('edit-npc-name').value = npc.name;
-        document.getElementById('edit-npc-hp').value = npc.max_hp || 0;
-        document.getElementById('edit-npc-notes').value = npc.notes || '';
-        // Check category checkboxes
+        document.getElementById('npc-form-id').value = npc.id;
+        document.getElementById('npc-form-name').value = npc.name;
+        document.getElementById('npc-form-hp').value = npc.max_hp || 0;
+        document.getElementById('npc-form-notes').value = npc.notes || '';
+        // Show current avatar
+        if (npc.avatar) {
+          var avatarSrc = npc.avatar.startsWith('/') ? npc.avatar : '/avatars/' + npc.avatar;
+          document.getElementById('npc-avatar-current-img').src = avatarSrc;
+          document.getElementById('npc-avatar-current').style.display = 'block';
+        }
+        // Show fetch avatar button for bestiary NPCs
+        if (npc.source_type === 'bestiary') {
+          document.getElementById('npc-avatar-auto-section').style.display = 'block';
+        }
+        // Check categories
         var npcCatIds = npc.category_ids || (npc.category_id ? [npc.category_id] : []);
-        editModal.querySelectorAll('input[name="category_ids"]').forEach(function(cb) {
+        form.querySelectorAll('input[name="category_ids"]').forEach(function(cb) {
           cb.checked = npcCatIds.indexOf(parseInt(cb.value)) !== -1;
         });
-        editModal.style.display = 'flex';
+        modal.style.display = 'flex';
       });
+  }
+
+  // Click NPC row to edit
+  rows.forEach(function(row) {
+    row.addEventListener('click', function() {
+      openEditModal(row.getAttribute('data-npc-id'));
     });
   });
-  function closeEditModal() { editModal.style.display = 'none'; }
-  document.getElementById('edit-modal-close').addEventListener('click', closeEditModal);
-  document.getElementById('edit-modal-cancel').addEventListener('click', closeEditModal);
-  editModal.addEventListener('click', function(e) { if (e.target === editModal) closeEditModal(); });
 
-  editForm.addEventListener('submit', function(e) {
+  // --- Form submit (create or edit) ---
+  form.addEventListener('submit', function(e) {
     e.preventDefault();
-    var npcId = document.getElementById('edit-npc-id').value;
-    var formData = new FormData(editForm);
-    // Manually add checked category_ids
+    var npcId = document.getElementById('npc-form-id').value;
+    var formData = new FormData(form);
+    // Fix category_ids
     formData.delete('category_ids');
-    editModal.querySelectorAll('input[name="category_ids"]:checked').forEach(function(cb) {
+    form.querySelectorAll('input[name="category_ids"]:checked').forEach(function(cb) {
       formData.append('category_ids', cb.value);
     });
-    fetch('/map/npcs/' + npcId + '/edit', {
+    formData.append('source_type', document.getElementById('npc-form-source-type').value);
+    formData.append('source_key', document.getElementById('npc-form-source-key').value);
+    var url = npcId ? '/map/npcs/' + npcId + '/edit' : '/map/npcs';
+    fetch(url, {
       method: 'POST',
       headers: { 'X-CSRF-Token': csrfToken },
       body: formData

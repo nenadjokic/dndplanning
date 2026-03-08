@@ -75,6 +75,7 @@ const generatorsRoutes = require('./routes/generators');
 const handoutsRoutes = require('./routes/handouts');
 const questsRoutes = require('./routes/quests');
 const campaignsRoutes = require('./routes/campaigns');
+const adventurePackRoutes = require('./routes/adventure-packs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -279,6 +280,7 @@ app.use('/generators', addonGuard('generators'), generatorsRoutes);
 app.use('/handouts', addonGuard('handouts'), handoutsRoutes);
 app.use('/quests', addonGuard('quest-board'), questsRoutes);
 app.use('/campaigns', addonGuard('campaigns'), campaignsRoutes);
+app.use('/adventure-packs', addonGuard('adventure-packs'), adventurePackRoutes);
 
 // Mount addon static assets and additional addon routes
 addonManager.mountAll();

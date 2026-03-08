@@ -390,6 +390,16 @@ router.post('/npcs/categories', requireLogin, requireDM, express.json(), (req, r
   res.json({ success: true, id: result.lastInsertRowid, name });
 });
 
+// Rename NPC category
+router.post('/npcs/categories/:catId/rename', requireLogin, requireDM, express.json(), (req, res) => {
+  const name = (req.body.name || '').trim();
+  if (!name) return res.status(400).json({ error: 'Name required' });
+  const cat = db.prepare('SELECT id FROM npc_categories WHERE id = ?').get(req.params.catId);
+  if (!cat) return res.status(404).json({ error: 'Category not found' });
+  db.prepare('UPDATE npc_categories SET name = ? WHERE id = ?').run(name, cat.id);
+  res.json({ success: true });
+});
+
 // Delete NPC category
 router.post('/npcs/categories/:catId/delete', requireLogin, requireDM, express.json(), (req, res) => {
   const cat = db.prepare('SELECT id FROM npc_categories WHERE id = ?').get(req.params.catId);

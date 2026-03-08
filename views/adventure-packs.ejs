@@ -1,0 +1,420 @@
+<%- include('partials/head', { title: 'Adventure Packs' }) %>
+
+<style>
+  .ap-container { max-width: 1100px; margin: 0 auto; padding: 1rem; }
+  .ap-tabs { display: flex; gap: 0; border-bottom: 2px solid var(--gold-dim); margin-bottom: 1.5rem; }
+  .ap-tab { padding: 0.7rem 1.5rem; cursor: pointer; color: var(--text-dim); border: 1px solid transparent; border-bottom: none; border-radius: 8px 8px 0 0; font-family: 'MedievalSharp', cursive; font-size: 1.05rem; background: none; transition: all 0.2s; }
+  .ap-tab:hover { color: var(--gold); background: rgba(212,168,67,0.05); }
+  .ap-tab.active { color: var(--gold); background: var(--bg-card); border-color: var(--gold-dim); position: relative; }
+  .ap-tab.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px; background: var(--bg-card); }
+  .ap-tab-content { display: none; }
+  .ap-tab-content.active { display: block; }
+
+  .ap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
+  .ap-card { background: var(--bg-card); border: 1px solid var(--gold-dim); border-radius: 12px; padding: 1.2rem; transition: border-color 0.2s; }
+  .ap-card:hover { border-color: var(--gold); }
+  .ap-card h4 { margin: 0 0 0.5rem; color: var(--gold); font-family: 'MedievalSharp', cursive; }
+  .ap-card p { margin: 0 0 0.5rem; color: var(--text-dim); font-size: 0.9rem; }
+  .ap-card-meta { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.5rem 0; }
+  .ap-badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; background: rgba(212,168,67,0.15); color: var(--gold); }
+  .ap-badge.source-store { background: rgba(76,175,80,0.15); color: #4CAF50; }
+  .ap-card-actions { display: flex; gap: 0.5rem; margin-top: 0.8rem; }
+  .ap-card-stats { display: flex; gap: 1rem; font-size: 0.8rem; color: var(--text-dim); margin: 0.5rem 0; }
+
+  .ap-btn { padding: 0.4rem 0.8rem; border: 1px solid var(--gold-dim); border-radius: 6px; background: none; color: var(--gold); cursor: pointer; font-size: 0.85rem; transition: all 0.2s; text-decoration: none; display: inline-block; }
+  .ap-btn:hover { background: var(--gold); color: var(--bg-dark); }
+  .ap-btn.danger { border-color: #e74c3c; color: #e74c3c; }
+  .ap-btn.danger:hover { background: #e74c3c; color: #fff; }
+  .ap-btn.primary { background: var(--gold); color: var(--bg-dark); font-weight: 600; }
+  .ap-btn.primary:hover { background: var(--gold-light); }
+  .ap-btn.install { border-color: #4CAF50; color: #4CAF50; }
+  .ap-btn.install:hover { background: #4CAF50; color: #fff; }
+
+  .ap-empty { text-align: center; padding: 3rem; color: var(--text-dim); }
+  .ap-empty h3 { color: var(--gold-dim); font-family: 'MedievalSharp', cursive; }
+
+  .ap-upload-zone { border: 2px dashed var(--gold-dim); border-radius: 12px; padding: 2.5rem; text-align: center; cursor: pointer; transition: border-color 0.2s; margin-bottom: 1rem; }
+  .ap-upload-zone:hover { border-color: var(--gold); }
+  .ap-upload-zone p { margin: 0.5rem 0; color: var(--text-dim); }
+  .ap-upload-zone .icon { font-size: 2.5rem; }
+
+  .ap-store-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+  .ap-store-card { background: var(--bg-card); border: 1px solid var(--gold-dim); border-radius: 12px; padding: 1.2rem; }
+  .ap-store-card h4 { margin: 0 0 0.3rem; color: var(--gold); font-family: 'MedievalSharp', cursive; }
+  .ap-store-card .author { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 0.5rem; }
+
+  .ap-repo-list { margin: 1.5rem 0; }
+  .ap-repo-item { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.8rem; border: 1px solid var(--gold-dim); border-radius: 8px; margin-bottom: 0.5rem; }
+  .ap-repo-item .name { color: var(--gold); font-weight: 600; }
+  .ap-repo-item .url { color: var(--text-dim); font-size: 0.8rem; word-break: break-all; }
+
+  .ap-submit-form { background: var(--bg-card); border: 1px solid var(--gold-dim); border-radius: 12px; padding: 1.5rem; max-width: 600px; }
+  .ap-submit-form label { display: block; margin-bottom: 0.3rem; color: var(--gold-dim); font-size: 0.85rem; }
+  .ap-submit-form input, .ap-submit-form textarea, .ap-submit-form select { width: 100%; padding: 0.5rem; border: 1px solid var(--gold-dim); border-radius: 6px; background: var(--bg-dark); color: var(--text); margin-bottom: 0.8rem; font-family: 'Crimson Text', serif; }
+  .ap-submit-form textarea { min-height: 80px; resize: vertical; }
+
+  .ap-flash { padding: 0.8rem 1rem; border-radius: 8px; margin-bottom: 1rem; }
+  .ap-flash.success { background: rgba(76,175,80,0.15); border: 1px solid #4CAF50; color: #4CAF50; }
+  .ap-flash.error { background: rgba(231,76,60,0.15); border: 1px solid #e74c3c; color: #e74c3c; }
+
+  .ap-campaign-select { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
+  .ap-campaign-select select { padding: 0.5rem; border: 1px solid var(--gold-dim); border-radius: 6px; background: var(--bg-dark); color: var(--text); font-family: 'Crimson Text', serif; }
+</style>
+
+<div class="ap-container">
+  <h1 style="font-family:'MedievalSharp',cursive;color:var(--gold);margin-bottom:0.5rem;">Adventure Packs</h1>
+  <p style="color:var(--text-dim);margin-bottom:1rem;">Export, import, and share complete adventures with maps, NPCs, loot, and quests.</p>
+
+  <% if (flash && flash.type) { %>
+    <div class="ap-flash <%= flash.type %>"><%= flash.message %></div>
+  <% } %>
+
+  <div class="ap-tabs">
+    <button class="ap-tab <%= tab === 'my-packs' ? 'active' : '' %>" onclick="switchTab('my-packs',this)">My Packs</button>
+    <button class="ap-tab <%= tab === 'export' ? 'active' : '' %>" onclick="switchTab('export',this)">Export</button>
+    <button class="ap-tab <%= tab === 'import' ? 'active' : '' %>" onclick="switchTab('import',this)">Import</button>
+    <button class="ap-tab <%= tab === 'store' ? 'active' : '' %>" onclick="switchTab('store',this)">Browse Store</button>
+    <button class="ap-tab <%= tab === 'submit' ? 'active' : '' %>" onclick="switchTab('submit',this)">Submit</button>
+  </div>
+
+  <!-- MY PACKS -->
+  <div id="tab-my-packs" class="ap-tab-content <%= tab === 'my-packs' ? 'active' : '' %>">
+    <% if (packs.length === 0) { %>
+      <div class="ap-empty">
+        <h3>No Adventure Packs Yet</h3>
+        <p>Import a pack or export one from your campaigns to get started.</p>
+      </div>
+    <% } else { %>
+      <div class="ap-grid">
+        <% for (const pack of packs) { %>
+          <div class="ap-card">
+            <h4><%= pack.name %></h4>
+            <p><%= pack.description || 'No description' %></p>
+            <div class="ap-card-meta">
+              <span class="ap-badge">by <%= pack.author || 'Unknown' %></span>
+              <span class="ap-badge">v<%= pack.version || '1.0.0' %></span>
+              <% if (pack.level_min || pack.level_max) { %>
+                <span class="ap-badge">Lvl <%= pack.level_min || '?' %>-<%= pack.level_max || '?' %></span>
+              <% } %>
+              <span class="ap-badge <%= pack.import_source === 'store' ? 'source-store' : '' %>"><%= pack.import_source === 'store' ? 'Store' : 'Local' %></span>
+            </div>
+            <div class="ap-card-stats">
+              <span><%= JSON.parse(pack.map_ids || '[]').length %> maps</span>
+              <span><%= JSON.parse(pack.npc_ids || '[]').length %> NPCs</span>
+              <% if (pack.campaign_name) { %><span>Campaign: <%= pack.campaign_name %></span><% } %>
+            </div>
+            <div class="ap-card-actions">
+              <% if (pack.campaign_id) { %>
+                <a href="/adventure-packs/export/<%= pack.campaign_id %>" class="ap-btn">Re-export</a>
+              <% } %>
+              <form method="POST" action="/adventure-packs/delete/<%= pack.id %>" style="display:inline;" onsubmit="return confirm('Delete this adventure pack and ALL its data (campaign, maps, NPCs, quests)?')">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="ap-btn danger">Delete</button>
+              </form>
+            </div>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- EXPORT -->
+  <div id="tab-export" class="ap-tab-content <%= tab === 'export' ? 'active' : '' %>">
+    <% if (campaigns.length === 0) { %>
+      <div class="ap-empty">
+        <h3>No Campaigns Found</h3>
+        <p>Create a campaign first, then you can export it as an Adventure Pack.</p>
+      </div>
+    <% } else { %>
+      <p style="color:var(--text-dim);margin-bottom:1rem;">Choose a campaign to export as an Adventure Pack.</p>
+      <div class="ap-grid">
+        <% for (const c of campaigns) { %>
+          <div class="ap-card">
+            <h4><%= c.name %></h4>
+            <div class="ap-card-actions">
+              <a href="/adventure-packs/export/<%= c.id %>" class="ap-btn primary">Export</a>
+            </div>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- IMPORT -->
+  <div id="tab-import" class="ap-tab-content <%= tab === 'import' ? 'active' : '' %>">
+    <form method="POST" action="/adventure-packs/import" enctype="multipart/form-data" id="import-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="ap-upload-zone" onclick="document.getElementById('pack-file').click()">
+        <div class="icon">&#x1F4DC;</div>
+        <p><strong>Click to upload a .qpa file</strong></p>
+        <p>or drag and drop here</p>
+        <p id="upload-filename" style="color:var(--gold);display:none;"></p>
+      </div>
+      <input type="file" id="pack-file" name="pack" accept=".qpa" style="display:none;" onchange="handleFileSelect(this)">
+      <button type="submit" class="ap-btn primary" id="import-btn" disabled>Import Adventure Pack</button>
+    </form>
+  </div>
+
+  <!-- BROWSE STORE -->
+  <div id="tab-store" class="ap-tab-content <%= tab === 'store' ? 'active' : '' %>">
+    <div id="store-loading" style="text-align:center;padding:2rem;color:var(--text-dim);">Loading adventure packs from store...</div>
+    <div id="store-grid" class="ap-store-grid" style="display:none;"></div>
+    <div id="store-empty" class="ap-empty" style="display:none;">
+      <h3>No Packs Available</h3>
+      <p>No adventure packs are available in the store yet. Be the first to submit one!</p>
+    </div>
+
+    <h3 style="font-family:'MedievalSharp',cursive;color:var(--gold);margin-top:2rem;">Custom Repositories</h3>
+    <p style="color:var(--text-dim);font-size:0.9rem;margin-bottom:0.5rem;">Add custom repository URLs to discover more adventure packs.</p>
+    <div class="ap-repo-list">
+      <% for (const repo of repos) { %>
+        <div class="ap-repo-item" id="repo-<%= repo.id %>">
+          <div>
+            <div class="name"><%= repo.name %></div>
+            <div class="url"><%= repo.url %></div>
+          </div>
+          <button class="ap-btn danger" onclick="deleteRepo(<%= repo.id %>)">Remove</button>
+        </div>
+      <% } %>
+    </div>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+      <input type="text" id="repo-name" placeholder="Repository name" style="padding:0.5rem;border:1px solid var(--gold-dim);border-radius:6px;background:var(--bg-dark);color:var(--text);flex:1;min-width:150px;">
+      <input type="text" id="repo-url" placeholder="Registry JSON URL" style="padding:0.5rem;border:1px solid var(--gold-dim);border-radius:6px;background:var(--bg-dark);color:var(--text);flex:2;min-width:250px;">
+      <button class="ap-btn" onclick="addRepo()">Add Repository</button>
+    </div>
+  </div>
+
+  <!-- SUBMIT -->
+  <div id="tab-submit" class="ap-tab-content <%= tab === 'submit' ? 'active' : '' %>">
+    <h3 style="font-family:'MedievalSharp',cursive;color:var(--gold);margin-bottom:0.5rem;">Submit Your Adventure Pack</h3>
+    <p style="color:var(--text-dim);margin-bottom:1rem;">Share your adventure packs with the Quest Planner community! Submit your pack for review, and once approved it will appear in the Browse Store for everyone.</p>
+
+    <% if (packs.length === 0) { %>
+      <div class="ap-empty">
+        <h3>No Packs to Submit</h3>
+        <p>Export a campaign as an Adventure Pack first, then you can submit it here.</p>
+      </div>
+    <% } else { %>
+      <div class="ap-submit-form">
+        <label>Select Adventure Pack</label>
+        <select id="submit-pack">
+          <option value="">-- Choose a pack --</option>
+          <% for (const pack of packs) { %>
+            <option value="<%= pack.id %>" data-name="<%= pack.name %>" data-desc="<%= pack.description || '' %>" data-author="<%= pack.author || '' %>"><%= pack.name %></option>
+          <% } %>
+        </select>
+
+        <label>Pack Name</label>
+        <input type="text" id="submit-name" placeholder="Adventure name">
+
+        <label>Author</label>
+        <input type="text" id="submit-author" placeholder="Your name or username">
+
+        <label>Description</label>
+        <textarea id="submit-desc" placeholder="Brief description of the adventure..."></textarea>
+
+        <label>Additional Notes (for reviewer)</label>
+        <textarea id="submit-notes" placeholder="Any notes for the reviewer (content warnings, special instructions, etc.)"></textarea>
+
+        <div style="margin-top:1rem;">
+          <p style="color:var(--text-dim);font-size:0.85rem;margin-bottom:0.5rem;">Submission process:</p>
+          <ol style="color:var(--text-dim);font-size:0.85rem;padding-left:1.2rem;margin-bottom:1rem;">
+            <li>Click "Prepare Submission" below</li>
+            <li>Export the .qpa file from the Re-export button</li>
+            <li>A GitHub issue will be created with your submission details</li>
+            <li>Attach the .qpa file to the issue</li>
+            <li>Once reviewed and approved, it will appear in the store!</li>
+          </ol>
+        </div>
+
+        <button class="ap-btn primary" onclick="submitPack()">Prepare Submission</button>
+        <div id="submit-result" style="margin-top:1rem;display:none;"></div>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<script>
+var csrfToken = '<%= csrfToken %>';
+function switchTab(tab, el) {
+  document.querySelectorAll('.ap-tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.ap-tab-content').forEach(function(c) { c.classList.remove('active'); });
+  el.classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+  history.replaceState(null, '', '/adventure-packs?tab=' + tab);
+}
+
+function handleFileSelect(input) {
+  if (input.files && input.files[0]) {
+    var fn = document.getElementById('upload-filename');
+    fn.textContent = input.files[0].name + ' (' + (input.files[0].size / (1024 * 1024)).toFixed(1) + ' MB)';
+    fn.style.display = 'block';
+    document.getElementById('import-btn').disabled = false;
+  }
+}
+
+// Drag and drop
+var uploadZone = document.querySelector('.ap-upload-zone');
+if (uploadZone) {
+  uploadZone.addEventListener('dragover', function(e) { e.preventDefault(); this.style.borderColor = 'var(--gold)'; });
+  uploadZone.addEventListener('dragleave', function() { this.style.borderColor = 'var(--gold-dim)'; });
+  uploadZone.addEventListener('drop', function(e) {
+    e.preventDefault();
+    this.style.borderColor = 'var(--gold-dim)';
+    if (e.dataTransfer.files.length > 0) {
+      document.getElementById('pack-file').files = e.dataTransfer.files;
+      handleFileSelect(document.getElementById('pack-file'));
+    }
+  });
+}
+
+// Browse Store
+function loadStore() {
+  fetch('/adventure-packs/registry')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      document.getElementById('store-loading').style.display = 'none';
+      if (!data.packs || data.packs.length === 0) {
+        document.getElementById('store-empty').style.display = 'block';
+        return;
+      }
+      var grid = document.getElementById('store-grid');
+      grid.style.display = 'grid';
+      grid.innerHTML = '';
+      data.packs.forEach(function(pack) {
+        var card = document.createElement('div');
+        card.className = 'ap-store-card';
+        card.innerHTML = '<h4>' + escHtml(pack.name) + '</h4>'
+          + '<div class="author">by ' + escHtml(pack.author || 'Unknown') + '</div>'
+          + '<p style="color:var(--text-dim);font-size:0.85rem;margin:0 0 0.5rem;">' + escHtml(pack.description || '') + '</p>'
+          + '<div class="ap-card-meta">'
+          + (pack.levelMin ? '<span class="ap-badge">Lvl ' + pack.levelMin + '-' + (pack.levelMax || '?') + '</span>' : '')
+          + '<span class="ap-badge">' + (pack.maps || 0) + ' maps</span>'
+          + '<span class="ap-badge">' + (pack.npcs || 0) + ' NPCs</span>'
+          + '</div>'
+          + '<div class="ap-card-actions" style="margin-top:0.8rem;">'
+          + (pack.installed
+            ? '<span style="color:#4CAF50;font-size:0.85rem;">Installed</span>'
+            : '<button class="ap-btn install" onclick="installFromStore(\'' + escHtml(pack.downloadUrl) + '\',\'' + escHtml(pack.id) + '\',this)">Install</button>')
+          + '</div>';
+        grid.appendChild(card);
+      });
+    })
+    .catch(function(err) {
+      document.getElementById('store-loading').innerHTML = '<p style="color:#e74c3c;">Failed to load store: ' + err.message + '</p>';
+    });
+}
+
+function installFromStore(url, packId, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Installing...';
+  fetch('/adventure-packs/install-remote', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+    body: JSON.stringify({ downloadUrl: url, packId: packId })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.success) {
+      btn.textContent = 'Installed!';
+      btn.className = 'ap-btn';
+      btn.style.color = '#4CAF50';
+      btn.style.borderColor = '#4CAF50';
+    } else {
+      btn.textContent = 'Failed';
+      btn.disabled = false;
+      alert(data.error || 'Install failed');
+    }
+  })
+  .catch(function(err) {
+    btn.textContent = 'Error';
+    btn.disabled = false;
+    alert('Install failed: ' + err.message);
+  });
+}
+
+function addRepo() {
+  var name = document.getElementById('repo-name').value.trim();
+  var url = document.getElementById('repo-url').value.trim();
+  if (!url) return alert('Please enter a registry URL');
+  fetch('/adventure-packs/repos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+    body: JSON.stringify({ name: name || 'Custom', url: url })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.success) location.reload();
+    else alert(data.error);
+  });
+}
+
+function deleteRepo(id) {
+  if (!confirm('Remove this repository?')) return;
+  fetch('/adventure-packs/repos/' + id, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrfToken }
+  })
+  .then(function() {
+    var el = document.getElementById('repo-' + id);
+    if (el) el.remove();
+  });
+}
+
+// Submit
+function submitPack() {
+  var sel = document.getElementById('submit-pack');
+  if (!sel.value) return alert('Please select a pack');
+  var opt = sel.options[sel.selectedIndex];
+  fetch('/adventure-packs/submit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+    body: JSON.stringify({
+      packId: sel.value,
+      name: document.getElementById('submit-name').value || opt.dataset.name,
+      author: document.getElementById('submit-author').value || opt.dataset.author,
+      description: document.getElementById('submit-desc').value || opt.dataset.desc,
+      notes: document.getElementById('submit-notes').value
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    var result = document.getElementById('submit-result');
+    result.style.display = 'block';
+    if (data.success) {
+      result.innerHTML = '<div class="ap-flash success">'
+        + '<strong>Submission prepared!</strong><br>'
+        + '1. Re-export your pack using the "Re-export" button in My Packs<br>'
+        + '2. <a href="' + escHtml(data.submission.repoUrl) + '" target="_blank" style="color:#4CAF50;">Open GitHub and create a new issue</a><br>'
+        + '3. Paste this title: <code>' + escHtml(data.submission.title) + '</code><br>'
+        + '4. Attach the .qpa file to the issue'
+        + '</div>';
+    } else {
+      result.innerHTML = '<div class="ap-flash error">' + escHtml(data.error) + '</div>';
+    }
+  });
+}
+
+// Auto-fill submit fields when pack selected
+var submitPack2 = document.getElementById('submit-pack');
+if (submitPack2) {
+  submitPack2.addEventListener('change', function() {
+    var opt = this.options[this.selectedIndex];
+    if (opt.dataset.name) document.getElementById('submit-name').value = opt.dataset.name;
+    if (opt.dataset.author) document.getElementById('submit-author').value = opt.dataset.author;
+    if (opt.dataset.desc) document.getElementById('submit-desc').value = opt.dataset.desc;
+  });
+}
+
+function escHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+// Load store when tab is shown
+if ('<%= tab %>' === 'store') loadStore();
+document.querySelectorAll('.ap-tab').forEach(function(t) {
+  t.addEventListener('click', function() {
+    if (this.textContent.trim() === 'Browse Store') loadStore();
+  });
+});
+</script>
+
+<%- include('partials/foot') %>

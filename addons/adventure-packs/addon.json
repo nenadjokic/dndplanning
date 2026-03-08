@@ -1,0 +1,22 @@
+{
+  "id": "adventure-packs",
+  "name": "Adventure Packs",
+  "version": "1.0.0",
+  "author": "Quest Planner",
+  "type": "preinstalled",
+  "category": "Maps & Exploration",
+  "description": "Export, import, and share complete adventure packages with maps, NPCs, loot, quests, and more.",
+  "routes": "/adventure-packs",
+  "softDependencies": { "maps": ">=1.0.0", "campaigns": ">=1.0.0" },
+  "navItems": [
+    {
+      "label": "Adventure Packs",
+      "href": "/adventure-packs",
+      "icon": "scroll",
+      "group": "tools",
+      "sort": 12,
+      "roles": ["admin", "dm"]
+    }
+  ],
+  "tables": ["adventure_packs", "adventure_pack_repositories"]
+}

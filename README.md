@@ -1,6 +1,6 @@
-# Quest Planner v3.0.6 — D&D Session Scheduler
+# Quest Planner v3.0.7 — D&D Session Scheduler
 
-> **Latest release:** v3.0.6 (2026-03-08)
+> **Latest release:** v3.0.7 (2026-03-08)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -870,6 +870,15 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v3.0.7 (2026-03-08) Adventure Packs
+
+- **Adventure Packs** — New preinstalled addon to export, import, and share complete adventures as `.qpa` archive files containing maps (with fog, grid, hierarchy), NPCs (with placements), loot chests & items, quests, locations, map links, handouts, and story arcs
+- **Campaign Export** — Export any campaign as a portable `.qpa` package with all associated data and assets
+- **Import & Preview** — Upload `.qpa` files with a preview screen showing manifest info and contents before importing into a new campaign
+- **Browse Store** — Discover and install community adventure packs from the official GitHub registry or custom repositories
+- **Submit to Store** — Submit your adventure packs for approval via integrated GitHub issue creation
+- **NPC Category Rename** — Rename NPC categories directly from the NPC Manager
 
 ### v3.0.6 (2026-03-08) Restore Preview & Progress Tracking
 

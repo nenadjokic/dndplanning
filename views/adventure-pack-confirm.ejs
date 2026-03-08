@@ -1,0 +1,101 @@
+<%- include('partials/head', { title: 'Import Adventure Pack' }) %>
+
+<style>
+  .apc-container { max-width: 650px; margin: 0 auto; padding: 1rem; }
+  .apc-card { background: var(--bg-card); border: 1px solid var(--gold-dim); border-radius: 12px; padding: 1.5rem; }
+  .apc-card h2 { font-family: 'MedievalSharp', cursive; color: var(--gold); margin: 0 0 0.3rem; }
+  .apc-card p.sub { color: var(--text-dim); margin: 0 0 1rem; font-size: 0.9rem; }
+
+  .apc-info { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; }
+  .apc-info-item { padding: 0.5rem 0.7rem; background: rgba(212,168,67,0.05); border-radius: 6px; }
+  .apc-info-item .label { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; }
+  .apc-info-item .value { color: var(--text); font-size: 0.95rem; }
+
+  .apc-contents { margin: 1rem 0; }
+  .apc-contents h3 { font-family: 'MedievalSharp', cursive; color: var(--gold-dim); font-size: 1rem; margin: 0 0 0.5rem; }
+  .apc-stat { display: flex; justify-content: space-between; padding: 0.35rem 0; border-bottom: 1px solid rgba(212,168,67,0.1); }
+  .apc-stat .name { color: var(--text-dim); }
+  .apc-stat .val { color: var(--gold); font-weight: 600; }
+  .apc-stat .val.zero { color: var(--text-dim); opacity: 0.5; }
+
+  .apc-warning { background: rgba(255,193,7,0.1); border: 1px solid rgba(255,193,7,0.3); border-radius: 8px; padding: 0.7rem 1rem; margin: 1rem 0; color: #FFC107; font-size: 0.9rem; }
+  .apc-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.5rem; }
+  .apc-btn { padding: 0.5rem 1.2rem; border: 1px solid var(--gold-dim); border-radius: 6px; background: none; color: var(--gold); cursor: pointer; font-size: 0.95rem; transition: all 0.2s; text-decoration: none; }
+  .apc-btn:hover { background: rgba(212,168,67,0.1); }
+  .apc-btn.primary { background: var(--gold); color: var(--bg-dark); font-weight: 600; border-color: var(--gold); }
+  .apc-btn.primary:hover { background: var(--gold-light); }
+</style>
+
+<div class="apc-container">
+  <div class="apc-card">
+    <h2>Import Adventure Pack</h2>
+    <p class="sub">Review the contents before importing.</p>
+
+    <% var m = pack.manifest; %>
+
+    <div class="apc-info">
+      <div class="apc-info-item">
+        <div class="label">Name</div>
+        <div class="value"><%= m.name %></div>
+      </div>
+      <div class="apc-info-item">
+        <div class="label">Author</div>
+        <div class="value"><%= m.author || 'Unknown' %></div>
+      </div>
+      <div class="apc-info-item">
+        <div class="label">Version</div>
+        <div class="value">v<%= m.version || '1.0.0' %></div>
+      </div>
+      <div class="apc-info-item">
+        <div class="label">Level Range</div>
+        <div class="value"><%= m.levelMin || '?' %> - <%= m.levelMax || '?' %></div>
+      </div>
+      <% if (m.description) { %>
+        <div class="apc-info-item" style="grid-column:1/-1;">
+          <div class="label">Description</div>
+          <div class="value"><%= m.description %></div>
+        </div>
+      <% } %>
+      <div class="apc-info-item">
+        <div class="label">File</div>
+        <div class="value"><%= pack.fileName %> (<%= (pack.fileSize / (1024 * 1024)).toFixed(1) %> MB)</div>
+      </div>
+      <div class="apc-info-item">
+        <div class="label">App Version</div>
+        <div class="value">v<%= m.appVersion || '?' %></div>
+      </div>
+    </div>
+
+    <div class="apc-contents">
+      <h3>Contents</h3>
+      <% var c = m.contents || {}; %>
+      <div class="apc-stat"><span class="name">Maps</span><span class="val <%= c.maps ? '' : 'zero' %>"><%= c.maps || 0 %></span></div>
+      <div class="apc-stat"><span class="name">NPCs</span><span class="val <%= c.npcs ? '' : 'zero' %>"><%= c.npcs || 0 %></span></div>
+      <div class="apc-stat"><span class="name">NPC Placements</span><span class="val <%= c.npcPlacements ? '' : 'zero' %>"><%= c.npcPlacements || 0 %></span></div>
+      <div class="apc-stat"><span class="name">Loot Chests</span><span class="val <%= c.lootChests ? '' : 'zero' %>"><%= c.lootChests || 0 %></span></div>
+      <div class="apc-stat"><span class="name">Loot Items</span><span class="val <%= c.lootItems ? '' : 'zero' %>"><%= c.lootItems || 0 %></span></div>
+      <div class="apc-stat"><span class="name">Map Locations</span><span class="val <%= c.locations ? '' : 'zero' %>"><%= c.locations || 0 %></span></div>
+      <div class="apc-stat"><span class="name">Map Links</span><span class="val <%= c.links ? '' : 'zero' %>"><%= c.links || 0 %></span></div>
+      <div class="apc-stat"><span class="name">Quests</span><span class="val <%= c.quests ? '' : 'zero' %>"><%= c.quests || 0 %></span></div>
+      <div class="apc-stat"><span class="name">Story Arcs</span><span class="val <%= c.arcs ? '' : 'zero' %>"><%= c.arcs || 0 %></span></div>
+      <div class="apc-stat"><span class="name">Handouts</span><span class="val <%= c.handouts ? '' : 'zero' %>"><%= c.handouts || 0 %></span></div>
+    </div>
+
+    <div class="apc-warning">
+      This will create a new campaign with all the contents listed above. Existing data will not be affected.
+    </div>
+
+    <div class="apc-actions">
+      <form method="POST" action="/adventure-packs/import-cancel" style="display:inline;">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" class="apc-btn">Cancel</button>
+      </form>
+      <form method="POST" action="/adventure-packs/import-confirm" style="display:inline;">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" class="apc-btn primary">Import Adventure Pack</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/foot') %>

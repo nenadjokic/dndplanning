@@ -1,0 +1,120 @@
+<%- include('partials/head', { title: 'Export Adventure Pack' }) %>
+
+<style>
+  .ape-container { max-width: 700px; margin: 0 auto; padding: 1rem; }
+  .ape-form { background: var(--bg-card); border: 1px solid var(--gold-dim); border-radius: 12px; padding: 1.5rem; }
+  .ape-form h2 { font-family: 'MedievalSharp', cursive; color: var(--gold); margin: 0 0 0.3rem; }
+  .ape-form p.sub { color: var(--text-dim); margin: 0 0 1.5rem; font-size: 0.9rem; }
+  .ape-section { margin-bottom: 1.5rem; }
+  .ape-section h3 { font-family: 'MedievalSharp', cursive; color: var(--gold-dim); font-size: 1rem; margin: 0 0 0.5rem; border-bottom: 1px solid rgba(212,168,67,0.2); padding-bottom: 0.3rem; }
+  .ape-field { margin-bottom: 0.8rem; }
+  .ape-field label { display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.2rem; }
+  .ape-field input[type="text"], .ape-field input[type="number"], .ape-field textarea {
+    width: 100%; padding: 0.5rem; border: 1px solid var(--gold-dim); border-radius: 6px;
+    background: var(--bg-dark); color: var(--text); font-family: 'Crimson Text', serif; box-sizing: border-box;
+  }
+  .ape-field textarea { min-height: 60px; resize: vertical; }
+  .ape-row { display: flex; gap: 1rem; }
+  .ape-row > .ape-field { flex: 1; }
+
+  .ape-checkbox { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.7rem; border: 1px solid rgba(212,168,67,0.15); border-radius: 8px; margin-bottom: 0.4rem; cursor: pointer; transition: border-color 0.2s; }
+  .ape-checkbox:hover { border-color: var(--gold-dim); }
+  .ape-checkbox input { accent-color: var(--gold); }
+  .ape-checkbox .label { flex: 1; color: var(--text); }
+  .ape-checkbox .count { color: var(--gold-dim); font-size: 0.85rem; }
+
+  .ape-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.5rem; }
+  .ape-btn { padding: 0.5rem 1.2rem; border: 1px solid var(--gold-dim); border-radius: 6px; background: none; color: var(--gold); cursor: pointer; font-size: 0.95rem; transition: all 0.2s; text-decoration: none; }
+  .ape-btn:hover { background: rgba(212,168,67,0.1); }
+  .ape-btn.primary { background: var(--gold); color: var(--bg-dark); font-weight: 600; border-color: var(--gold); }
+  .ape-btn.primary:hover { background: var(--gold-light); }
+</style>
+
+<div class="ape-container">
+  <a href="/adventure-packs" style="color:var(--gold-dim);text-decoration:none;font-size:0.9rem;">&larr; Back to Adventure Packs</a>
+
+  <form method="POST" action="/adventure-packs/export/<%= campaign.id %>" class="ape-form" style="margin-top:1rem;">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <h2>Export Adventure Pack</h2>
+    <p class="sub">Campaign: <strong style="color:var(--gold);"><%= campaign.name %></strong></p>
+
+    <div class="ape-section">
+      <h3>Pack Information</h3>
+      <div class="ape-field">
+        <label>Pack Name *</label>
+        <input type="text" name="name" value="<%= campaign.name %>" required>
+      </div>
+      <div class="ape-field">
+        <label>Description</label>
+        <textarea name="description" placeholder="Brief description of the adventure..."><%= campaign.description || '' %></textarea>
+      </div>
+      <div class="ape-row">
+        <div class="ape-field">
+          <label>Author</label>
+          <input type="text" name="author" value="<%= user.display_name || user.username %>" placeholder="Your name">
+        </div>
+        <div class="ape-field">
+          <label>Min Level</label>
+          <input type="number" name="levelMin" min="1" max="20" placeholder="1">
+        </div>
+        <div class="ape-field">
+          <label>Max Level</label>
+          <input type="number" name="levelMax" min="1" max="20" placeholder="20">
+        </div>
+      </div>
+    </div>
+
+    <div class="ape-section">
+      <h3>What to Include</h3>
+
+      <label class="ape-checkbox">
+        <input type="checkbox" name="maps" checked>
+        <span class="label">Maps (with fog, grid, hierarchy)</span>
+        <span class="count"><%= counts.maps %></span>
+      </label>
+
+      <label class="ape-checkbox">
+        <input type="checkbox" name="npcs" checked>
+        <span class="label">NPCs (with placements on maps)</span>
+        <span class="count"><%= counts.npcs %></span>
+      </label>
+
+      <label class="ape-checkbox">
+        <input type="checkbox" name="locations" checked>
+        <span class="label">Map Locations / Pins</span>
+        <span class="count"><%= counts.locations %></span>
+      </label>
+
+      <label class="ape-checkbox">
+        <input type="checkbox" name="links" checked>
+        <span class="label">Map Links</span>
+        <span class="count"><%= counts.links %></span>
+      </label>
+
+      <label class="ape-checkbox">
+        <input type="checkbox" name="loot" checked>
+        <span class="label">Loot Chests & Items</span>
+        <span class="count"><%= counts.lootChests + counts.lootItems %></span>
+      </label>
+
+      <label class="ape-checkbox">
+        <input type="checkbox" name="quests" checked>
+        <span class="label">Quests & Objectives</span>
+        <span class="count"><%= counts.quests %></span>
+      </label>
+
+      <label class="ape-checkbox">
+        <input type="checkbox" name="handouts" checked>
+        <span class="label">Handouts</span>
+        <span class="count"><%= counts.handouts %></span>
+      </label>
+    </div>
+
+    <div class="ape-actions">
+      <a href="/adventure-packs" class="ape-btn">Cancel</a>
+      <button type="submit" class="ape-btn primary">Export .qpa</button>
+    </div>
+  </form>
+</div>
+
+<%- include('partials/foot') %>
