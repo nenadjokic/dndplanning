@@ -1,6 +1,6 @@
-# Quest Planner v3.0.1 — D&D Session Scheduler
+# Quest Planner v3.0.2 — D&D Session Scheduler
 
-> **Latest release:** v3.0.1 (2026-03-08)
+> **Latest release:** v3.0.2 (2026-03-08)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -870,6 +870,14 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v3.0.2 (2026-03-08) Dashboard Widget Positioning & Title Fixes
+
+- **Top-position Widgets** — Dashboard widgets with `position: "top"` now render above session cards (e.g., "Previously On..." banner appears at the top)
+- **Previously On Title Fix** — Fixed duplicate banner rendering and oversized title text that was getting cut off
+- **Quest Journal Title Fix** — Headings in journal summaries are now properly sized (0.95rem, bold, gold) instead of inheriting massive global heading styles
+
+---
 
 ### v3.0.1 (2026-03-08) Browse Store Update Mechanism
 
