@@ -166,6 +166,10 @@
 .addon-badge-core { background: rgba(212, 168, 67, 0.15); color: var(--gold); border: 1px solid rgba(212, 168, 67, 0.3); }
 .addon-badge-community { background: var(--accent-blue, #4a9eff); color: white; }
 .addon-badge-installed { background: rgba(76, 175, 80, 0.15); color: var(--success); border: 1px solid rgba(76, 175, 80, 0.3); }
+.addon-badge-update { background: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.4); animation: update-pulse 2s infinite; }
+@keyframes update-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.3); } 50% { box-shadow: 0 0 8px 2px rgba(46, 204, 113, 0.15); } }
+.addon-update-available { border: 1px solid rgba(46, 204, 113, 0.4); }
+.addon-update-btn { background: #2ecc71; color: #000; font-weight: 600; }
 .addon-source { font-size: 0.65rem; color: var(--text-secondary); background: var(--surface-elevated); padding: 0.1rem 0.35rem; border-radius: 3px; margin-left: 0.25rem; }
 
 .addon-toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
@@ -294,25 +298,35 @@ function loadStore() {
         var safeId = (addon.id || '').replace(/'/g, "\\'");
         var safeUrl = (addon.downloadUrl || '').replace(/'/g, "\\'");
 
+        var hasUpdate = addon.installed && addon.installedVersion && addon.version !== addon.installedVersion;
+
+        if (hasUpdate) {
+          statusBadge = '<span class="addon-badge addon-badge-update">Update Available</span>';
+        }
+
         if (!addon.installed && addon.downloadUrl) {
           // Not installed — show Install + Download
           actionBtns += '<button type="button" class="btn btn-small btn-primary" onclick="installAddon(\'' + safeId + '\', \'' + safeUrl + '\', this)">Install</button>';
           actionBtns += ' <a href="' + addon.downloadUrl + '" class="btn btn-small btn-outline" download title="Download .qpa file">Download</a>';
-        } else if (addon.installed && addon.installedVersion && addon.version !== addon.installedVersion) {
+        } else if (hasUpdate) {
           // Installed but update available
-          actionBtns += '<span style="font-size:0.7rem;color:var(--warning);margin-right:0.5rem;">Update: v' + addon.version + '</span>';
-          actionBtns += '<button type="button" class="btn btn-small btn-primary" onclick="installAddon(\'' + safeId + '\', \'' + safeUrl + '\', this)">Update</button>';
+          actionBtns += '<button type="button" class="btn btn-small btn-success addon-update-btn" onclick="installAddon(\'' + safeId + '\', \'' + safeUrl + '\', this)">Update to v' + addon.version + '</button>';
           actionBtns += ' <button type="button" class="btn btn-small btn-danger" onclick="uninstallStoreAddon(\'' + safeId + '\', this)">Uninstall</button>';
         } else if (addon.installed) {
           // Installed and up to date
           actionBtns += '<button type="button" class="btn btn-small btn-danger" onclick="uninstallStoreAddon(\'' + safeId + '\', this)">Uninstall</button>';
         }
 
-        html += '<div class="addon-card card" id="store-card-' + addon.id + '">';
+        var cardClass = 'addon-card card' + (hasUpdate ? ' addon-update-available' : '');
+        html += '<div class="' + cardClass + '" id="store-card-' + addon.id + '">';
         html += '<div class="addon-card-header">';
         html += '<div class="addon-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 1 0-3.214 3.214c.446.166.855.497.925.968a.979.979 0 0 1-.276.837l-1.61 1.61a2.404 2.404 0 0 1-1.705.707 2.402 2.402 0 0 1-1.704-.706l-1.568-1.568a1.026 1.026 0 0 0-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 1 1-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 0 0-.289-.877l-1.568-1.568A2.402 2.402 0 0 1 1.998 12c0-.617.236-1.234.706-1.704L4.23 8.77c.24-.24.581-.353.917-.303.515.077.877.528 1.073 1.01a2.5 2.5 0 1 0 3.259-3.259c-.482-.196-.933-.558-1.01-1.073-.05-.336.062-.676.303-.917l1.525-1.525A2.402 2.402 0 0 1 12 2c.617 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.968a2.5 2.5 0 1 1 3.237 3.237c-.464.18-.894.527-.967 1.02Z"></path></svg></div>';
         html += '<div class="addon-info"><h3>' + addon.name + ' ' + statusBadge + sourceBadge + '</h3>';
-        html += '<span class="addon-version">v' + addon.version + '</span>';
+        if (hasUpdate) {
+          html += '<span class="addon-version"><s>v' + addon.installedVersion + '</s> &rarr; v' + addon.version + '</span>';
+        } else {
+          html += '<span class="addon-version">v' + addon.version + '</span>';
+        }
         html += '<span class="addon-category">' + addon.category + '</span></div>';
         html += '</div>';
         html += '<p class="addon-description">' + addon.description + '</p>';

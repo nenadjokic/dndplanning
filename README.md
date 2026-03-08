@@ -1,6 +1,6 @@
-# Quest Planner v3.0.0 — D&D Session Scheduler
+# Quest Planner v3.0.1 — D&D Session Scheduler
 
-> **Latest release:** v3.0.0 (2026-03-07)
+> **Latest release:** v3.0.1 (2026-03-08)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -870,6 +870,14 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v3.0.1 (2026-03-08) Browse Store Update Mechanism
+
+- **Addon Updates** — Browse Store now shows green "Update Available" badge with pulsing animation when a newer version is available in the registry
+- **Update Button** — One-click "Update to vX.Y.Z" button replaces install button for outdated addons; version comparison shows old → new version
+- **Visual Indicators** — Update-available cards get green border highlight; installed version shown with strikethrough next to new version
+
+---
 
 ### v3.0.0 (2026-03-07) Addon System, Browse Store & Full Backups
 
