@@ -7,7 +7,7 @@
   "category": "Maps & Exploration",
   "description": "Full-featured map system with tokens, NPCs, fog of war, combat tracking, and loot chests.",
   "routes": "/map",
-  "softDependencies": ["campaigns"],
+  "softDependencies": { "campaigns": ">=1.0.0" },
   "navItems": [
     {
       "label": "Maps",

@@ -124,7 +124,12 @@
         <button class="whatsnew-close-x" id="whatsnew-close-x" title="Close">&times;</button>
         <h2>What's New in v<%= appVersion %></h2>
         <div class="whatsnew-content">
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Bug Fixes & Improvements <span style="color:var(--text-secondary);font-size:0.8rem;">(v3.0.2)</span></h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Bug Fixes & Improvements <span style="color:var(--text-secondary);font-size:0.8rem;">(v3.0.3)</span></h3>
+          <ul class="whatsnew-list">
+            <li><strong>SSE Connection Fix</strong> &mdash; Consolidated 5 separate SSE connections into 1 shared connection, fixing map features failing to load in Safari and HTTP/1.1 environments</li>
+            <li><strong>Map Hierarchy Editing</strong> &mdash; Edit modal on Maps page now includes parent map dropdown for organizing map hierarchies</li>
+          </ul>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Previous Fixes <span style="color:var(--text-secondary);font-size:0.8rem;">(v3.0.2)</span></h3>
           <ul class="whatsnew-list">
             <li><strong>Dashboard Widget Positioning</strong> &mdash; Top-position widgets (e.g., "Previously On...") now render above session cards</li>
             <li><strong>Title Size Fixes</strong> &mdash; Fixed oversized headings in Previously On banner and Quest Journal summaries</li>

@@ -2020,9 +2020,9 @@
   }
 
   // SSE fog updates — always listen, handle even if fog was enabled after page load
-  if (typeof EventSource !== 'undefined') {
+  if (typeof sharedSSE !== 'undefined' && sharedSSE) {
     try {
-      var fogSSE = new EventSource('/api/events');
+      var fogSSE = sharedSSE;
       fogSSE.addEventListener('fog-update', function(e) {
         try {
           var data = JSON.parse(e.data);
@@ -3763,9 +3763,9 @@
   });
 
   // ---- Real-time map updates via SSE ----
-  if (typeof EventSource !== 'undefined') {
+  if (typeof sharedSSE !== 'undefined' && sharedSSE) {
     try {
-      var mapSSE = new EventSource('/api/events');
+      var mapSSE = sharedSSE;
       var mapUpdatePending = false;
       mapSSE.addEventListener('map-update', function(e) {
         try {
@@ -4554,9 +4554,9 @@
   }
 
   // SSE: combat updates
-  if (typeof EventSource !== 'undefined') {
+  if (typeof sharedSSE !== 'undefined' && sharedSSE) {
     try {
-      var combatSSE = new EventSource('/api/events');
+      var combatSSE = sharedSSE;
       combatSSE.addEventListener('combat-update', function(e) {
         try {
           var data = JSON.parse(e.data);
@@ -4637,6 +4637,24 @@ function openEditLocation(id, name, desc, icon) {
         </select>
       </div>
       <% } %>
+      <div class="form-group">
+        <label for="edit-map-parent">Parent Map</label>
+        <select id="edit-map-parent">
+          <option value="">-- None (top level) --</option>
+        </select>
+        <p class="form-hint" style="margin-top:0.25rem;font-size:0.75rem;">Setting a parent makes this map appear as a pin on the parent map.</p>
+      </div>
+      <hr style="border-color:var(--border);margin:0.75rem 0;">
+      <div class="form-group">
+        <label>Add Existing Child Map</label>
+        <div style="display:flex;gap:0.5rem;">
+          <select id="edit-map-add-child" style="flex:1;">
+            <option value="">-- Select map --</option>
+          </select>
+          <button type="button" class="btn btn-outline btn-small" id="edit-map-add-child-btn">Attach</button>
+        </div>
+        <p class="form-hint" style="margin-top:0.25rem;font-size:0.75rem;">Attaches an existing map as a sub-map (pin will appear at center).</p>
+      </div>
       <button type="submit" class="btn btn-primary btn-small">Save</button>
     </form>
   </div>
@@ -4653,6 +4671,41 @@ function openEditLocation(id, name, desc, icon) {
     var campSel = document.getElementById('edit-map-campaign');
     if (campSel) campSel.value = campaignId || '';
     document.getElementById('edit-map-modal').style.display = 'flex';
+
+    // Load available maps for parent/child dropdowns
+    var parentSel = document.getElementById('edit-map-parent');
+    var childSel = document.getElementById('edit-map-add-child');
+    parentSel.innerHTML = '<option value="">-- None (top level) --</option>';
+    childSel.innerHTML = '<option value="">Loading...</option>';
+
+    fetch('/map/' + id + '/standalone-maps')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.maps) return;
+        // Get current map's parent_id
+        var currentMap = null;
+        // Find current parent from the children list or from data
+        data.maps.forEach(function(m) {
+          var opt1 = document.createElement('option');
+          opt1.value = m.id;
+          opt1.textContent = m.name;
+          parentSel.appendChild(opt1);
+
+          var opt2 = document.createElement('option');
+          opt2.value = m.id;
+          opt2.textContent = m.name;
+          childSel.appendChild(opt2);
+        });
+        childSel.querySelector('option').textContent = '-- Select map --';
+
+        // Set current parent
+        fetch('/map/' + id + '/info')
+          .then(function(r) { return r.json(); })
+          .then(function(info) {
+            if (info.parent_id) parentSel.value = info.parent_id;
+          })
+          .catch(function() {});
+      });
   }
 
   // Edit button for current map
@@ -4683,7 +4736,8 @@ function openEditLocation(id, name, desc, icon) {
     var body = {
       name: document.getElementById('edit-map-name').value,
       map_type: document.getElementById('edit-map-type').value,
-      description: document.getElementById('edit-map-desc').value
+      description: document.getElementById('edit-map-desc').value,
+      parent_id: document.getElementById('edit-map-parent').value || null
     };
     var campSel = document.getElementById('edit-map-campaign');
     if (campSel) body.campaign_id = campSel.value;
@@ -4697,6 +4751,26 @@ function openEditLocation(id, name, desc, icon) {
       else alert(d.error || 'Failed to update map');
     });
   });
+
+  // Attach existing child map
+  var addChildBtn = document.getElementById('edit-map-add-child-btn');
+  if (addChildBtn) {
+    addChildBtn.addEventListener('click', function() {
+      var sel = document.getElementById('edit-map-add-child');
+      var childId = parseInt(sel.value);
+      if (!childId) { alert('Please select a map'); return; }
+      var parentId = document.getElementById('edit-map-id').value;
+
+      fetch('/map/' + parentId + '/link-existing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ map_id: childId, pin_x: 50, pin_y: 50 })
+      }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.success) location.reload();
+        else alert(d.error || 'Failed to attach child map');
+      });
+    });
+  }
 
   document.getElementById('edit-map-modal').addEventListener('click', function(e) {
     if (e.target === this) this.style.display = 'none';

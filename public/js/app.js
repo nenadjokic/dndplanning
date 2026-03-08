@@ -44,11 +44,21 @@ function getCsrfToken() {
   }, 60000);
 })();
 
+// === Shared SSE connection (single connection for all listeners) ===
+var sharedSSE = (typeof EventSource !== 'undefined') ? new EventSource('/api/events') : null;
+if (sharedSSE) {
+  sharedSSE.onerror = function() {
+    if (sharedSSE.readyState === 2) {
+      sharedSSE.close();
+    }
+  };
+}
+
 // === Real-time updates via SSE ===
 (function() {
-  if (typeof EventSource === 'undefined') return;
+  if (!sharedSSE) return;
 
-  var eventSource = new EventSource('/api/events');
+  var eventSource = sharedSSE;
 
   eventSource.addEventListener('post-reaction', function(e) {
     var data = JSON.parse(e.data);
@@ -88,13 +98,6 @@ function getCsrfToken() {
     if (totalEl) totalEl.textContent = data.totalVotes + ' vote' + (data.totalVotes !== 1 ? 's' : '');
   });
 
-  eventSource.onerror = function() {
-    // Reconnect after 5 seconds if connection lost
-    setTimeout(function() {
-      eventSource.close();
-      eventSource = new EventSource('/api/events');
-    }, 5000);
-  };
 })();
 
 // === Hamburger Menu Toggle ===
@@ -679,10 +682,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // Listen to SSE events
-  if (typeof EventSource === 'undefined') return;
+  // Listen to SSE events (reuse shared connection)
+  if (!sharedSSE) return;
 
-  var eventSource = new EventSource('/api/events');
+  var eventSource = sharedSSE;
 
   eventSource.addEventListener('new-comment', function(e) {
     var data = JSON.parse(e.data);
@@ -823,12 +826,6 @@ document.addEventListener('DOMContentLoaded', function() {
     showActivity(msg, '/profile');
   });
 
-  eventSource.onerror = function() {
-    setTimeout(function() {
-      eventSource.close();
-      eventSource = new EventSource('/api/events');
-    }, 5000);
-  };
 })();
 
 // === Sound Panel (Popup + Set as Default) ===

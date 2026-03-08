@@ -11,6 +11,6 @@
   "navItems": [],
   "css": [],
   "js": [],
-  "dependencies": [],
-  "softDependencies": ["messenger"]
+  "dependencies": {},
+  "softDependencies": { "messenger": ">=1.0.0" }
 }

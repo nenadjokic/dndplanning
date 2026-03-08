@@ -9,12 +9,8 @@
   "minAppVersion": "3.0.0",
   "routes": "/api/dice",
   "navItems": [],
-  "css": [
-    "css/dice-roller.css"
-  ],
-  "js": [
-    "js/dice-roller.js"
-  ],
-  "dependencies": [],
-  "softDependencies": []
+  "css": [],
+  "js": [],
+  "dependencies": {},
+  "softDependencies": {}
 }

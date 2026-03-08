@@ -146,13 +146,34 @@ router.post('/:id/edit', requireLogin, requireDM, (req, res) => {
   const map = db.prepare('SELECT * FROM maps WHERE id = ?').get(req.params.id);
   if (!map) return res.status(404).json({ error: 'Map not found' });
 
-  const { name, map_type, description, campaign_id } = req.body;
+  const { name, map_type, description, campaign_id, parent_id } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Map name is required' });
   }
 
   const type = MARKER_TYPES[map_type] ? map_type : map.map_type;
   const campId = campaign_id ? parseInt(campaign_id, 10) : null;
+
+  // Handle parent_id change
+  if (parent_id !== undefined) {
+    const newParentId = parent_id ? parseInt(parent_id, 10) : null;
+    // Prevent setting self as parent or creating circular reference
+    if (newParentId && newParentId !== map.id) {
+      // Check for circular reference
+      let checkId = newParentId;
+      let circular = false;
+      while (checkId) {
+        if (checkId === map.id) { circular = true; break; }
+        const p = db.prepare('SELECT parent_id FROM maps WHERE id = ?').get(checkId);
+        checkId = p ? p.parent_id : null;
+      }
+      if (!circular) {
+        db.prepare('UPDATE maps SET parent_id = ? WHERE id = ?').run(newParentId, map.id);
+      }
+    } else if (!newParentId) {
+      db.prepare('UPDATE maps SET parent_id = NULL WHERE id = ?').run(map.id);
+    }
+  }
 
   db.prepare('UPDATE maps SET name = ?, map_type = ?, description = ?, campaign_id = ? WHERE id = ?')
     .run(name.trim(), type, description ? description.trim() : null, campId, map.id);
@@ -1290,6 +1311,13 @@ router.post('/:id/npc-tokens/:ntId/vision', requireLogin, requireDM, express.jso
 });
 
 // Get linkable maps (all maps except current) for linking
+// Get basic map info (for edit modal)
+router.get('/:id/info', requireLogin, requireDM, (req, res) => {
+  const map = db.prepare('SELECT id, name, parent_id, campaign_id, map_type FROM maps WHERE id = ?').get(req.params.id);
+  if (!map) return res.status(404).json({ error: 'Map not found' });
+  res.json(map);
+});
+
 router.get('/:id/standalone-maps', requireLogin, requireDM, (req, res) => {
   const currentId = parseInt(req.params.id);
   const maps = db.prepare(`
@@ -1300,24 +1328,25 @@ router.get('/:id/standalone-maps', requireLogin, requireDM, (req, res) => {
   res.json({ maps });
 });
 
-// Link existing map as sub-map
+// Link existing map as child (set parent_id) — creates pin on parent map
 router.post('/:id/link-existing', requireLogin, requireDM, express.json(), (req, res) => {
-  const source = db.prepare('SELECT id FROM maps WHERE id = ?').get(req.params.id);
-  if (!source) return res.status(404).json({ error: 'Source map not found' });
+  const parentId = parseInt(req.params.id);
+  const source = db.prepare('SELECT id FROM maps WHERE id = ?').get(parentId);
+  if (!source) return res.status(404).json({ error: 'Parent map not found' });
 
-  const targetId = parseInt(req.body.map_id);
-  if (!targetId) return res.status(400).json({ error: 'Map ID required' });
-  if (targetId === source.id) return res.status(400).json({ error: 'Cannot link to self' });
-  const target = db.prepare('SELECT * FROM maps WHERE id = ?').get(targetId);
-  if (!target) return res.status(404).json({ error: 'Target map not found' });
+  const childId = parseInt(req.body.map_id);
+  if (!childId) return res.status(400).json({ error: 'Map ID required' });
+  if (childId === parentId) return res.status(400).json({ error: 'Cannot link to self' });
+  const child = db.prepare('SELECT * FROM maps WHERE id = ?').get(childId);
+  if (!child) return res.status(404).json({ error: 'Child map not found' });
 
   const px = Math.max(0, Math.min(100, parseFloat(req.body.pin_x) || 50));
   const py = Math.max(0, Math.min(100, parseFloat(req.body.pin_y) || 50));
-  try {
-    db.prepare('INSERT OR REPLACE INTO map_links (source_map_id, target_map_id, pin_x, pin_y) VALUES (?, ?, ?, ?)').run(source.id, targetId, px, py);
-  } catch (e) {
-    return res.status(400).json({ error: 'Link already exists' });
-  }
+
+  // Set the child's parent_id and pin position
+  db.prepare('UPDATE maps SET parent_id = ?, pin_x = ?, pin_y = ? WHERE id = ?')
+    .run(parentId, px, py, childId);
+
   res.json({ success: true });
 });
 

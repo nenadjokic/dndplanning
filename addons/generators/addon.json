@@ -7,7 +7,7 @@
   "category": "DM Tools",
   "description": "Random generators for NPCs, loot, encounters, and more. Writes to NPC and loot tables from other addons.",
   "routes": "/generators",
-  "softDependencies": ["maps", "loot-tracker"],
+  "softDependencies": { "maps": ">=1.0.0", "loot-tracker": ">=1.0.0" },
   "navItems": [
     {
       "label": "Generators",

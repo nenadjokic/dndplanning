@@ -7,7 +7,7 @@
   "category": "Gameplay",
   "description": "Track quests, objectives, and rewards for your campaign.",
   "routes": "/quests",
-  "softDependencies": ["maps", "campaigns"],
+  "softDependencies": { "maps": ">=1.0.0", "campaigns": ">=1.0.0" },
   "navItems": [
     {
       "label": "Quest Board",

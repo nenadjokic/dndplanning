@@ -8,9 +8,12 @@
 
   // Separate addon nav items by group
   const addonMain = navItems.filter(i => i.group === 'main');
-  const addonTools = navItems.filter(i => i.group === 'tools');
-  const addonDMZone = navItems.filter(i => i.group === 'dmzone');
+  const addonTools = navItems.filter(i => i.group === 'tools' && i.addonType !== 'community');
+  const addonDMZone = navItems.filter(i => i.group === 'dmzone' && i.addonType !== 'community');
   const addonAdmin = navItems.filter(i => i.group === 'admin');
+
+  // Community addon items get their own "Addons" section
+  const addonCommunity = navItems.filter(i => i.addonType === 'community' && i.group !== 'admin');
 %>
 <% if (showAnnouncement) { %>
   <div class="announcement-banner">
@@ -83,7 +86,7 @@
 
           <div class="hamburger-divider"></div>
 
-          <%# TOOLS group (core + addon) %>
+          <%# TOOLS group (core + preinstalled addon items) %>
           <% const coreTools = [
             { label: 'The Vault', href: '/vault', svgContent: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path><path d="M8 7h8"></path><path d="M8 11h8"></path><path d="M8 15h5"></path>' }
           ]; %>
@@ -109,7 +112,7 @@
           <% } %>
 
           <% if (user.role === 'dm' || user.role === 'admin') { %>
-          <%# DM ZONE group (core + addon) %>
+          <%# DM ZONE group (core + preinstalled addon items) %>
           <% const coreDM = [
             { label: 'DM Tools', href: '/dm-tools', svgContent: '<rect x="2" y="2" width="20" height="20" rx="3"></rect><circle cx="8" cy="8" r="1.5" fill="currentColor"></circle><circle cx="16" cy="8" r="1.5" fill="currentColor"></circle><circle cx="8" cy="16" r="1.5" fill="currentColor"></circle><circle cx="16" cy="16" r="1.5" fill="currentColor"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor"></circle>' }
           ]; %>
@@ -135,6 +138,22 @@
           <% } %>
           <% } %>
 
+          <%# ADDONS group — only community addon nav items %>
+          <% if (addonCommunity.length > 0) { %>
+          <button type="button" class="hamburger-group-toggle" data-group="addons">
+            <span class="hamburger-group-label">&#128268; Addons</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hamburger-group-arrow"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="hamburger-group-content" data-group-content="addons">
+            <% for (const item of addonCommunity) { %>
+              <a href="<%= item.href %>" class="hamburger-item hamburger-item-nested">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><%- typeof navIcons !== 'undefined' && navIcons[item.icon] ? navIcons[item.icon] : '<circle cx="12" cy="12" r="10"></circle>' %></svg>
+                <%= item.label %>
+              </a>
+            <% } %>
+          </div>
+          <% } %>
+
           <% if (user.role === 'admin') { %>
           <!-- ADMIN -->
           <button type="button" class="hamburger-group-toggle" data-group="admin">
@@ -148,7 +167,7 @@
             </a>
             <a href="/admin/addons" class="hamburger-item hamburger-item-nested">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>
-              Addons
+              Addon Management
             </a>
             <% for (const item of addonAdmin) { %>
               <a href="<%= item.href %>" class="hamburger-item hamburger-item-nested">

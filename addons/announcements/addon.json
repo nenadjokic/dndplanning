@@ -15,11 +15,14 @@
       "icon": "megaphone",
       "group": "dmzone",
       "sort": 40,
-      "roles": ["admin", "dm"]
+      "roles": [
+        "admin",
+        "dm"
+      ]
     }
   ],
   "css": [],
   "js": [],
-  "dependencies": [],
-  "softDependencies": []
+  "dependencies": {},
+  "softDependencies": {}
 }

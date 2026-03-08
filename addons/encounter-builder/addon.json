@@ -7,7 +7,7 @@
   "category": "DM Tools",
   "description": "Build and save combat encounters with party size, levels, and monster composition.",
   "routes": "/encounters",
-  "softDependencies": ["campaigns"],
+  "softDependencies": { "campaigns": ">=1.0.0" },
   "navItems": [
     {
       "label": "Encounter Builder",

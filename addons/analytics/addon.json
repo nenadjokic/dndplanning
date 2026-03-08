@@ -15,11 +15,14 @@
       "icon": "chart",
       "group": "dmzone",
       "sort": 30,
-      "roles": ["admin", "dm"]
+      "roles": [
+        "admin",
+        "dm"
+      ]
     }
   ],
   "css": [],
   "js": [],
-  "dependencies": [],
-  "softDependencies": []
+  "dependencies": {},
+  "softDependencies": {}
 }

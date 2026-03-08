@@ -7,7 +7,7 @@
   "category": "Organization",
   "description": "Session notes, images, attendance tracking, and Previously On recaps.",
   "routes": "/journal",
-  "softDependencies": ["campaigns"],
+  "softDependencies": { "campaigns": ">=1.0.0" },
   "navItems": [
     {
       "label": "Quest Journal",

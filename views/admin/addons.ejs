@@ -142,6 +142,19 @@
   </div>
 </div>
 
+<!-- Dependency Resolution Modal -->
+<div class="modal-overlay" id="dep-modal" style="display:none;">
+  <div class="modal-content">
+    <h3>Required Dependencies</h3>
+    <p id="dep-modal-text" style="margin-bottom: 1rem;"></p>
+    <div id="dep-modal-list" style="margin-bottom: 1rem;"></div>
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+      <button type="button" class="btn btn-outline" onclick="document.getElementById('dep-modal').style.display='none'">Cancel</button>
+      <button type="button" class="btn btn-primary" id="dep-modal-confirm">Install All & Continue</button>
+    </div>
+  </div>
+</div>
+
 <style>
 .addons-tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 1.5rem; }
 .addons-tab { background: none; border: none; color: var(--text-secondary); padding: 0.75rem 1.25rem; cursor: pointer; font-size: 0.9rem; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color 0.2s, border-color 0.2s; }
@@ -186,6 +199,12 @@
 .upload-dropzone p { margin: 0.5rem 0 0; color: var(--text-secondary); font-size: 0.85rem; }
 
 .store-empty { text-align: center; padding: 3rem 1rem; color: var(--text-secondary); }
+
+.addon-deps { margin-top: 0.35rem; font-size: 0.75rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem; }
+.addon-deps-label { color: var(--text-secondary); margin-right: 0.15rem; }
+.addon-dep-tag { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem; }
+.addon-dep-tag.dep-ok { background: rgba(76, 175, 80, 0.1); color: var(--success); }
+.addon-dep-tag.dep-missing { background: rgba(244, 67, 54, 0.1); color: var(--error); }
 </style>
 
 <script>
@@ -287,7 +306,11 @@ function loadStore() {
       }
 
       var html = '';
+      // Store addons data for dependency resolution
+      window._storeAddons = {};
       communityAddons.forEach(function(addon) {
+        window._storeAddons[addon.id] = addon;
+
         var statusBadge = addon.installed
           ? '<span class="addon-badge addon-badge-installed">Installed</span>'
           : '';
@@ -305,16 +328,26 @@ function loadStore() {
         }
 
         if (!addon.installed && addon.downloadUrl) {
-          // Not installed — show Install + Download
-          actionBtns += '<button type="button" class="btn btn-small btn-primary" onclick="installAddon(\'' + safeId + '\', \'' + safeUrl + '\', this)">Install</button>';
+          actionBtns += '<button type="button" class="btn btn-small btn-primary" onclick="installAddonWithDeps(\'' + safeId + '\', \'' + safeUrl + '\', this)">Install</button>';
           actionBtns += ' <a href="' + addon.downloadUrl + '" class="btn btn-small btn-outline" download title="Download .qpa file">Download</a>';
         } else if (hasUpdate) {
-          // Installed but update available
           actionBtns += '<button type="button" class="btn btn-small btn-success addon-update-btn" onclick="installAddon(\'' + safeId + '\', \'' + safeUrl + '\', this)">Update to v' + addon.version + '</button>';
           actionBtns += ' <button type="button" class="btn btn-small btn-danger" onclick="uninstallStoreAddon(\'' + safeId + '\', this)">Uninstall</button>';
         } else if (addon.installed) {
-          // Installed and up to date
           actionBtns += '<button type="button" class="btn btn-small btn-danger" onclick="uninstallStoreAddon(\'' + safeId + '\', this)">Uninstall</button>';
+        }
+
+        // Build dependency info
+        var depHtml = '';
+        if (addon._depStatus && Object.keys(addon._depStatus).length > 0) {
+          depHtml = '<div class="addon-deps">';
+          depHtml += '<span class="addon-deps-label">Requires: </span>';
+          for (var depId in addon._depStatus) {
+            var dep = addon._depStatus[depId];
+            var depIcon = dep.status === 'ok' ? '<span style="color:var(--success);">&#10003;</span>' : '<span style="color:var(--error);">&#10007;</span>';
+            depHtml += '<span class="addon-dep-tag ' + (dep.status === 'ok' ? 'dep-ok' : 'dep-missing') + '">' + depIcon + ' ' + dep.name + '</span> ';
+          }
+          depHtml += '</div>';
         }
 
         var cardClass = 'addon-card card' + (hasUpdate ? ' addon-update-available' : '');
@@ -330,6 +363,7 @@ function loadStore() {
         html += '<span class="addon-category">' + addon.category + '</span></div>';
         html += '</div>';
         html += '<p class="addon-description">' + addon.description + '</p>';
+        if (depHtml) html += depHtml;
         html += '<div class="addon-card-footer"><span class="addon-author">by ' + addon.author + '</span><div style="display:flex;gap:0.35rem;align-items:center;">' + actionBtns + '</div></div>';
         html += '</div>';
       });
@@ -415,15 +449,108 @@ function removeRepo(id, btn) {
   });
 }
 
-function installAddon(addonId, downloadUrl, btn) {
+function installAddonWithDeps(addonId, downloadUrl, btn) {
+  var addon = window._storeAddons && window._storeAddons[addonId];
+  var depStatus = addon && addon._depStatus;
+  var missingDeps = [];
+
+  if (depStatus) {
+    for (var depId in depStatus) {
+      var dep = depStatus[depId];
+      if (dep.status !== 'ok') {
+        missingDeps.push(dep);
+      }
+    }
+  }
+
+  if (missingDeps.length === 0) {
+    // No missing deps — install directly
+    installAddon(addonId, downloadUrl, btn);
+    return;
+  }
+
+  // Show dependency resolution modal
+  var modal = document.getElementById('dep-modal');
+  var text = document.getElementById('dep-modal-text');
+  var list = document.getElementById('dep-modal-list');
+  var confirmBtn = document.getElementById('dep-modal-confirm');
+
+  text.innerHTML = '<strong>' + (addon ? addon.name : addonId) + '</strong> requires the following addons:';
+
+  var listHtml = '<div style="display:flex;flex-direction:column;gap:0.5rem;">';
+  var enableDeps = [];
+  missingDeps.forEach(function(dep) {
+    var statusText = '';
+    if (dep.status === 'disabled') {
+      statusText = '<span style="color:var(--gold);font-size:0.8rem;">disabled &rarr; will be enabled</span>';
+      enableDeps.push(dep.name.toLowerCase().replace(/\s+/g, '-'));
+      // Try to find the actual addon ID
+      for (var sid in window._storeAddons) {
+        if (window._storeAddons[sid].name === dep.name) {
+          enableDeps.pop();
+          enableDeps.push(sid);
+          break;
+        }
+      }
+    } else {
+      statusText = '<span style="color:var(--error);font-size:0.8rem;">not installed &mdash; cannot auto-install</span>';
+    }
+    listHtml += '<div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0.75rem;background:var(--surface-elevated);border-radius:6px;">';
+    listHtml += '<span style="font-weight:600;">' + dep.name + '</span> ';
+    listHtml += '<span style="font-size:0.75rem;color:var(--text-secondary);">' + dep.constraint + '</span> ';
+    listHtml += statusText;
+    listHtml += '</div>';
+  });
+  listHtml += '</div>';
+  list.innerHTML = listHtml;
+
+  // Check if any deps can't be resolved (not_found)
+  var hasUnresolvable = missingDeps.some(function(d) { return d.status === 'not_found'; });
+
+  // Collect actual addon IDs to enable
+  var depsToEnable = [];
+  missingDeps.forEach(function(dep) {
+    if (dep.status === 'disabled') {
+      // Find the addon by name in the addonManager's list
+      // The dep object has the depId from _depStatus keys
+      for (var dkey in depStatus) {
+        if (depStatus[dkey] === dep) {
+          depsToEnable.push(dkey);
+          break;
+        }
+      }
+    }
+  });
+
+  if (hasUnresolvable) {
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Cannot resolve all dependencies';
+  } else {
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Install All & Continue';
+    confirmBtn.onclick = function() {
+      modal.style.display = 'none';
+      installAddon(addonId, downloadUrl, btn, depsToEnable);
+    };
+  }
+
+  modal.style.display = '';
+}
+
+function installAddon(addonId, downloadUrl, btn, enableDeps) {
   var origText = btn.textContent;
   btn.disabled = true;
   btn.textContent = 'Installing...';
 
+  var payload = { downloadUrl: downloadUrl, addonId: addonId };
+  if (enableDeps && enableDeps.length > 0) {
+    payload.enableDeps = enableDeps;
+  }
+
   fetch('/admin/addons/install-remote', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<%= csrfToken %>' },
-    body: JSON.stringify({ downloadUrl: downloadUrl, addonId: addonId })
+    body: JSON.stringify(payload)
   })
   .then(function(r) { return r.json(); })
   .then(function(data) {

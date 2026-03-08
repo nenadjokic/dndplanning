@@ -7,7 +7,7 @@
   "category": "Gameplay",
   "description": "Track party loot, individual inventories, and currency across campaigns.",
   "routes": "/loot",
-  "softDependencies": ["campaigns"],
+  "softDependencies": { "campaigns": ">=1.0.0" },
   "navItems": [
     {
       "label": "Party Loot",

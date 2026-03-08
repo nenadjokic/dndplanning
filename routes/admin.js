@@ -818,32 +818,99 @@ router.post('/addons/save', requireLogin, requireAdmin, (req, res) => {
     return res.redirect('/admin/addons');
   }
 
-  // Get list of enabled addon IDs from form
-  // With extended: true, express parses "enabled[]" as req.body.enabled (array)
   let enabledIds = req.body.enabled || req.body['enabled[]'] || [];
   if (typeof enabledIds === 'string') enabledIds = [enabledIds];
 
   const allAddons = addonManager.getAll();
   let changed = false;
+  const errors = [];
 
+  // First pass: handle disables (check dependents)
+  for (const addon of allAddons) {
+    const shouldBeEnabled = enabledIds.includes(addon.id);
+    if (!shouldBeEnabled && addon.enabled) {
+      const result = addonManager.disableWithDependencyCheck(addon.id);
+      if (result.success) {
+        changed = true;
+      } else {
+        const depNames = result.dependents.map(d => d.name).join(', ');
+        errors.push(`Cannot disable ${addon.name}: required by ${depNames}`);
+      }
+    }
+  }
+
+  // Second pass: handle enables (check dependencies)
   for (const addon of allAddons) {
     const shouldBeEnabled = enabledIds.includes(addon.id);
     if (shouldBeEnabled && !addon.enabled) {
-      addonManager.enable(addon.id);
-      changed = true;
-    } else if (!shouldBeEnabled && addon.enabled) {
-      addonManager.disable(addon.id);
-      changed = true;
+      const result = addonManager.enableWithDependencyCheck(addon.id);
+      if (result.success) {
+        changed = true;
+      } else if (result.circular) {
+        errors.push(`Cannot enable ${addon.name}: circular dependency detected (${result.circular.join(' -> ')})`);
+      } else {
+        const missingNames = result.missing.map(d => d.name).join(', ');
+        errors.push(`Cannot enable ${addon.name}: requires ${missingNames}`);
+      }
     }
   }
 
   if (changed) {
     addonManager.reload();
+  }
+
+  if (errors.length > 0) {
+    req.flash('error', errors.join(' | '));
+  } else if (changed) {
     req.flash('success', 'Addon settings saved and applied.');
   } else {
     req.flash('success', 'No changes to apply.');
   }
   res.redirect('/admin/addons');
+});
+
+// Dependency check API for Browse Store install flow
+router.post('/addons/check-dependencies', requireLogin, requireAdmin, (req, res) => {
+  const addonManager = req.app.locals.addonManager;
+  const { addonId, dependencies } = req.body;
+  if (!addonId) return res.status(400).json({ error: 'addonId required' });
+
+  // If addon is already discovered, use its manifest
+  const addon = addonManager.addons.get(addonId);
+  if (addon) {
+    const chain = addonManager.resolveDependencyChain(addonId);
+    const cycle = addonManager.detectCircularDependencies(addonId);
+    return res.json({
+      chain,
+      circular: cycle.length > 0 ? cycle : null,
+      satisfied: chain.length === 0 && cycle.length === 0
+    });
+  }
+
+  // For not-yet-installed addons, check provided dependencies object
+  if (!dependencies || typeof dependencies !== 'object') {
+    return res.json({ chain: [], circular: null, satisfied: true });
+  }
+
+  const chain = [];
+  for (const [depId, constraint] of Object.entries(dependencies)) {
+    const depAddon = addonManager.addons.get(depId);
+    if (!depAddon) {
+      chain.push({ id: depId, constraint, action: 'install', name: depId });
+    } else if (!depAddon.enabled) {
+      chain.push({
+        id: depId, constraint, action: 'enable',
+        name: depAddon.name, version: depAddon.version,
+        type: depAddon.type
+      });
+    } else {
+      // Check version
+      const { satisfiesSemver } = require('../lib/addon-manager');
+      // Version already satisfied — skip
+    }
+  }
+
+  res.json({ chain, circular: null, satisfied: chain.length === 0 });
 });
 
 router.post('/addons/:id/uninstall', requireLogin, requireAdmin, (req, res) => {
@@ -854,13 +921,18 @@ router.post('/addons/:id/uninstall', requireLogin, requireAdmin, (req, res) => {
   }
 
   try {
-    addonManager.uninstall(req.params.id);
+    const result = addonManager.uninstallWithDependencyCheck(req.params.id);
+    if (!result.success) {
+      const depNames = result.dependents.map(d => d.name).join(', ');
+      req.flash('error', `Cannot uninstall: required by ${depNames}. Disable or uninstall those addons first.`);
+      return res.redirect('/admin/addons');
+    }
     addonManager.reload();
     req.flash('success', 'Addon uninstalled.');
   } catch (err) {
     req.flash('error', 'Failed to uninstall: ' + err.message);
-    res.redirect('/admin/addons');
   }
+  res.redirect('/admin/addons');
 });
 
 router.post('/addons/:id/delete-data', requireLogin, requireAdmin, (req, res) => {
@@ -927,8 +999,9 @@ router.post('/addons/upload', requireLogin, requireAdmin, addonUpload.single('ad
 });
 
 // Install addon from remote URL (Browse Store "Install" button)
+// Supports auto-installing dependencies via enableDeps body parameter
 router.post('/addons/install-remote', requireLogin, requireAdmin, async (req, res) => {
-  const { downloadUrl, addonId: expectedId } = req.body;
+  const { downloadUrl, addonId: expectedId, enableDeps } = req.body;
   if (!downloadUrl) {
     return res.status(400).json({ error: 'Download URL is required' });
   }
@@ -948,12 +1021,25 @@ router.post('/addons/install-remote', requireLogin, requireAdmin, async (req, re
     const addonId = await addonManager.installFromZip(tempPath);
     try { fs.unlinkSync(tempPath); } catch (e) {}
 
-    // Re-discover and reload
+    // Re-discover and reload to pick up the new addon
     addonManager.discover();
     addonManager.loadAll();
+
+    // Auto-enable dependency addons if requested
+    const autoEnabled = [];
+    if (enableDeps && Array.isArray(enableDeps)) {
+      for (const depId of enableDeps) {
+        const depAddon = addonManager.addons.get(depId);
+        if (depAddon && !depAddon.enabled) {
+          addonManager.enable(depId);
+          autoEnabled.push(depAddon.name);
+        }
+      }
+    }
+
     addonManager.reload();
 
-    res.json({ success: true, addonId });
+    res.json({ success: true, addonId, autoEnabled });
   } catch (err) {
     try { fs.unlinkSync(tempPath); } catch (e) {}
     res.status(500).json({ error: err.message });
@@ -964,7 +1050,11 @@ router.post('/addons/install-remote', requireLogin, requireAdmin, async (req, re
 router.post('/addons/:id/uninstall-json', requireLogin, requireAdmin, (req, res) => {
   const addonManager = req.app.locals.addonManager;
   try {
-    addonManager.uninstall(req.params.id);
+    const result = addonManager.uninstallWithDependencyCheck(req.params.id);
+    if (!result.success) {
+      const depNames = result.dependents.map(d => d.name).join(', ');
+      return res.status(400).json({ error: `Cannot uninstall: required by ${depNames}. Disable or uninstall those addons first.` });
+    }
     addonManager.reload();
     res.json({ success: true });
   } catch (err) {
@@ -1010,6 +1100,20 @@ router.get('/addons/registry', requireLogin, requireAdmin, async (req, res) => {
         if (addon.installed) {
           const local = addonManager.getAll().find(a => a.id === addon.id);
           addon.installedVersion = local ? local.version : null;
+        }
+        // Include dependency resolution info for the client
+        if (addon.dependencies && typeof addon.dependencies === 'object' && !Array.isArray(addon.dependencies)) {
+          addon._depStatus = {};
+          for (const [depId, constraint] of Object.entries(addon.dependencies)) {
+            const depAddon = addonManager.addons.get(depId);
+            if (!depAddon) {
+              addon._depStatus[depId] = { status: 'not_found', constraint, name: depId };
+            } else if (!depAddon.enabled) {
+              addon._depStatus[depId] = { status: 'disabled', constraint, name: depAddon.name, version: depAddon.version, type: depAddon.type };
+            } else {
+              addon._depStatus[depId] = { status: 'ok', constraint, name: depAddon.name, version: depAddon.version };
+            }
+          }
         }
       }
       return addons;

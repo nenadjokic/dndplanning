@@ -7,7 +7,7 @@
   "category": "DM Tools",
   "description": "Share handouts, images, and documents with players. Optionally link to NPCs and map locations.",
   "routes": "/handouts",
-  "softDependencies": ["maps", "campaigns"],
+  "softDependencies": { "maps": ">=1.0.0", "campaigns": ">=1.0.0" },
   "navItems": [
     {
       "label": "Handouts",
