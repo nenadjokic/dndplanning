@@ -8,6 +8,7 @@ const sse = require('../helpers/sse');
 const router = express.Router();
 
 const mapsDir = path.join(__dirname, '..', 'data', 'maps');
+const npcAvatarDir = path.join(__dirname, '..', 'data', 'avatars');
 try {
   if (!fs.existsSync(mapsDir)) {
     fs.mkdirSync(mapsDir, { recursive: true });
@@ -150,6 +151,164 @@ router.post('/bulk-publish', requireLogin, requireDM, express.json(), (req, res)
   const placeholders = map_ids.map(() => '?').join(',');
   db.prepare(`UPDATE maps SET published = ? WHERE id IN (${placeholders})`).run(val, ...map_ids);
   res.json({ success: true, count: map_ids.length });
+});
+
+// Bulk delete maps (must be before /:id routes)
+router.post('/bulk-delete', requireLogin, requireDM, express.json(), (req, res) => {
+  const { map_ids } = req.body;
+  if (!Array.isArray(map_ids) || map_ids.length === 0) {
+    return res.status(400).json({ error: 'No maps selected' });
+  }
+
+  // Reuse the cascade delete logic
+  function deleteMapCascade(mapId) {
+    const childMaps = db.prepare('SELECT id, image_path FROM maps WHERE parent_id = ?').all(mapId);
+    for (const child of childMaps) {
+      deleteMapCascade(child.id);
+    }
+    const locIds = db.prepare('SELECT id FROM map_locations WHERE map_id = ?').all(mapId);
+    for (const loc of locIds) {
+      db.prepare('UPDATE sessions SET location_id = NULL WHERE location_id = ?').run(loc.id);
+    }
+    db.prepare('DELETE FROM map_locations WHERE map_id = ?').run(mapId);
+    try {
+      db.prepare('DELETE FROM combat_participants WHERE encounter_id IN (SELECT id FROM combat_encounters WHERE map_id = ?)').run(mapId);
+      db.prepare('DELETE FROM combat_encounters WHERE map_id = ?').run(mapId);
+    } catch (e) {}
+    const npcMapTokenIds = db.prepare('SELECT id FROM map_npc_tokens WHERE map_id = ?').all(mapId);
+    for (const nt of npcMapTokenIds) {
+      try { db.prepare('DELETE FROM npc_token_assignments WHERE npc_token_id = ?').run(nt.id); } catch (e) {}
+      db.prepare('DELETE FROM npc_token_conditions WHERE npc_map_token_id = ?').run(nt.id);
+    }
+    db.prepare('DELETE FROM map_npc_tokens WHERE map_id = ?').run(mapId);
+    const playerTokenIds = db.prepare('SELECT id FROM map_tokens WHERE map_id = ?').all(mapId);
+    for (const pt of playerTokenIds) {
+      db.prepare('DELETE FROM token_conditions WHERE token_id = ?').run(pt.id);
+    }
+    db.prepare('DELETE FROM map_tokens WHERE map_id = ?').run(mapId);
+    try { db.prepare('DELETE FROM map_links WHERE source_map_id = ? OR target_map_id = ?').run(mapId, mapId); } catch (e) {}
+    const m = db.prepare('SELECT image_path FROM maps WHERE id = ?').get(mapId);
+    db.prepare('DELETE FROM maps WHERE id = ?').run(mapId);
+    if (m && m.image_path) {
+      const imgPath = path.join(mapsDir, m.image_path);
+      if (fs.existsSync(imgPath)) try { fs.unlinkSync(imgPath); } catch (e) {}
+    }
+  }
+
+  let deleted = 0;
+  for (const id of map_ids) {
+    const map = db.prepare('SELECT id FROM maps WHERE id = ?').get(id);
+    if (map) {
+      deleteMapCascade(map.id);
+      deleted++;
+    }
+  }
+  res.json({ success: true, count: deleted });
+});
+
+// NPC Management page (must be before /:id routes)
+router.get('/npc-manager', requireLogin, requireDM, (req, res) => {
+  const categories = db.prepare('SELECT * FROM npc_categories ORDER BY name').all();
+  const npcs = db.prepare('SELECT * FROM npc_tokens ORDER BY name').all();
+  for (const n of npcs) {
+    if (n.avatar && !n.avatar.startsWith('/')) n.avatar = '/avatars/' + n.avatar;
+    try {
+      n.category_ids = db.prepare('SELECT category_id FROM npc_token_categories WHERE npc_token_id = ?').all(n.id).map(r => r.category_id);
+    } catch (e) {
+      n.category_ids = n.category_id ? [n.category_id] : [];
+    }
+    // Count map placements
+    n.placement_count = db.prepare('SELECT COUNT(*) as c FROM map_npc_tokens WHERE npc_token_id = ?').get(n.id).c;
+  }
+  // Count NPCs per category
+  for (const cat of categories) {
+    cat.npc_count = npcs.filter(n => n.category_id === cat.id || (n.category_ids && n.category_ids.includes(cat.id))).length;
+  }
+  const campaigns = [];
+  try {
+    const rows = db.prepare('SELECT id, name FROM campaigns ORDER BY name').all();
+    campaigns.push(...rows);
+  } catch (e) {}
+  res.render('npc-manager', {
+    title: 'NPC Manager',
+    categories,
+    npcs,
+    campaigns,
+    isDM: true
+  });
+});
+
+// Bulk delete NPCs (must be before /:id routes)
+router.post('/npcs/bulk-delete', requireLogin, requireDM, express.json(), (req, res) => {
+  const { npc_ids } = req.body;
+  if (!Array.isArray(npc_ids) || npc_ids.length === 0) {
+    return res.status(400).json({ error: 'No NPCs selected' });
+  }
+  let deleted = 0;
+  for (const npcId of npc_ids) {
+    const npc = db.prepare('SELECT * FROM npc_tokens WHERE id = ?').get(npcId);
+    if (!npc) continue;
+    const mapPlacements = db.prepare('SELECT id FROM map_npc_tokens WHERE npc_token_id = ?').all(npc.id);
+    for (const p of mapPlacements) {
+      try { db.prepare('DELETE FROM npc_token_assignments WHERE npc_token_id = ?').run(p.id); } catch (e) {}
+      db.prepare('DELETE FROM npc_token_conditions WHERE npc_map_token_id = ?').run(p.id);
+      try { db.prepare('DELETE FROM npc_vision_lines WHERE npc_map_token_id = ?').run(p.id); } catch (e) {}
+      try { db.prepare('DELETE FROM combat_participants WHERE npc_map_token_id = ?').run(p.id); } catch (e) {}
+    }
+    db.prepare('DELETE FROM map_npc_tokens WHERE npc_token_id = ?').run(npc.id);
+    try { db.prepare('DELETE FROM npc_token_categories WHERE npc_token_id = ?').run(npc.id); } catch (e) {}
+    try { db.prepare('UPDATE quests SET quest_giver_npc_id = NULL WHERE quest_giver_npc_id = ?').run(npc.id); } catch (e) {}
+    try { db.prepare('UPDATE loot_items SET linked_npc_id = NULL WHERE linked_npc_id = ?').run(npc.id); } catch (e) {}
+    db.prepare('DELETE FROM npc_tokens WHERE id = ?').run(npc.id);
+    if (npc.avatar) {
+      const avatarPath = path.join(npcAvatarDir, npc.avatar);
+      if (fs.existsSync(avatarPath)) try { fs.unlinkSync(avatarPath); } catch (e) {}
+    }
+    deleted++;
+  }
+  res.json({ success: true, count: deleted });
+});
+
+// Delete all NPCs in a category (must be before /:id routes)
+router.post('/npcs/categories/:catId/delete-npcs', requireLogin, requireDM, express.json(), (req, res) => {
+  const cat = db.prepare('SELECT id, name FROM npc_categories WHERE id = ?').get(req.params.catId);
+  if (!cat) return res.status(404).json({ error: 'Category not found' });
+  const npcs = db.prepare('SELECT * FROM npc_tokens WHERE category_id = ?').all(cat.id);
+  // Also get NPCs from junction table
+  try {
+    const junctionNpcs = db.prepare(`
+      SELECT nt.* FROM npc_tokens nt
+      JOIN npc_token_categories ntc ON nt.id = ntc.npc_token_id
+      WHERE ntc.category_id = ? AND nt.id NOT IN (SELECT id FROM npc_tokens WHERE category_id = ?)
+    `).all(cat.id, cat.id);
+    npcs.push(...junctionNpcs);
+  } catch (e) {}
+  let deleted = 0;
+  for (const npc of npcs) {
+    const mapPlacements = db.prepare('SELECT id FROM map_npc_tokens WHERE npc_token_id = ?').all(npc.id);
+    for (const p of mapPlacements) {
+      try { db.prepare('DELETE FROM npc_token_assignments WHERE npc_token_id = ?').run(p.id); } catch (e) {}
+      db.prepare('DELETE FROM npc_token_conditions WHERE npc_map_token_id = ?').run(p.id);
+      try { db.prepare('DELETE FROM npc_vision_lines WHERE npc_map_token_id = ?').run(p.id); } catch (e) {}
+      try { db.prepare('DELETE FROM combat_participants WHERE npc_map_token_id = ?').run(p.id); } catch (e) {}
+    }
+    db.prepare('DELETE FROM map_npc_tokens WHERE npc_token_id = ?').run(npc.id);
+    try { db.prepare('DELETE FROM npc_token_categories WHERE npc_token_id = ?').run(npc.id); } catch (e) {}
+    try { db.prepare('UPDATE quests SET quest_giver_npc_id = NULL WHERE quest_giver_npc_id = ?').run(npc.id); } catch (e) {}
+    try { db.prepare('UPDATE loot_items SET linked_npc_id = NULL WHERE linked_npc_id = ?').run(npc.id); } catch (e) {}
+    db.prepare('DELETE FROM npc_tokens WHERE id = ?').run(npc.id);
+    if (npc.avatar) {
+      const avatarPath = path.join(npcAvatarDir, npc.avatar);
+      if (fs.existsSync(avatarPath)) try { fs.unlinkSync(avatarPath); } catch (e) {}
+    }
+    deleted++;
+  }
+  const deleteCategory = req.body.delete_category === true;
+  if (deleteCategory) {
+    try { db.prepare('DELETE FROM npc_token_categories WHERE category_id = ?').run(cat.id); } catch (e) {}
+    db.prepare('DELETE FROM npc_categories WHERE id = ?').run(cat.id);
+  }
+  res.json({ success: true, count: deleted, categoryDeleted: deleteCategory });
 });
 
 // Edit map metadata (name, type, description, campaign)
@@ -966,7 +1125,6 @@ router.post('/:id/toggle-publish', requireLogin, requireDM, express.json(), (req
 
 // ---- NPC Token System (map-specific routes below /:id) ----
 
-const npcAvatarDir = path.join(__dirname, '..', 'data', 'avatars');
 const https = require('https');
 const http = require('http');
 function downloadAvatarUrl(url) {

@@ -124,7 +124,15 @@
         <button class="whatsnew-close-x" id="whatsnew-close-x" title="Close">&times;</button>
         <h2>What's New in v<%= appVersion %></h2>
         <div class="whatsnew-content">
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Map Publish & View as Player <span style="color:var(--text-secondary);font-size:0.8rem;">(v3.0.4)</span></h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">NPC Manager & Safety Fixes <span style="color:var(--text-secondary);font-size:0.8rem;">(v3.0.5)</span></h3>
+          <ul class="whatsnew-list">
+            <li><strong>NPC Manager</strong> &mdash; New standalone page to manage all NPCs &mdash; search, filter by category, bulk select &amp; delete, edit, and delete entire categories with one click</li>
+            <li><strong>Map Bulk Delete</strong> &mdash; Select multiple maps and delete them all at once from the maps page</li>
+            <li><strong>Safe Addon Uninstall</strong> &mdash; Addon uninstall no longer runs destructive database migrations, preserving all user data</li>
+            <li><strong>Restore Fix (Docker)</strong> &mdash; Database restore now works correctly in Docker environments</li>
+            <li><strong>Dual Google Drive Backup</strong> &mdash; Scheduled backups now upload both .db (database) and .qpb (full archive) to Google Drive</li>
+          </ul>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Previous Updates <span style="color:var(--text-secondary);font-size:0.8rem;">(v3.0.4)</span></h3>
           <ul class="whatsnew-list">
             <li><strong>Map Publish System</strong> &mdash; Maps are hidden by default; DMs publish them individually or in bulk to make them visible to players</li>
             <li><strong>View as Player</strong> &mdash; DMs can toggle a navbar switch to preview the app exactly as a player sees it &mdash; fog of war, no DM controls, hidden maps</li>

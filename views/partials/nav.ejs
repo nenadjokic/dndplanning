@@ -124,6 +124,7 @@
           <% if (_eRole === 'dm' || _eRole === 'admin') { %>
           <%# DM ZONE group (core + preinstalled addon items) %>
           <% const coreDM = [
+            { label: 'NPC Manager', href: '/map/npc-manager', svgContent: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>' },
             { label: 'DM Tools', href: '/dm-tools', svgContent: '<rect x="2" y="2" width="20" height="20" rx="3"></rect><circle cx="8" cy="8" r="1.5" fill="currentColor"></circle><circle cx="16" cy="8" r="1.5" fill="currentColor"></circle><circle cx="8" cy="16" r="1.5" fill="currentColor"></circle><circle cx="16" cy="16" r="1.5" fill="currentColor"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor"></circle>' }
           ]; %>
           <% if (addonDMZone.length > 0 || coreDM.length > 0) { %>

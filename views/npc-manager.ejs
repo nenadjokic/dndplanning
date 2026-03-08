@@ -1,0 +1,348 @@
+<%- include('partials/head') %>
+<%- include('partials/nav') %>
+
+<div class="container" style="padding-top:1rem; padding-bottom:2rem;">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;">
+    <h1 style="font-family:var(--font-heading);color:var(--gold);margin:0;font-size:1.5rem;">NPC Manager</h1>
+    <div style="display:flex;gap:0.5rem;align-items:center;">
+      <input type="text" id="npc-search" placeholder="Search NPCs..." style="font-size:0.85rem;padding:0.3rem 0.6rem;min-width:180px;">
+      <select id="npc-filter-cat" style="font-size:0.85rem;padding:0.3rem 0.6rem;">
+        <option value="">All Categories</option>
+        <option value="uncategorized">Uncategorized</option>
+        <% for (const cat of categories) { %>
+        <option value="<%= cat.id %>"><%= cat.name %> (<%= cat.npc_count %>)</option>
+        <% } %>
+      </select>
+    </div>
+  </div>
+
+  <!-- Bulk Actions Bar -->
+  <div id="bulk-actions" class="card" style="display:none; margin-bottom:1rem; padding:0.5rem 1rem; border:1px solid var(--gold-dim);">
+    <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+      <label style="font-size:0.85rem;display:flex;align-items:center;gap:0.3rem;cursor:pointer;">
+        <input type="checkbox" id="select-all-cb"> Select All Visible
+      </label>
+      <span id="selected-count" style="font-size:0.85rem;color:var(--text-secondary);">0 selected</span>
+      <button type="button" class="btn btn-danger btn-small" id="bulk-delete-btn">Delete Selected</button>
+      <button type="button" class="btn btn-outline btn-small" id="bulk-deselect-btn">Deselect All</button>
+    </div>
+  </div>
+
+  <!-- Category Management -->
+  <div class="card" style="margin-bottom:1rem;padding:0.75rem 1rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+      <h3 style="margin:0;font-size:0.95rem;color:var(--gold);">Categories</h3>
+      <div style="display:flex;gap:0.3rem;align-items:center;">
+        <input type="text" id="new-cat-name" placeholder="New category..." style="font-size:0.8rem;padding:0.25rem 0.5rem;width:160px;">
+        <button type="button" class="btn btn-primary btn-small" id="add-cat-btn">Add</button>
+      </div>
+    </div>
+    <div id="cat-list" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem;">
+      <% for (const cat of categories) { %>
+      <div class="npc-mgr-cat-tag" data-cat-id="<%= cat.id %>">
+        <span class="npc-mgr-cat-name"><%= cat.name %></span>
+        <span class="npc-mgr-cat-count">(<%= cat.npc_count %>)</span>
+        <button type="button" class="npc-mgr-cat-del-npcs" title="Delete all NPCs in this category" data-cat-id="<%= cat.id %>" data-cat-name="<%= cat.name %>">Delete NPCs</button>
+        <button type="button" class="npc-mgr-cat-del" title="Delete category (NPCs keep)" data-cat-id="<%= cat.id %>" data-cat-name="<%= cat.name %>">&times;</button>
+      </div>
+      <% } %>
+      <% if (categories.length === 0) { %>
+      <span style="color:var(--text-secondary);font-size:0.85rem;">No categories yet</span>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- NPC Table -->
+  <div class="card" style="padding:0;overflow-x:auto;">
+    <table class="npc-mgr-table">
+      <thead>
+        <tr>
+          <th style="width:40px;"><input type="checkbox" id="header-select-all"></th>
+          <th style="width:50px;">Avatar</th>
+          <th>Name</th>
+          <th>Category</th>
+          <th style="width:80px;">HP</th>
+          <th style="width:80px;">On Maps</th>
+          <th style="width:120px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="npc-tbody">
+        <% for (const npc of npcs) { %>
+        <tr class="npc-row" data-npc-id="<%= npc.id %>" data-cat-id="<%= npc.category_id || '' %>" data-cat-ids="<%= (npc.category_ids || []).join(',') %>" data-name="<%= npc.name.toLowerCase() %>">
+          <td><input type="checkbox" class="npc-select-cb" value="<%= npc.id %>"></td>
+          <td>
+            <% if (npc.avatar) { %>
+            <img src="<%= npc.avatar %>" alt="" class="npc-mgr-avatar">
+            <% } else { %>
+            <div class="npc-mgr-avatar npc-mgr-avatar-placeholder"><%= npc.name.charAt(0).toUpperCase() %></div>
+            <% } %>
+          </td>
+          <td class="npc-mgr-name"><%= npc.name %></td>
+          <td>
+            <% const npcCats = categories.filter(c => (npc.category_ids || []).includes(c.id) || npc.category_id === c.id); %>
+            <% if (npcCats.length > 0) { %>
+              <% for (const c of npcCats) { %><span class="npc-mgr-cat-badge"><%= c.name %></span> <% } %>
+            <% } else { %>
+              <span style="color:var(--text-secondary);font-size:0.8rem;">--</span>
+            <% } %>
+          </td>
+          <td><%= npc.max_hp > 0 ? npc.max_hp : '--' %></td>
+          <td><%= npc.placement_count %></td>
+          <td>
+            <button type="button" class="btn btn-outline btn-small npc-edit-btn" data-npc-id="<%= npc.id %>">Edit</button>
+            <button type="button" class="btn btn-danger btn-small npc-delete-btn" data-npc-id="<%= npc.id %>" data-npc-name="<%= npc.name %>">Del</button>
+          </td>
+        </tr>
+        <% } %>
+        <% if (npcs.length === 0) { %>
+        <tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:2rem;">No NPCs yet. Create one from the Map view or import with Tome of Adventures.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+  <div style="margin-top:0.5rem;color:var(--text-secondary);font-size:0.8rem;">
+    <span id="npc-total-count"><%= npcs.length %></span> NPC(s) total
+  </div>
+</div>
+
+<!-- Edit NPC Modal -->
+<div class="modal-overlay" id="edit-npc-modal" style="display:none;">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h3 id="edit-modal-title">Edit NPC</h3>
+      <button type="button" class="modal-close" id="edit-modal-close">&times;</button>
+    </div>
+    <form id="edit-npc-form" enctype="multipart/form-data">
+      <div class="form-group">
+        <label for="edit-npc-name">Name</label>
+        <input type="text" id="edit-npc-name" name="name" required>
+      </div>
+      <div class="form-group">
+        <label for="edit-npc-hp">Max HP</label>
+        <input type="number" id="edit-npc-hp" name="max_hp" min="0" value="0">
+      </div>
+      <div class="form-group">
+        <label>Categories</label>
+        <div id="edit-npc-categories" style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+          <% for (const cat of categories) { %>
+          <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;cursor:pointer;">
+            <input type="checkbox" name="category_ids" value="<%= cat.id %>"> <%= cat.name %>
+          </label>
+          <% } %>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="edit-npc-notes">Notes</label>
+        <textarea id="edit-npc-notes" name="notes" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="edit-npc-avatar">Avatar</label>
+        <input type="file" id="edit-npc-avatar" name="avatar" accept="image/*">
+      </div>
+      <input type="hidden" id="edit-npc-id" value="">
+      <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+        <button type="button" class="btn btn-outline" id="edit-modal-cancel">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function() {
+  var csrfToken = '<%= csrfToken %>';
+  var searchInput = document.getElementById('npc-search');
+  var filterCat = document.getElementById('npc-filter-cat');
+  var bulkBar = document.getElementById('bulk-actions');
+  var rows = document.querySelectorAll('.npc-row');
+
+  // --- Filtering ---
+  function filterRows() {
+    var q = (searchInput.value || '').toLowerCase().trim();
+    var cat = filterCat.value;
+    var visible = 0;
+    rows.forEach(function(row) {
+      var name = row.getAttribute('data-name');
+      var catId = row.getAttribute('data-cat-id');
+      var catIds = (row.getAttribute('data-cat-ids') || '').split(',');
+      var matchName = !q || name.indexOf(q) !== -1;
+      var matchCat = !cat || (cat === 'uncategorized' ? (!catId && catIds.join('') === '') : (catId === cat || catIds.indexOf(cat) !== -1));
+      if (matchName && matchCat) {
+        row.style.display = '';
+        visible++;
+      } else {
+        row.style.display = 'none';
+        row.querySelector('.npc-select-cb').checked = false;
+      }
+    });
+    updateBulkBar();
+  }
+  searchInput.addEventListener('input', filterRows);
+  filterCat.addEventListener('change', filterRows);
+
+  // --- Selection ---
+  function updateBulkBar() {
+    var checked = document.querySelectorAll('.npc-select-cb:checked');
+    if (checked.length > 0) {
+      bulkBar.style.display = 'block';
+      document.getElementById('selected-count').textContent = checked.length + ' selected';
+    } else {
+      bulkBar.style.display = 'none';
+    }
+  }
+  document.querySelectorAll('.npc-select-cb').forEach(function(cb) {
+    cb.addEventListener('change', updateBulkBar);
+  });
+  document.getElementById('header-select-all').addEventListener('change', function() {
+    var checked = this.checked;
+    rows.forEach(function(row) {
+      if (row.style.display !== 'none') {
+        row.querySelector('.npc-select-cb').checked = checked;
+      }
+    });
+    updateBulkBar();
+  });
+  document.getElementById('select-all-cb').addEventListener('change', function() {
+    var checked = this.checked;
+    rows.forEach(function(row) {
+      if (row.style.display !== 'none') {
+        row.querySelector('.npc-select-cb').checked = checked;
+      }
+    });
+    updateBulkBar();
+  });
+  document.getElementById('bulk-deselect-btn').addEventListener('click', function() {
+    document.querySelectorAll('.npc-select-cb').forEach(function(cb) { cb.checked = false; });
+    document.getElementById('header-select-all').checked = false;
+    document.getElementById('select-all-cb').checked = false;
+    updateBulkBar();
+  });
+
+  // --- Bulk Delete ---
+  document.getElementById('bulk-delete-btn').addEventListener('click', function() {
+    var ids = [];
+    document.querySelectorAll('.npc-select-cb:checked').forEach(function(cb) { ids.push(parseInt(cb.value)); });
+    if (ids.length === 0) return;
+    if (!confirm('Delete ' + ids.length + ' NPC(s)? This will also remove them from all maps. This cannot be undone!')) return;
+    fetch('/map/npcs/bulk-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify({ npc_ids: ids })
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      if (d.success) location.reload();
+    });
+  });
+
+  // --- Single Delete ---
+  document.querySelectorAll('.npc-delete-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var npcId = btn.getAttribute('data-npc-id');
+      var npcName = btn.getAttribute('data-npc-name');
+      if (!confirm('Delete "' + npcName + '"? This will remove it from all maps.')) return;
+      fetch('/map/npcs/' + npcId + '/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }
+      }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.success) location.reload();
+      });
+    });
+  });
+
+  // --- Category: Add ---
+  document.getElementById('add-cat-btn').addEventListener('click', function() {
+    var name = document.getElementById('new-cat-name').value.trim();
+    if (!name) return;
+    fetch('/map/npcs/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify({ name: name })
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      if (d.success) location.reload();
+    });
+  });
+
+  // --- Category: Delete (category only, keep NPCs) ---
+  document.querySelectorAll('.npc-mgr-cat-del').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var catId = btn.getAttribute('data-cat-id');
+      var catName = btn.getAttribute('data-cat-name');
+      if (!confirm('Delete category "' + catName + '"? NPCs will be uncategorized but NOT deleted.')) return;
+      fetch('/map/npcs/categories/' + catId + '/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }
+      }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.success) location.reload();
+      });
+    });
+  });
+
+  // --- Category: Delete all NPCs in category ---
+  document.querySelectorAll('.npc-mgr-cat-del-npcs').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var catId = btn.getAttribute('data-cat-id');
+      var catName = btn.getAttribute('data-cat-name');
+      var delCat = confirm('Delete ALL NPCs in "' + catName + '" AND the category itself?\n\nClick OK to delete NPCs + category.\nClick Cancel to keep the category (only NPCs deleted).');
+      if (!confirm('Are you sure you want to delete ALL NPCs in "' + catName + '"? This removes them from all maps and cannot be undone!')) return;
+      fetch('/map/npcs/categories/' + catId + '/delete-npcs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ delete_category: delCat })
+      }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.success) location.reload();
+      });
+    });
+  });
+
+  // --- Edit NPC Modal ---
+  var editModal = document.getElementById('edit-npc-modal');
+  var editForm = document.getElementById('edit-npc-form');
+  document.querySelectorAll('.npc-edit-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var npcId = btn.getAttribute('data-npc-id');
+      var row = btn.closest('.npc-row');
+      var catIds = (row.getAttribute('data-cat-ids') || '').split(',');
+      // Fetch current NPC data
+      fetch('/map/npcs', {
+        headers: { 'X-CSRF-Token': csrfToken }
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        var npc = data.npcs.find(function(n) { return n.id == npcId; });
+        if (!npc) return;
+        document.getElementById('edit-npc-id').value = npc.id;
+        document.getElementById('edit-npc-name').value = npc.name;
+        document.getElementById('edit-npc-hp').value = npc.max_hp || 0;
+        document.getElementById('edit-npc-notes').value = npc.notes || '';
+        // Check category checkboxes
+        var npcCatIds = npc.category_ids || (npc.category_id ? [npc.category_id] : []);
+        editModal.querySelectorAll('input[name="category_ids"]').forEach(function(cb) {
+          cb.checked = npcCatIds.indexOf(parseInt(cb.value)) !== -1;
+        });
+        editModal.style.display = 'flex';
+      });
+    });
+  });
+  function closeEditModal() { editModal.style.display = 'none'; }
+  document.getElementById('edit-modal-close').addEventListener('click', closeEditModal);
+  document.getElementById('edit-modal-cancel').addEventListener('click', closeEditModal);
+  editModal.addEventListener('click', function(e) { if (e.target === editModal) closeEditModal(); });
+
+  editForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    var npcId = document.getElementById('edit-npc-id').value;
+    var formData = new FormData(editForm);
+    // Manually add checked category_ids
+    formData.delete('category_ids');
+    editModal.querySelectorAll('input[name="category_ids"]:checked').forEach(function(cb) {
+      formData.append('category_ids', cb.value);
+    });
+    fetch('/map/npcs/' + npcId + '/edit', {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': csrfToken },
+      body: formData
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      if (d.success) location.reload();
+    });
+  });
+})();
+</script>
+
+<%- include('partials/foot') %>

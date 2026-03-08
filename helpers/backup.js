@@ -361,8 +361,19 @@ async function runScheduledBackup() {
     const config = db.prepare('SELECT * FROM backup_config WHERE id = 1').get();
     if (!config) return;
 
-    // Create local backup
+    // Create local DB-only backup
     const { backupName, backupPath } = await createLocalBackupSync();
+
+    // Create local full backup (.qpb)
+    let fullBackupName, fullBackupPath;
+    try {
+      const fullResult = await createFullBackup();
+      fullBackupName = fullResult.backupName;
+      fullBackupPath = fullResult.backupPath;
+      console.log(`[Backup] Full backup created: ${fullBackupName}`);
+    } catch (err) {
+      console.error('[Backup] Full backup creation failed:', err.message);
+    }
 
     // Clean old local backups
     cleanOldBackups(config.local_keep_days || 7);
@@ -376,7 +387,17 @@ async function runScheduledBackup() {
           throw new Error('Google Login not configured. Set up Google Login in Guild Settings first.');
         }
         const fullConfig = { ...config, gdrive_client_id: oauth.client_id, gdrive_client_secret: oauth.client_secret };
+
+        // Upload DB-only backup
         await uploadToGoogleDrive(backupPath, backupName, fullConfig);
+        console.log('[Backup] Google Drive DB backup uploaded');
+
+        // Upload full backup (.qpb) if it was created
+        if (fullBackupPath && fs.existsSync(fullBackupPath)) {
+          await uploadToGoogleDrive(fullBackupPath, fullBackupName, fullConfig);
+          console.log('[Backup] Google Drive full backup uploaded');
+        }
+
         db.prepare("UPDATE backup_config SET gdrive_last_backup = datetime('now'), gdrive_last_status = 'success' WHERE id = 1").run();
         console.log('[Backup] Google Drive backup completed successfully');
       } catch (err) {

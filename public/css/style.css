@@ -3236,7 +3236,7 @@ select:hover {
 }
 
 .token-picker-list {
-  max-height: 350px;
+  max-height: 60vh;
   overflow-y: auto;
 }
 
@@ -10803,6 +10803,116 @@ body::after {
   }
   .campaign-stats-row {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* === NPC Manager === */
+.npc-mgr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.npc-mgr-table th,
+.npc-mgr-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--bg-dark);
+  vertical-align: middle;
+}
+.npc-mgr-table th {
+  background: var(--bg-darker);
+  color: var(--gold);
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.npc-mgr-table tbody tr:hover {
+  background: var(--bg-dark);
+}
+.npc-mgr-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--gold-dim);
+}
+.npc-mgr-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-darker);
+  color: var(--gold);
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+}
+.npc-mgr-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.npc-mgr-cat-badge {
+  display: inline-block;
+  background: var(--bg-darker);
+  color: var(--gold);
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  margin: 0.1rem;
+  border: 1px solid var(--gold-dim);
+}
+.npc-mgr-cat-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--bg-darker);
+  border: 1px solid var(--gold-dim);
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+}
+.npc-mgr-cat-name {
+  color: var(--gold);
+  font-weight: 600;
+}
+.npc-mgr-cat-count {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+.npc-mgr-cat-del,
+.npc-mgr-cat-del-npcs {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 0.2rem;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+.npc-mgr-cat-del {
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+.npc-mgr-cat-del:hover {
+  color: #e74c3c;
+}
+.npc-mgr-cat-del-npcs {
+  color: #e74c3c;
+  border: 1px solid #e74c3c;
+  border-radius: 3px;
+  padding: 0.1rem 0.3rem;
+}
+.npc-mgr-cat-del-npcs:hover {
+  background: #e74c3c;
+  color: #fff;
+}
+@media (max-width: 600px) {
+  .npc-mgr-table th:nth-child(5),
+  .npc-mgr-table td:nth-child(5),
+  .npc-mgr-table th:nth-child(6),
+  .npc-mgr-table td:nth-child(6) {
+    display: none;
   }
 }
 

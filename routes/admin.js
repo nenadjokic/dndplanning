@@ -520,6 +520,11 @@ router.post('/backup/restore', requireLogin, requireAdmin, restoreUpload.single(
   const isFullBackup = originalName.endsWith('.qpb');
 
   try {
+    // Ensure backup directory exists
+    if (!fs.existsSync(backup.backupDir)) {
+      fs.mkdirSync(backup.backupDir, { recursive: true });
+    }
+
     // Create a safety backup before restoring (full archive)
     const safetyBackupName = `pre-restore-${Date.now()}.qpb`;
     const safetyBackupPath = path.join(backup.backupDir, safetyBackupName);
@@ -585,17 +590,12 @@ router.post('/backup/restore', requireLogin, requireAdmin, restoreUpload.single(
     req.flash('success', `${restoreType} restored successfully! The server will restart to apply changes.`);
     res.redirect('/admin/users');
 
-    // Self-restart: spawn a new process then exit
+    // Graceful restart: exit with code 0 so Docker/PM2/systemd restarts us.
+    // In Docker: PID 1 exits → container restarts via restart policy.
+    // Standalone: PM2 or systemd will restart the process.
+    // Delay to let the redirect response flush to the browser.
     setTimeout(() => {
-      console.log('[Backup] Restarting server after restore...');
-      const { spawn } = require('child_process');
-      const child = spawn(process.argv[0], process.argv.slice(1), {
-        detached: true,
-        stdio: 'inherit',
-        cwd: process.cwd(),
-        env: process.env
-      });
-      child.unref();
+      console.log('[Backup] Exiting for restart after restore...');
       process.exit(0);
     }, 1500);
   } catch (err) {

@@ -1,6 +1,6 @@
-# Quest Planner v3.0.4 — D&D Session Scheduler
+# Quest Planner v3.0.5 — D&D Session Scheduler
 
-> **Latest release:** v3.0.4 (2026-03-08)
+> **Latest release:** v3.0.5 (2026-03-08)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -870,6 +870,15 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v3.0.5 (2026-03-08) NPC Manager & Safety Fixes
+
+- **NPC Manager** — New standalone page (DM Zone) to manage all NPCs: search, filter by category, bulk select & delete, edit inline, delete entire categories with one click
+- **Map Bulk Delete** — Select multiple maps with checkboxes and delete them all at once
+- **Safe Addon Uninstall** — Addon uninstall no longer runs destructive `down` migrations, preserving all user data in the database
+- **Docker Restore Fix** — Database restore process fixed for Docker environments (proper process restart instead of broken self-spawn)
+- **Dual Google Drive Backup** — Scheduled backups now create and upload both `.db` (database-only) and `.qpb` (full archive) to Google Drive
+- **Backup Directory Safety** — Ensure backup directory exists before creating pre-restore safety backups
 
 ### v3.0.4 (2026-03-08) Map Publish System & View as Player
 

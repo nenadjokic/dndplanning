@@ -118,6 +118,7 @@
       <span id="selected-count" style="font-size:0.85rem;">0 selected</span>
       <button type="button" class="btn btn-primary btn-small" id="bulk-publish-btn">📢 Publish Selected</button>
       <button type="button" class="btn btn-outline btn-small" id="bulk-unpublish-btn">🔒 Unpublish Selected</button>
+      <button type="button" class="btn btn-danger btn-small" id="bulk-delete-btn">🗑 Delete Selected</button>
       <button type="button" class="btn btn-outline btn-small" id="bulk-deselect-btn">Deselect All</button>
     </div>
   </div>
@@ -183,8 +184,22 @@
   var pubBtn = document.getElementById('bulk-publish-btn');
   var unpubBtn = document.getElementById('bulk-unpublish-btn');
   var deselBtn = document.getElementById('bulk-deselect-btn');
+  var delBtn = document.getElementById('bulk-delete-btn');
   if (pubBtn) pubBtn.addEventListener('click', function() { bulkAction('publish'); });
   if (unpubBtn) unpubBtn.addEventListener('click', function() { bulkAction('unpublish'); });
+  if (delBtn) delBtn.addEventListener('click', function() {
+    var ids = [];
+    document.querySelectorAll('.map-select-checkbox:checked').forEach(function(cb) { ids.push(parseInt(cb.value)); });
+    if (ids.length === 0) return;
+    if (!confirm('Delete ' + ids.length + ' map(s) and all their children? This cannot be undone!')) return;
+    fetch('/map/bulk-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify({ map_ids: ids })
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      if (d.success) location.reload();
+    });
+  });
   if (deselBtn) deselBtn.addEventListener('click', function() {
     checkboxes.forEach(function(cb) { cb.checked = false; });
     updateBulkBar();
