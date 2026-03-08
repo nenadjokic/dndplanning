@@ -165,6 +165,14 @@ for (const sql of [
   try { db.exec(sql); } catch (e) { /* already exists */ }
 }
 
+// Map publish column — existing maps become published, new maps default to hidden
+try {
+  db.exec("ALTER TABLE maps ADD COLUMN published INTEGER DEFAULT 0");
+  // Column was just added — migrate existing maps to published
+  db.exec("UPDATE maps SET published = 1 WHERE hidden_by IS NULL");
+  db.exec("UPDATE maps SET published = 0 WHERE hidden_by IS NOT NULL");
+} catch (e) { /* column already exists, migration already ran */ }
+
 // Character tokens on maps
 db.exec(`
   CREATE TABLE IF NOT EXISTS map_tokens (

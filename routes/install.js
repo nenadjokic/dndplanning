@@ -214,7 +214,8 @@ router.post('/', requireNotInstalled, async (req, res) => {
         parent_id INTEGER REFERENCES maps(id),
         map_type TEXT NOT NULL DEFAULT 'overworld',
         pin_x REAL DEFAULT 50,
-        pin_y REAL DEFAULT 50
+        pin_y REAL DEFAULT 50,
+        published INTEGER DEFAULT 0
       );
 
       CREATE TABLE IF NOT EXISTS map_locations (

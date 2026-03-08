@@ -52,34 +52,16 @@
   <%
     function renderMapCard(node, level) {
       var hasChildren = node.children && node.children.length > 0;
-      var isHidden = !!node.hidden_by;
-      var isCreator = node.created_by === (typeof currentUserId !== 'undefined' ? currentUserId : -1);
-      var showAsPlaceholder = isHidden && !isCreator && (typeof isAdmin !== 'undefined' && isAdmin);
+      var isUnpublished = !node.published;
       var isStandalone = !node.parent_id && !hasChildren;
       var isChild = level > 0;
   %>
-    <% if (showAsPlaceholder) { %>
-      <div class="map-index-card<%= isChild ? ' map-index-card-sub' : '' %>" style="opacity: 0.4;">
-        <div class="map-index-card-thumb"><div class="maps-tree-placeholder"><span>&#128274;</span></div></div>
-        <div class="map-index-card-body">
-          <h3 style="color: var(--text-secondary);">Hidden Map</h3>
-          <span class="map-type-badge" style="background:rgba(255,255,255,0.1);color:var(--text-secondary);">&#128274; Hidden</span>
-          <% if (isDM) { %>
-            <div class="map-index-card-actions">
-              <form action="/map/<%= node.id %>/delete" method="POST" class="inline-form">
-                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this hidden map?')">&times;</button>
-              </form>
-            </div>
-          <% } %>
-        </div>
-      </div>
-    <% } else { %>
-      <div class="map-index-card<%= isChild ? ' map-index-card-sub' : '' %>"
+      <div class="map-index-card<%= isChild ? ' map-index-card-sub' : '' %><%= isUnpublished ? ' map-unpublished' : '' %>"
            data-map-id="<%= node.id %>"
            data-depth="<%= level %>"
            data-has-children="<%= hasChildren ? '1' : '0' %>"
            <% if (isDM && isStandalone) { %>draggable="true"<% } %>>
+        <% if (isDM) { %><input type="checkbox" class="map-select-checkbox" value="<%= node.id %>" data-map-published="<%= node.published ? '1' : '0' %>"><% } %>
         <a href="/map/<%= node.id %>" style="text-decoration:none;color:inherit;">
           <div class="map-index-card-thumb">
             <% if (node.image_path) { %>
@@ -98,12 +80,17 @@
             <% if (hasChildren) { %>
               <span class="text-muted" style="font-size: 0.8rem;"><%= node.children.length %> sub-map<%= node.children.length !== 1 ? 's' : '' %></span>
             <% } %>
-            <% if (isHidden && isCreator) { %>
-              <span class="map-hidden-badge" style="font-size:0.7rem;color:var(--text-secondary);background:rgba(255,255,255,0.08);padding:0.1rem 0.4rem;border-radius:999px;">&#128274; Hidden</span>
+            <% if (isUnpublished && isDM) { %>
+              <span class="map-hidden-badge">🔒 Hidden</span>
             <% } %>
           </div>
           <% if (isDM) { %>
             <div class="map-index-card-actions">
+              <% if (node.published) { %>
+                <button type="button" class="btn btn-small btn-outline" data-toggle-publish="<%= node.id %>" data-published="1" title="Unpublish">🔒 Hide</button>
+              <% } else { %>
+                <button type="button" class="btn btn-small btn-primary" data-toggle-publish="<%= node.id %>" data-published="0" title="Publish">📢 Publish</button>
+              <% } %>
               <button type="button" class="btn btn-small btn-outline" data-edit-map="<%= node.id %>" data-map-name="<%= node.name %>" data-map-type="<%= node.map_type %>" data-map-desc="<%= (node.description || '').replace(/"/g, '&quot;') %>" data-map-campaign="<%= node.campaign_id || '' %>" title="Edit map">Edit</button>
               <% if (node.parent_id) { %>
                 <button type="button" class="btn btn-small btn-outline" data-unparent="<%= node.id %>" title="Detach from parent">Detach</button>
@@ -116,7 +103,6 @@
           <% } %>
         </div>
       </div>
-    <% } %>
     <% if (hasChildren) { %>
       <div class="map-index-submaps" style="margin-left: <%= (level + 1) * 1.5 %>rem;">
         <% for (const child of node.children) { %>
@@ -124,6 +110,17 @@
         <% } %>
       </div>
     <% } %>
+  <% } %>
+
+  <% if (isDM) { %>
+  <div id="bulk-actions" class="card" style="display:none; margin-bottom:1rem; padding:0.5rem 1rem; border:1px solid var(--gold-dim);">
+    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+      <span id="selected-count" style="font-size:0.85rem;">0 selected</span>
+      <button type="button" class="btn btn-primary btn-small" id="bulk-publish-btn">📢 Publish Selected</button>
+      <button type="button" class="btn btn-outline btn-small" id="bulk-unpublish-btn">🔒 Unpublish Selected</button>
+      <button type="button" class="btn btn-outline btn-small" id="bulk-deselect-btn">Deselect All</button>
+    </div>
+  </div>
   <% } %>
 
   <div class="map-card-list">
@@ -139,6 +136,60 @@
 <script>
 (function() {
   var csrfToken = '<%= csrfToken %>';
+
+  // Publish/Unpublish toggle per map
+  document.querySelectorAll('[data-toggle-publish]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var mapId = btn.getAttribute('data-toggle-publish');
+      fetch('/map/' + mapId + '/toggle-publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }
+      }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.success) location.reload();
+      });
+    });
+  });
+
+  // Bulk selection
+  var bulkBar = document.getElementById('bulk-actions');
+  var checkboxes = document.querySelectorAll('.map-select-checkbox');
+  function updateBulkBar() {
+    var checked = document.querySelectorAll('.map-select-checkbox:checked');
+    if (checked.length > 0) {
+      bulkBar.style.display = 'block';
+      document.getElementById('selected-count').textContent = checked.length + ' selected';
+    } else {
+      bulkBar.style.display = 'none';
+    }
+  }
+  checkboxes.forEach(function(cb) {
+    cb.addEventListener('change', updateBulkBar);
+    cb.addEventListener('click', function(e) { e.stopPropagation(); });
+  });
+
+  function bulkAction(action) {
+    var ids = [];
+    document.querySelectorAll('.map-select-checkbox:checked').forEach(function(cb) { ids.push(parseInt(cb.value)); });
+    if (ids.length === 0) return;
+    fetch('/map/bulk-publish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify({ map_ids: ids, action: action })
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      if (d.success) location.reload();
+    });
+  }
+  var pubBtn = document.getElementById('bulk-publish-btn');
+  var unpubBtn = document.getElementById('bulk-unpublish-btn');
+  var deselBtn = document.getElementById('bulk-deselect-btn');
+  if (pubBtn) pubBtn.addEventListener('click', function() { bulkAction('publish'); });
+  if (unpubBtn) unpubBtn.addEventListener('click', function() { bulkAction('unpublish'); });
+  if (deselBtn) deselBtn.addEventListener('click', function() {
+    checkboxes.forEach(function(cb) { cb.checked = false; });
+    updateBulkBar();
+  });
+
   var draggedId = null;
 
   document.querySelectorAll('.map-index-card[draggable="true"]').forEach(function(el) {

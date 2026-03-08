@@ -43,10 +43,10 @@
     <% } %>
     <% if (isDM) { %>
       <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('upload-form').style.display = document.getElementById('upload-form').style.display === 'none' ? 'block' : 'none'">Upload Map</button>
-      <% if (map.created_by === currentUserId || (typeof isAdmin !== 'undefined' && isAdmin)) { %>
-        <button type="button" class="btn btn-outline btn-small" id="toggle-hidden-btn" title="<%= map.hidden_by ? 'Unhide Map' : 'Hide Map' %>">
-          <%= map.hidden_by ? '👁️ Unhide' : '🔒 Hide' %>
-        </button>
+      <% if (map.published) { %>
+      <button type="button" class="btn btn-outline btn-small" id="toggle-publish-btn" title="Unpublish Map">🔒 Unpublish</button>
+      <% } else { %>
+      <button type="button" class="btn btn-outline btn-small" id="toggle-publish-btn" title="Publish Map" style="border-color:#27ae60;color:#27ae60;">📢 Publish</button>
       <% } %>
       <button type="button" class="btn btn-outline btn-small" id="fog-toggle-btn" style="border-color: #2c3e50;" title="Fog of War">
         🌫️ Fog
@@ -77,6 +77,13 @@
     <a href="/map" class="btn btn-outline btn-small">All Maps</a>
   </div>
 </div>
+
+<% if (isDM && !map.published) { %>
+<div class="card" style="background:rgba(231,76,60,0.1);border:1px solid #e74c3c;margin-bottom:1rem;padding:0.5rem 1rem;text-align:center;">
+  🔒 This map is <strong>hidden</strong> from players.
+  <button type="button" class="btn btn-small btn-primary" style="margin-left:0.5rem;" onclick="document.getElementById('toggle-publish-btn').click()">Publish Now</button>
+</div>
+<% } %>
 
 <% if (isDM) { %>
   <div id="upload-form" style="display:none; margin-bottom: 1rem;">
@@ -1617,18 +1624,15 @@
     scaleMinus.addEventListener('click', function() { applyScaleDelta(-scaleDelta); });
   }
 
-  // ---- Toggle Hidden ----
-  var toggleHiddenBtn = document.getElementById('toggle-hidden-btn');
-  if (toggleHiddenBtn) {
-    toggleHiddenBtn.addEventListener('click', function() {
-      fetch('/map/<%= map.id %>/toggle-hidden', {
+  // ---- Toggle Publish ----
+  var togglePublishBtn = document.getElementById('toggle-publish-btn');
+  if (togglePublishBtn) {
+    togglePublishBtn.addEventListener('click', function() {
+      fetch('/map/<%= map.id %>/toggle-publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }
       }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.success) {
-          toggleHiddenBtn.textContent = d.hidden ? '👁️ Unhide' : '🔒 Hide';
-          toggleHiddenBtn.title = d.hidden ? 'Unhide Map' : 'Hide Map';
-        }
+        if (d.success) location.reload();
       });
     });
   }

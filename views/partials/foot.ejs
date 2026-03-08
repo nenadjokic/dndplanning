@@ -124,10 +124,16 @@
         <button class="whatsnew-close-x" id="whatsnew-close-x" title="Close">&times;</button>
         <h2>What's New in v<%= appVersion %></h2>
         <div class="whatsnew-content">
-          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Bug Fixes & Improvements <span style="color:var(--text-secondary);font-size:0.8rem;">(v3.0.3)</span></h3>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem;">Map Publish & View as Player <span style="color:var(--text-secondary);font-size:0.8rem;">(v3.0.4)</span></h3>
           <ul class="whatsnew-list">
-            <li><strong>SSE Connection Fix</strong> &mdash; Consolidated 5 separate SSE connections into 1 shared connection, fixing map features failing to load in Safari and HTTP/1.1 environments</li>
-            <li><strong>Map Hierarchy Editing</strong> &mdash; Edit modal on Maps page now includes parent map dropdown for organizing map hierarchies</li>
+            <li><strong>Map Publish System</strong> &mdash; Maps are hidden by default; DMs publish them individually or in bulk to make them visible to players</li>
+            <li><strong>View as Player</strong> &mdash; DMs can toggle a navbar switch to preview the app exactly as a player sees it &mdash; fog of war, no DM controls, hidden maps</li>
+            <li><strong>Secret Page</strong> &mdash; Players trying to access unpublished maps get a fun Zelda-inspired "It's a Secret to Everybody!" page</li>
+          </ul>
+          <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Previous Updates <span style="color:var(--text-secondary);font-size:0.8rem;">(v3.0.3)</span></h3>
+          <ul class="whatsnew-list">
+            <li><strong>SSE Connection Fix</strong> &mdash; Consolidated 5 SSE connections into 1, fixing map features in Safari</li>
+            <li><strong>Map Hierarchy Editing</strong> &mdash; Parent map dropdown in Edit modal</li>
           </ul>
           <h3 style="color: var(--gold); font-size: 0.95rem; margin-bottom: 0.5rem; margin-top: 1rem;">Previous Fixes <span style="color:var(--text-secondary);font-size:0.8rem;">(v3.0.2)</span></h3>
           <ul class="whatsnew-list">

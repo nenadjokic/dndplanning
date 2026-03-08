@@ -1005,7 +1005,8 @@ try {
     { table: 'loot_items', column: 'campaign_id', sql: 'ALTER TABLE loot_items ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)' },
     { table: 'handouts', column: 'campaign_id', sql: 'ALTER TABLE handouts ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)' },
     { table: 'encounters', column: 'campaign_id', sql: 'ALTER TABLE encounters ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)' },
-    { table: 'campaign_arcs', column: 'campaign_id', sql: 'ALTER TABLE campaign_arcs ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)' }
+    { table: 'campaign_arcs', column: 'campaign_id', sql: 'ALTER TABLE campaign_arcs ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)' },
+    { table: 'maps', column: 'published', sql: 'ALTER TABLE maps ADD COLUMN published INTEGER DEFAULT 0' }
   ];
 
   for (const col of missingColumns) {
@@ -1018,6 +1019,17 @@ try {
       } else {
         console.log(`✓ ${col.table}.${col.column} already exists`);
       }
+    }
+  }
+
+  // Migrate existing maps to published (one-time: sets all non-hidden maps as published)
+  if (tableExists('maps') && columnExists('maps', 'published')) {
+    const unpublished = db.prepare('SELECT COUNT(*) as cnt FROM maps WHERE published = 0 AND hidden_by IS NULL').get();
+    if (unpublished.cnt > 0) {
+      db.exec('UPDATE maps SET published = 1 WHERE hidden_by IS NULL AND published = 0');
+      db.exec('UPDATE maps SET published = 0 WHERE hidden_by IS NOT NULL');
+      console.log('✅ Migrated existing maps to published state');
+      changesMade++;
     }
   }
 

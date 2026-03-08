@@ -1,6 +1,6 @@
-# Quest Planner v3.0.3 — D&D Session Scheduler
+# Quest Planner v3.0.4 — D&D Session Scheduler
 
-> **Latest release:** v3.0.3 (2026-03-08)
+> **Latest release:** v3.0.4 (2026-03-08)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -870,6 +870,12 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v3.0.4 (2026-03-08) Map Publish System & View as Player
+
+- **Map Publish System** — All maps are hidden by default; DMs publish individual maps to make them visible to players. Bulk publish/unpublish with checkbox selection.
+- **View as Player Toggle** — DMs and admins can preview the app as a player sees it (fog of war, hidden maps, no DM controls) via navbar toggle
+- **Zelda Secret Page** — Players attempting to access unpublished maps get a fun "It's a Secret to Everybody!" page
 
 ### v3.0.3 (2026-03-08) SSE Connection Fix & Map Improvements
 

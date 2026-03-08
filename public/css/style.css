@@ -2045,6 +2045,88 @@ select:hover {
   font-family: var(--font-body);
 }
 
+/* === View Mode Toggle (DM/Player) === */
+.view-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+.view-mode-label {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border-radius: 20px;
+  transition: 0.3s;
+}
+.toggle-slider:before {
+  content: "";
+  position: absolute;
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background: white;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(16px);
+}
+.toggle-gold { background-color: var(--gold); }
+.toggle-green { background-color: #27ae60; }
+
+/* === Map Unpublished State === */
+.map-index-card.map-unpublished {
+  opacity: 0.5;
+  position: relative;
+}
+.map-index-card.map-unpublished:hover {
+  opacity: 0.75;
+}
+.map-hidden-badge {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.08);
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+}
+.map-select-checkbox {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 3;
+  accent-color: var(--gold);
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  cursor: pointer;
+  -webkit-appearance: checkbox;
+  appearance: checkbox;
+  outline: 2px solid rgba(255,255,255,0.3);
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+
+@media (max-width: 480px) {
+  .view-mode-label { display: none; }
+}
+
 /* === Nav Link === */
 .nav-link {
   color: var(--gold);
@@ -10422,6 +10504,7 @@ body::after {
 
 /* Root map cards — large thumbnail on top */
 .map-index-card {
+  position: relative;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;

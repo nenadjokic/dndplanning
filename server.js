@@ -300,6 +300,20 @@ app.use('/api/', (req, res, next) => {
   apiLimiter(req, res, next);
 });
 
+// View as Player toggle (DM/Admin only)
+app.post('/api/view-mode', (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not logged in' });
+  if (req.user.role !== 'admin' && req.user.role !== 'dm') {
+    return res.status(403).json({ error: 'Not authorized' });
+  }
+  const mode = req.body.mode;
+  if (mode !== 'player' && mode !== 'dm') {
+    return res.status(400).json({ error: 'Invalid mode' });
+  }
+  req.session.viewAsPlayer = (mode === 'player');
+  res.json({ success: true, mode });
+});
+
 // SSE endpoint for real-time updates (no rate limit - it's long-lived connection)
 app.get('/api/events', (req, res) => {
   if (!req.user) return res.status(401).end();

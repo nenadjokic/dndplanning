@@ -46,7 +46,8 @@ router.get('/', requireLogin, (req, res) => {
   const campJoin = addonEnabled('campaigns') ? 'LEFT JOIN campaigns camp ON s.campaign_id = camp.id' : '';
   const campSelect = addonEnabled('campaigns') ? ', camp.name as campaign_name, camp.color as campaign_color' : '';
 
-  if (req.user.role === 'dm' || req.user.role === 'admin') {
+  const effectiveRole = res.locals.effectiveRole || req.user.role;
+  if (effectiveRole === 'dm' || effectiveRole === 'admin') {
     const sessions = db.prepare(`
       SELECT s.*, sl.date_time as confirmed_date, sl.label as confirmed_label
         ${campSelect}

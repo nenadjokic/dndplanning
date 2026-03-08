@@ -86,20 +86,19 @@ function mapUpload(req, res, next) {
   upload(req, res, next);
 }
 
-// Maps index — tree view (with hidden map filtering + campaign filter)
+// Maps index — tree view (with published map filtering + campaign filter)
 router.get('/', requireLogin, (req, res) => {
-  const isDM = req.user.role === 'dm' || req.user.role === 'admin';
-  const isAdmin = req.user.role === 'admin';
+  const effectiveRole = res.locals.effectiveRole || req.user.role;
+  const isDM = effectiveRole === 'dm' || effectiveRole === 'admin';
+  const isAdmin = effectiveRole === 'admin';
   const campaignFilter = req.query.campaign_id;
   let maps;
 
   let baseWhere = '';
   const params = [];
-  if (!isAdmin && !isDM) {
-    baseWhere = 'WHERE hidden_by IS NULL';
-  } else if (isDM && !isAdmin) {
-    baseWhere = 'WHERE (hidden_by IS NULL OR created_by = ?)';
-    params.push(req.user.id);
+  if (!isDM) {
+    // Players only see published maps
+    baseWhere = 'WHERE published = 1';
   }
 
   // Apply campaign filter
@@ -139,6 +138,18 @@ router.post('/', requireLogin, requireDM, (req, res) => {
 
   req.flash('success', 'Map created.');
   res.redirect('/map/' + mapId);
+});
+
+// Bulk publish/unpublish maps (must be before /:id routes)
+router.post('/bulk-publish', requireLogin, requireDM, express.json(), (req, res) => {
+  const { map_ids, action } = req.body;
+  if (!Array.isArray(map_ids) || map_ids.length === 0) {
+    return res.status(400).json({ error: 'No maps selected' });
+  }
+  const val = action === 'unpublish' ? 0 : 1;
+  const placeholders = map_ids.map(() => '?').join(',');
+  db.prepare(`UPDATE maps SET published = ? WHERE id IN (${placeholders})`).run(val, ...map_ids);
+  res.json({ success: true, count: map_ids.length });
 });
 
 // Edit map metadata (name, type, description, campaign)
@@ -327,13 +338,13 @@ router.get('/:id', requireLogin, (req, res) => {
     req.flash('error', 'Map not found.');
     return res.redirect('/map');
   }
-  const isDM = req.user.role === 'dm' || req.user.role === 'admin';
-  const isAdmin = req.user.role === 'admin';
+  const effectiveRole = res.locals.effectiveRole || req.user.role;
+  const isDM = effectiveRole === 'dm' || effectiveRole === 'admin';
+  const isAdmin = effectiveRole === 'admin';
 
-  // Block access to hidden maps (unless creator or admin)
-  if (map.hidden_by && map.created_by !== req.user.id && !isAdmin) {
-    req.flash('error', 'Map not found.');
-    return res.redirect('/map');
+  // Block player access to unpublished maps
+  if (!map.published && !isDM) {
+    return res.render('map-secret', { pageTitle: "It's a Secret!" });
   }
 
   const locations = db.prepare('SELECT * FROM map_locations WHERE map_id = ? ORDER BY created_at').all(map.id);
@@ -668,7 +679,8 @@ router.get('/:id/characters', requireLogin, express.json(), (req, res) => {
 router.get('/:id/token-state', requireLogin, (req, res) => {
   const map = db.prepare('SELECT id, fog_enabled, fog_data FROM maps WHERE id = ?').get(req.params.id);
   if (!map) return res.status(404).json({ error: 'Map not found' });
-  const isDMUser = req.user.role === 'dm' || req.user.role === 'admin';
+  const eRole = res.locals.effectiveRole || req.user.role;
+  const isDMUser = eRole === 'dm' || eRole === 'admin';
   // Player tokens
   const tokens = db.prepare(`
     SELECT mt.id, mt.character_id, mt.x, mt.y, mt.scale,
@@ -900,7 +912,8 @@ router.post('/:id/fog/toggle', requireLogin, requireDM, express.json(), (req, re
 router.get('/:id/fog', requireLogin, (req, res) => {
   const map = db.prepare('SELECT id, fog_enabled, fog_data, fog_draft, fog_explored FROM maps WHERE id = ?').get(req.params.id);
   if (!map) return res.status(404).json({ error: 'Map not found' });
-  const isDM = req.user.role === 'dm' || req.user.role === 'admin';
+  const eRole = res.locals.effectiveRole || req.user.role;
+  const isDM = eRole === 'dm' || eRole === 'admin';
   res.json({
     fog_enabled: map.fog_enabled,
     fog_data: map.fog_data || null,
@@ -942,17 +955,13 @@ router.post('/:id/fog/explored', requireLogin, express.json({ limit: '5mb' }), (
   res.json({ success: true });
 });
 
-// Toggle map hidden
-router.post('/:id/toggle-hidden', requireLogin, requireDM, express.json(), (req, res) => {
+// Publish/Unpublish map
+router.post('/:id/toggle-publish', requireLogin, requireDM, express.json(), (req, res) => {
   const map = db.prepare('SELECT * FROM maps WHERE id = ?').get(req.params.id);
   if (!map) return res.status(404).json({ error: 'Map not found' });
-  // Only creator can hide/unhide
-  if (map.created_by !== req.user.id && req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Only the map creator can hide/unhide' });
-  }
-  const newVal = map.hidden_by ? null : req.user.id;
-  db.prepare('UPDATE maps SET hidden_by = ? WHERE id = ?').run(newVal, map.id);
-  res.json({ success: true, hidden: !!newVal });
+  const newVal = map.published ? 0 : 1;
+  db.prepare('UPDATE maps SET published = ? WHERE id = ?').run(newVal, map.id);
+  res.json({ success: true, published: !!newVal });
 });
 
 // ---- NPC Token System (map-specific routes below /:id) ----
@@ -1670,7 +1679,8 @@ router.get('/:id/combat/state', requireLogin, (req, res) => {
   const enc = db.prepare('SELECT * FROM combat_encounters WHERE map_id = ?').get(mapId);
   if (!enc) return res.json({ active: false });
 
-  const isDMUser = req.user.role === 'dm' || req.user.role === 'admin';
+  const eRole = res.locals.effectiveRole || req.user.role;
+  const isDMUser = eRole === 'dm' || eRole === 'admin';
 
   // If hidden from players, return minimal
   if (!isDMUser && enc.visibility === 'hidden') {

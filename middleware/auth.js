@@ -51,9 +51,15 @@ function attachUser(req, res, next) {
       const allUsernames = db.prepare('SELECT username FROM users ORDER BY username').all().map(u => u.username);
       res.locals.allUsernames = allUsernames;
 
-      // Inject addon nav items for this user
+      // Compute effective role for "View as Player" mode
+      const viewAsPlayer = req.session.viewAsPlayer && (user.role === 'admin' || user.role === 'dm');
+      res.locals.viewAsPlayer = !!viewAsPlayer;
+      res.locals.effectiveRole = viewAsPlayer ? 'player' : user.role;
+
+      // Inject addon nav items for this user (use effective role for nav filtering)
+      const navUser = viewAsPlayer ? { ...user, role: 'player' } : user;
       if (addonManager) {
-        res.locals.addonNavItems = addonManager.getNavItems(user);
+        res.locals.addonNavItems = addonManager.getNavItems(navUser);
       } else {
         res.locals.addonNavItems = [];
       }
