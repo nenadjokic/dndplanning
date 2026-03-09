@@ -491,7 +491,7 @@ router.post('/:id/confirm', requireLogin, requireDM, (req, res) => {
   const confirmedPlayers = db.prepare(`
     SELECT u.username FROM votes v
     JOIN users u ON v.user_id = u.id
-    WHERE v.slot_id = ? AND v.vote = 'available'
+    WHERE v.slot_id = ? AND v.status = 'available'
   `).all(slot_id).map(r => r.username);
   const sessionLocation = session.location_id ? db.prepare('SELECT name FROM map_locations WHERE id = ?').get(session.location_id) : null;
   messenger.send('session_confirmed', {

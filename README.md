@@ -1,6 +1,6 @@
-# Quest Planner v3.0.10 — D&D Session Scheduler
+# Quest Planner v3.0.11 — D&D Session Scheduler
 
-> **Latest release:** v3.0.10 (2026-03-09)
+> **Latest release:** v3.0.11 (2026-03-09)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -870,6 +870,10 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v3.0.11 (2026-03-09) Fix Proclaim Quest error
+
+- **Proclaim Quest Fix** — Fixed internal server error when confirming a quest date (wrong column name in votes query)
 
 ### v3.0.10 (2026-03-09) Submit Adventure Pack Redesign
 
