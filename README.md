@@ -1,6 +1,6 @@
-# Quest Planner v3.0.11 — D&D Session Scheduler
+# Quest Planner v3.0.12 — D&D Session Scheduler
 
-> **Latest release:** v3.0.11 (2026-03-09)
+> **Latest release:** v3.0.12 (2026-03-09)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -870,6 +870,16 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v3.0.12 (2026-03-09) Discord Bot addon & notification refactor
+
+- **Central Notifier** — Replaced monolithic messenger with plugin-based notification system; messaging addons register via event bus
+- **Discord Bot Integration** — Session events (create, confirm, cancel, complete) now flow through Discord Bot addon with rich embeds and emoji RSVP
+- **Reply-based Voting** — Reply to RSVP messages in Discord with "mogu", "da", "ne mogu", "mozda" to vote directly from chat
+- **Dice Roll Fix** — Fixed duplicate bot responses on `/quest roll` after settings restart
+- **Scheduler Fix** — Fixed `v.vote` → `v.status` column bug in session reminder queries
+- **Telegram & Viber addons** — Moved to standalone community addons (install from Browse Store)
+- **Removed** — Old Communications Center from Guild Settings; Discord/Telegram/Viber removed from core
 
 ### v3.0.11 (2026-03-09) Fix Proclaim Quest error
 

@@ -130,95 +130,6 @@
 </div>
 <% } %>
 
-<% if (addonEnabled('messenger')) { %>
-<div class="card comms-section" style="margin-top: 1.5rem;">
-  <h2>Communications Center</h2>
-  <p class="text-muted" style="margin-bottom: 1rem;">Configure a messaging provider to broadcast session events to your guild.</p>
-
-  <form action="/admin/notifications" method="POST" id="comms-form">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <div class="form-group">
-      <label for="comms-provider">Provider</label>
-      <select name="active_provider" id="comms-provider" class="role-select" style="width: 100%; padding: 0.5rem;" onchange="toggleProviderFields()">
-        <option value="none">None</option>
-        <option value="discord">Discord</option>
-        <option value="telegram">Telegram</option>
-        <option value="viber">Viber</option>
-      </select>
-    </div>
-
-    <div class="provider-fieldset" id="fields-discord">
-      <div class="discord-setup-guide" style="margin-bottom: 1rem; padding: 1rem; background: rgba(88, 101, 242, 0.08); border: 1px solid rgba(88, 101, 242, 0.3); border-radius: var(--radius);">
-        <h3 style="color: #5865F2; margin-bottom: 0.5rem; font-size: 1rem;">Discord Bot Setup Guide</h3>
-        <ol style="margin: 0; padding-left: 1.25rem; font-size: 0.88rem; color: var(--text-secondary); line-height: 1.7;">
-          <li>Go to <a href="https://discord.com/developers/applications" target="_blank" rel="noopener noreferrer">discord.com/developers/applications</a></li>
-          <li>Click <strong>"New Application"</strong> &rarr; give it a name (e.g. "Quest Planner") &rarr; Create</li>
-          <li>In the left sidebar, click <strong>"Bot"</strong></li>
-          <li>Click <strong>"Reset Token"</strong> &rarr; confirm &rarr; <strong>copy the token</strong> and paste it below</li>
-          <li>In the left sidebar, click <strong>"OAuth2"</strong></li>
-          <li>Scroll down to <strong>"OAuth2 URL Generator"</strong></li>
-          <li>Under <em>Scopes</em>, check <strong>"bot"</strong></li>
-          <li>Under <em>Bot Permissions</em>, check: <strong>"Send Messages"</strong> and <strong>"Embed Links"</strong></li>
-          <li><strong>Copy the generated URL</strong> at the bottom and open it in your browser</li>
-          <li>Select your Discord server and click <strong>"Authorize"</strong></li>
-          <li>The bot is now in your server! Copy the channel ID below</li>
-        </ol>
-      </div>
-      <div class="form-group">
-        <label for="discord_bot_token">Bot Token</label>
-        <input type="text" name="discord_bot_token" id="discord_bot_token" class="form-input" placeholder="Paste bot token from Step 4">
-        <small class="form-hint">From the Bot page &rarr; Reset Token &rarr; Copy</small>
-      </div>
-      <div class="form-group">
-        <label for="discord_channel_id">Channel ID</label>
-        <input type="text" name="discord_channel_id" id="discord_channel_id" class="form-input" placeholder="e.g. 1234567890123456789">
-        <small class="form-hint">In Discord: Settings &rarr; Advanced &rarr; enable <strong>Developer Mode</strong>. Then right-click the channel &rarr; <strong>Copy Channel ID</strong>.</small>
-      </div>
-    </div>
-
-    <div class="provider-fieldset" id="fields-telegram">
-      <div class="form-group">
-        <label for="telegram_bot_token">Bot Token</label>
-        <input type="text" name="telegram_bot_token" id="telegram_bot_token" class="form-input" placeholder="Telegram bot token">
-        <small class="form-hint">Message @BotFather on Telegram &rarr; /newbot &rarr; copy the token</small>
-      </div>
-      <div class="form-group">
-        <label for="telegram_chat_id">Chat ID</label>
-        <input type="text" name="telegram_chat_id" id="telegram_chat_id" class="form-input" placeholder="Telegram chat or group ID">
-        <small class="form-hint">Add bot to your group, send a message, then visit api.telegram.org/bot{TOKEN}/getUpdates to find the chat_id</small>
-      </div>
-    </div>
-
-    <div class="provider-fieldset" id="fields-viber">
-      <div class="form-group">
-        <label for="viber_auth_token">Auth Token</label>
-        <input type="text" name="viber_auth_token" id="viber_auth_token" class="form-input" placeholder="Viber auth token">
-        <small class="form-hint">Create a bot at partners.viber.com &rarr; copy the Auth Token</small>
-      </div>
-      <div class="form-group">
-        <label for="viber_admin_id">Admin / Subscriber ID</label>
-        <input type="text" name="viber_admin_id" id="viber_admin_id" class="form-input" placeholder="Viber receiver ID">
-        <small class="form-hint">Your Viber user ID (subscribe to your bot, then check the Viber API for your ID)</small>
-      </div>
-    </div>
-
-    <div class="provider-fieldset" id="fields-public-url" style="display: none;">
-      <div class="form-group">
-        <label for="public_url">Public URL</label>
-        <input type="text" name="public_url" id="public_url" class="form-input" placeholder="https://quest.example.com">
-        <small class="form-hint">Your app's public address (e.g. https://quest.example.com). Used for message links and Viber webhook.</small>
-      </div>
-    </div>
-
-    <div class="comms-actions">
-      <button type="submit" class="btn btn-primary">Save</button>
-      <button type="button" class="btn btn-outline" onclick="testConnection()">Test Connection</button>
-    </div>
-  </form>
-
-  <div id="comms-test-result" class="comms-test-result"></div>
-</div>
-<% } %>
 
 <div class="card" style="margin-top: 1.5rem;">
   <h2>Backup & Restore</h2>
@@ -282,59 +193,6 @@
 </div>
 
 <script>
-function toggleProviderFields() {
-  var provider = document.getElementById('comms-provider').value;
-  document.querySelectorAll('.provider-fieldset').forEach(function(el) {
-    el.classList.remove('active');
-  });
-  if (provider !== 'none') {
-    var fields = document.getElementById('fields-' + provider);
-    if (fields) fields.classList.add('active');
-    document.getElementById('fields-public-url').classList.add('active');
-  }
-}
-
-function loadCommsConfig() {
-  fetch('/admin/notifications/config')
-    .then(function(r) { return r.json(); })
-    .then(function(cfg) {
-      if (cfg.active_provider) {
-        document.getElementById('comms-provider').value = cfg.active_provider;
-      }
-      if (cfg.discord_bot_token) document.getElementById('discord_bot_token').value = cfg.discord_bot_token;
-      if (cfg.discord_channel_id) document.getElementById('discord_channel_id').value = cfg.discord_channel_id;
-      if (cfg.telegram_bot_token) document.getElementById('telegram_bot_token').value = cfg.telegram_bot_token;
-      if (cfg.telegram_chat_id) document.getElementById('telegram_chat_id').value = cfg.telegram_chat_id;
-      if (cfg.viber_auth_token) document.getElementById('viber_auth_token').value = cfg.viber_auth_token;
-      if (cfg.viber_admin_id) document.getElementById('viber_admin_id').value = cfg.viber_admin_id;
-      if (cfg.public_url) document.getElementById('public_url').value = cfg.public_url;
-      toggleProviderFields();
-    })
-    .catch(function() {});
-}
-
-function testConnection() {
-  var resultDiv = document.getElementById('comms-test-result');
-  resultDiv.textContent = 'Testing...';
-  resultDiv.className = 'comms-test-result';
-
-  fetch('/admin/notifications/test', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (data.success) {
-        resultDiv.textContent = 'Connection successful! Test message sent.';
-        resultDiv.className = 'comms-test-result comms-test-success';
-      } else {
-        resultDiv.textContent = 'Connection failed: ' + (data.error || 'Unknown error');
-        resultDiv.className = 'comms-test-result comms-test-error';
-      }
-    })
-    .catch(function() {
-      resultDiv.textContent = 'Connection test failed.';
-      resultDiv.className = 'comms-test-result comms-test-error';
-    });
-}
-
 function loadGoogleOAuthConfig() {
   // Show redirect URI hint
   var hint = document.getElementById('google-redirect-uri-hint');
@@ -652,7 +510,6 @@ function runBackupNow() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  if (document.getElementById('comms-provider')) loadCommsConfig();
   if (document.getElementById('google_enabled')) loadGoogleOAuthConfig();
   loadDndDataStatus();
   loadBackupList();

@@ -2,7 +2,7 @@ const express = require('express');
 const db = require('../db/connection');
 const { requireLogin, requireDM, requireAdmin } = require('../middleware/auth');
 const { notifyMentions, notifySessionConfirmed } = require('../helpers/notifications');
-const messenger = require('../helpers/messenger');
+const notifier = require('../helpers/notifier');
 const pushService = require('../helpers/push');
 const sse = require('../helpers/sse');
 const router = express.Router();
@@ -105,12 +105,13 @@ router.post('/', requireLogin, requireDM, (req, res) => {
     sessionId: sessionId
   });
 
-  const slotDates = db.prepare('SELECT date_time FROM slots WHERE session_id = ? ORDER BY date_time').all(sessionId).map(s => {
+  const slots = db.prepare('SELECT * FROM slots WHERE session_id = ? ORDER BY date_time').all(sessionId);
+  const slotDates = slots.map(s => {
     const d = new Date(s.date_time);
     return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   });
   const playerCount = db.prepare("SELECT COUNT(*) as c FROM users WHERE role != 'dm' AND role != 'admin'").get().c;
-  messenger.send('session_created', { title, category: sessionCategory, slotDates, playerCount, link: '/sessions/' + sessionId, actorName: req.user.username }).catch(() => {});
+  notifier.send('session_created', { title, description, category: sessionCategory, sessionId, slots, slotDates, playerCount, link: '/sessions/' + sessionId, actorName: req.user.username }).catch(() => {});
   pushService.sendToAll('New Quest Posted', `"${title}" — Vote now!`, '/sessions/' + sessionId).catch(() => {});
   req.flash('success', 'Quest session posted to the tavern board!');
   res.redirect('/sessions/' + sessionId);
@@ -494,7 +495,7 @@ router.post('/:id/confirm', requireLogin, requireDM, (req, res) => {
     WHERE v.slot_id = ? AND v.status = 'available'
   `).all(slot_id).map(r => r.username);
   const sessionLocation = session.location_id ? db.prepare('SELECT name FROM map_locations WHERE id = ?').get(session.location_id) : null;
-  messenger.send('session_confirmed', {
+  notifier.send('session_confirmed', {
     title: session.title, date: slotDate, time: slotTime,
     label: confirmedSlot ? confirmedSlot.label : '',
     playerList: confirmedPlayers,
@@ -525,7 +526,7 @@ router.post('/:id/cancel', requireLogin, requireDM, (req, res) => {
     sessionId: session.id
   });
 
-  messenger.send('session_cancelled', { title: session.title, link: '/sessions/' + session.id, actorName: req.user.username }).catch(() => {});
+  notifier.send('session_cancelled', { title: session.title, link: '/sessions/' + session.id, actorName: req.user.username }).catch(() => {});
   pushService.sendToAll('Quest Cancelled', `"${session.title}" has been cancelled.`, '/sessions/' + session.id).catch(() => {});
 
   req.flash('success', 'The quest has been cancelled.');
@@ -570,7 +571,8 @@ router.post('/:id/reopen', requireLogin, requireDM, (req, res) => {
   db.prepare('UPDATE sessions SET status = ?, confirmed_slot_id = NULL WHERE id = ?')
     .run('open', session.id);
 
-  messenger.send('session_reopened', { title: session.title, link: '/sessions/' + session.id, actorName: req.user.username }).catch(() => {});
+  const slots = db.prepare('SELECT * FROM slots WHERE session_id = ? ORDER BY date_time').all(session.id);
+  notifier.send('session_reopened', { title: session.title, description: session.description, sessionId: session.id, slots, link: '/sessions/' + session.id, actorName: req.user.username }).catch(() => {});
 
   req.flash('success', 'The quest board has been reopened!');
   res.redirect('/sessions/' + session.id);
@@ -624,7 +626,8 @@ router.post('/:id/generate-next', requireLogin, requireDM, (req, res) => {
     title: session.title,
     sessionId: newSessionId
   });
-  messenger.send('session_created', { title: session.title, category: session.category, link: '/sessions/' + newSessionId, actorName: req.user.username }).catch(() => {});
+  const newSlots = db.prepare('SELECT * FROM slots WHERE session_id = ? ORDER BY date_time').all(newSessionId);
+  notifier.send('session_created', { title: session.title, description: session.description, category: session.category, sessionId: newSessionId, slots: newSlots, link: '/sessions/' + newSessionId, actorName: req.user.username }).catch(() => {});
   pushService.sendToAll('Next Session Posted', `"${session.title}" — Vote now!`, '/sessions/' + newSessionId).catch(() => {});
 
   req.flash('success', 'Next recurring session created!');
@@ -686,7 +689,8 @@ router.post('/:id/skip', requireLogin, requireDM, (req, res) => {
     title: session.title,
     sessionId: newSessionId
   });
-  messenger.send('session_created', { title: session.title, category: session.category, link: '/sessions/' + newSessionId, actorName: req.user.username }).catch(() => {});
+  const skipSlots = db.prepare('SELECT * FROM slots WHERE session_id = ? ORDER BY date_time').all(newSessionId);
+  notifier.send('session_created', { title: session.title, description: session.description, category: session.category, sessionId: newSessionId, slots: skipSlots, link: '/sessions/' + newSessionId, actorName: req.user.username }).catch(() => {});
   pushService.sendToAll('Next Session Posted', `"${session.title}" (skipped this week)`, '/sessions/' + newSessionId).catch(() => {});
 
   req.flash('success', 'Session skipped — next recurring session created.');
@@ -710,7 +714,7 @@ router.post('/:id/summary', requireLogin, requireDM, (req, res) => {
   if (session.status === 'confirmed') {
     db.prepare('UPDATE sessions SET summary = ?, status = ? WHERE id = ?')
       .run(summary.trim(), 'completed', session.id);
-    messenger.send('session_completed', {
+    notifier.send('session_completed', {
       title: session.title, summary: summary.trim(),
       link: '/sessions/' + session.id, actorName: req.user.username
     }).catch(() => {});
@@ -719,7 +723,7 @@ router.post('/:id/summary', requireLogin, requireDM, (req, res) => {
   } else {
     db.prepare('UPDATE sessions SET summary = ? WHERE id = ?')
       .run(summary.trim(), session.id);
-    messenger.send('session_recap', {
+    notifier.send('session_recap', {
       title: session.title, summary: summary.trim(),
       link: '/sessions/' + session.id, actorName: req.user.username
     }).catch(() => {});

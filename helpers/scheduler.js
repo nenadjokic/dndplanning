@@ -5,7 +5,7 @@
  */
 const cron = require('node-cron');
 const db = require('../db/connection');
-const messenger = require('./messenger');
+const notifier = require('./notifier');
 const pushService = require('./push');
 
 function checkReminders() {
@@ -31,10 +31,10 @@ function checkReminders() {
         SELECT u.username FROM votes v
         JOIN users u ON v.user_id = u.id
         JOIN slots sl ON v.slot_id = sl.id
-        WHERE sl.session_id = ? AND v.vote = 'available'
+        WHERE sl.session_id = ? AND v.status = 'available'
       `).all(session.id).map(r => r.username);
 
-      messenger.send('session_reminder', {
+      notifier.send('session_reminder', {
         title: session.title,
         timeUntil: '24 hours',
         playerList,
@@ -70,10 +70,10 @@ function checkReminders() {
         SELECT u.username FROM votes v
         JOIN users u ON v.user_id = u.id
         JOIN slots sl ON v.slot_id = sl.id
-        WHERE sl.session_id = ? AND v.vote = 'available'
+        WHERE sl.session_id = ? AND v.status = 'available'
       `).all(session.id).map(r => r.username);
 
-      messenger.send('session_reminder', {
+      notifier.send('session_reminder', {
         title: session.title,
         timeUntil: '1 hour',
         playerList,
