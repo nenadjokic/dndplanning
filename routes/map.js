@@ -209,6 +209,8 @@ router.post('/bulk-delete', requireLogin, requireDM, express.json(), (req, res) 
 // NPC Management page (must be before /:id routes)
 router.get('/npc-manager', requireLogin, requireDM, (req, res) => {
   const categories = db.prepare('SELECT * FROM npc_categories ORDER BY name').all();
+  // Ensure parent_id is available
+  for (const c of categories) { if (c.parent_id === undefined) c.parent_id = null; }
   const npcs = db.prepare('SELECT * FROM npc_tokens ORDER BY name').all();
   for (const n of npcs) {
     if (n.avatar && !n.avatar.startsWith('/')) n.avatar = '/avatars/' + n.avatar;
@@ -379,6 +381,10 @@ router.get('/npcs', requireLogin, requireDM, (req, res) => {
       n.category_ids = n.category_id ? [n.category_id] : [];
     }
   }
+  // Ensure parent_id is included (may be undefined on old DBs)
+  for (const c of categories) {
+    if (c.parent_id === undefined) c.parent_id = null;
+  }
   res.json({ categories, npcs });
 });
 
@@ -386,8 +392,13 @@ router.get('/npcs', requireLogin, requireDM, (req, res) => {
 router.post('/npcs/categories', requireLogin, requireDM, express.json(), (req, res) => {
   const name = (req.body.name || '').trim();
   if (!name) return res.status(400).json({ error: 'Name required' });
-  const result = db.prepare('INSERT INTO npc_categories (name, created_by) VALUES (?, ?)').run(name, req.user.id);
-  res.json({ success: true, id: result.lastInsertRowid, name });
+  const parentId = parseInt(req.body.parent_id) || null;
+  if (parentId) {
+    const parent = db.prepare('SELECT id FROM npc_categories WHERE id = ?').get(parentId);
+    if (!parent) return res.status(400).json({ error: 'Parent category not found' });
+  }
+  const result = db.prepare('INSERT INTO npc_categories (name, parent_id, created_by) VALUES (?, ?, ?)').run(name, parentId, req.user.id);
+  res.json({ success: true, id: result.lastInsertRowid, name, parent_id: parentId });
 });
 
 // Rename NPC category
@@ -400,12 +411,39 @@ router.post('/npcs/categories/:catId/rename', requireLogin, requireDM, express.j
   res.json({ success: true });
 });
 
-// Delete NPC category
+// Update NPC category parent
+router.post('/npcs/categories/:catId/move', requireLogin, requireDM, express.json(), (req, res) => {
+  const cat = db.prepare('SELECT id FROM npc_categories WHERE id = ?').get(req.params.catId);
+  if (!cat) return res.status(404).json({ error: 'Category not found' });
+  const parentId = req.body.parent_id === null || req.body.parent_id === '' ? null : parseInt(req.body.parent_id) || null;
+  // Prevent circular reference (can't be own parent or child of self)
+  if (parentId === cat.id) return res.status(400).json({ error: 'Cannot be its own parent' });
+  if (parentId) {
+    const parent = db.prepare('SELECT id, parent_id FROM npc_categories WHERE id = ?').get(parentId);
+    if (!parent) return res.status(400).json({ error: 'Parent not found' });
+    if (parent.parent_id === cat.id) return res.status(400).json({ error: 'Circular reference' });
+  }
+  db.prepare('UPDATE npc_categories SET parent_id = ? WHERE id = ?').run(parentId, cat.id);
+  res.json({ success: true });
+});
+
+// Delete NPC category (and all subcategories via CASCADE)
 router.post('/npcs/categories/:catId/delete', requireLogin, requireDM, express.json(), (req, res) => {
   const cat = db.prepare('SELECT id FROM npc_categories WHERE id = ?').get(req.params.catId);
   if (!cat) return res.status(404).json({ error: 'Category not found' });
-  db.prepare('UPDATE npc_tokens SET category_id = NULL WHERE category_id = ?').run(cat.id);
-  try { db.prepare('DELETE FROM npc_token_categories WHERE category_id = ?').run(cat.id); } catch (e) {}
+  // Get all descendant category IDs (children, grandchildren, etc.)
+  const allIds = [cat.id];
+  const findChildren = (pid) => {
+    const children = db.prepare('SELECT id FROM npc_categories WHERE parent_id = ?').all(pid);
+    for (const c of children) { allIds.push(c.id); findChildren(c.id); }
+  };
+  findChildren(cat.id);
+  // Clean up NPC assignments for all affected categories
+  for (const id of allIds) {
+    db.prepare('UPDATE npc_tokens SET category_id = NULL WHERE category_id = ?').run(id);
+    try { db.prepare('DELETE FROM npc_token_categories WHERE category_id = ?').run(id); } catch (e) {}
+  }
+  // CASCADE will delete children
   db.prepare('DELETE FROM npc_categories WHERE id = ?').run(cat.id);
   res.json({ success: true });
 });

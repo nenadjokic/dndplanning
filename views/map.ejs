@@ -146,18 +146,23 @@
     </button>
     </div>
   </div>
-  <div class="map-container" id="map-container"></div>
-  <% if (isDM) { %>
-  <!-- NPC Sidebar (drag-to-place) -->
-  <div id="npc-sidebar" class="npc-sidebar" style="display:none;">
-    <div class="npc-sidebar-header">
-      <span>NPCs</span>
-      <button type="button" class="npc-sidebar-close" id="npc-sidebar-close">&times;</button>
+  <div class="map-container" id="map-container" style="position:relative;">
+    <% if (isDM) { %>
+    <!-- NPC Sidebar (drag-to-place) -->
+    <div id="npc-sidebar" class="npc-sidebar" style="display:none;">
+      <div class="npc-sidebar-header">
+        <span>NPCs</span>
+        <button type="button" class="npc-sidebar-close" id="npc-sidebar-close">&times;</button>
+      </div>
+      <input type="text" id="npc-sidebar-search" placeholder="Search..." class="npc-sidebar-search">
+      <div id="npc-sidebar-list" class="npc-sidebar-list"></div>
+      <div style="flex-shrink:0;padding:0.25rem 0.35rem;border-top:1px solid var(--border);">
+        <button type="button" class="btn btn-outline btn-small" id="npc-sidebar-manage" style="width:100%;font-size:0.7rem;">Manage Library</button>
+      </div>
     </div>
-    <input type="text" id="npc-sidebar-search" placeholder="Search..." class="npc-sidebar-search">
-    <div id="npc-sidebar-list" class="npc-sidebar-list"></div>
-    <button type="button" class="btn btn-outline btn-small" id="npc-sidebar-manage" style="width:100%;margin-top:0.25rem;font-size:0.7rem;">Manage Library</button>
+    <% } %>
   </div>
+  <% if (isDM) { %>
     <p class="form-hint map-hint" style="margin-top: 0.5rem;">Click anywhere on the map to add a location<%= canAddChild ? ' or sub-map' : '' %>.<% if (showPartyMarker) { %> Drag the gold party marker to move it.<% } %></p>
   <% } %>
 </div>
@@ -3307,26 +3312,71 @@
             }
           });
           var catNames = {};
-          cats.forEach(function(c) { catNames[c.id] = c.name; });
-          var order = [''].concat(cats.map(function(c) { return c.id; }));
-          order.forEach(function(catKey) {
-            var group = byCat[catKey];
-            if (!group || group.length === 0) return;
-            var catLabel = catKey ? catNames[catKey] : 'Uncategorized';
-            html += '<div class="npc-sidebar-cat" data-cat-key="' + catKey + '">';
-            html += '<div class="npc-sidebar-cat-header" data-toggle-cat="' + catKey + '">' + escHtml(catLabel) + ' <span style="font-size:0.65rem;color:var(--text-secondary);">(' + group.length + ')</span></div>';
+          var catParents = {};
+          cats.forEach(function(c) { catNames[c.id] = c.name; catParents[c.id] = c.parent_id || null; });
+
+          // Build hierarchical order: parent cats first, then their children
+          var parentCats = cats.filter(function(c) { return !c.parent_id; });
+          var childCats = cats.filter(function(c) { return c.parent_id; });
+
+          function renderNpcItem(n) {
+            var avatarHtml = n.avatar
+              ? '<img src="' + escHtml(n.avatar) + '" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid #c0392b;">'
+              : '<div style="width:28px;height:28px;border-radius:50%;background:var(--bg-darker);border:2px solid #c0392b;display:flex;align-items:center;justify-content:center;color:#e74c3c;font-size:0.65rem;font-weight:700;">' + escHtml(n.name.charAt(0).toUpperCase()) + '</div>';
+            return '<div class="npc-sidebar-item" draggable="true" data-npc-id="' + n.id + '" data-npc-name="' + escHtml(n.name) + '" data-npc-avatar="' + escHtml(n.avatar || '') + '" data-npc-max-hp="' + (n.max_hp || 0) + '">'
+              + avatarHtml
+              + '<span class="npc-sidebar-name">' + escHtml(n.name) + '</span>'
+              + '</div>';
+          }
+
+          // Render parent categories with their children nested
+          parentCats.forEach(function(parent) {
+            var children = childCats.filter(function(c) { return c.parent_id === parent.id; });
+            var parentGroup = byCat[parent.id] || [];
+            var hasContent = parentGroup.length > 0 || children.some(function(c) { return (byCat[c.id] || []).length > 0; });
+            if (!hasContent) return;
+
+            html += '<div class="npc-sidebar-cat" data-cat-key="' + parent.id + '">';
+            html += '<div class="npc-sidebar-cat-header npc-sidebar-cat-parent" data-toggle-cat="' + parent.id + '">' + escHtml(parent.name) + ' <span style="font-size:0.65rem;color:var(--text-secondary);">(' + parentGroup.length + ')</span></div>';
             html += '<div class="npc-sidebar-cat-items">';
-            group.forEach(function(n) {
-              var avatarHtml = n.avatar
-                ? '<img src="' + escHtml(n.avatar) + '" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid #c0392b;">'
-                : '<div style="width:28px;height:28px;border-radius:50%;background:var(--bg-darker);border:2px solid #c0392b;display:flex;align-items:center;justify-content:center;color:#e74c3c;font-size:0.65rem;font-weight:700;">' + escHtml(n.name.charAt(0).toUpperCase()) + '</div>';
-              html += '<div class="npc-sidebar-item" draggable="true" data-npc-id="' + n.id + '" data-npc-name="' + escHtml(n.name) + '" data-npc-avatar="' + escHtml(n.avatar || '') + '" data-npc-max-hp="' + (n.max_hp || 0) + '">'
-                + avatarHtml
-                + '<span class="npc-sidebar-name">' + escHtml(n.name) + '</span>'
-                + '</div>';
+            // Show parent's own NPCs
+            parentGroup.forEach(function(n) { html += renderNpcItem(n); });
+
+            // Show child categories nested
+            children.forEach(function(child) {
+              var childGroup = byCat[child.id] || [];
+              if (childGroup.length === 0) return;
+              html += '<div class="npc-sidebar-subcat" data-cat-key="' + child.id + '">';
+              html += '<div class="npc-sidebar-cat-header npc-sidebar-subcat-header" data-toggle-cat="sub-' + child.id + '" style="padding-left:1rem;font-size:0.65rem;">' + escHtml(child.name) + ' <span style="color:var(--text-secondary);">(' + childGroup.length + ')</span></div>';
+              html += '<div class="npc-sidebar-cat-items">';
+              childGroup.forEach(function(n) { html += renderNpcItem(n); });
+              html += '</div></div>';
             });
+
             html += '</div></div>';
           });
+
+          // Show categories without parents (flat, legacy)
+          var orphanCats = childCats.filter(function(c) { return !parentCats.find(function(p) { return p.id === c.parent_id; }); });
+          orphanCats.forEach(function(cat) {
+            var group = byCat[cat.id] || [];
+            if (group.length === 0) return;
+            html += '<div class="npc-sidebar-cat" data-cat-key="' + cat.id + '">';
+            html += '<div class="npc-sidebar-cat-header" data-toggle-cat="' + cat.id + '">' + escHtml(cat.name) + ' <span style="font-size:0.65rem;color:var(--text-secondary);">(' + group.length + ')</span></div>';
+            html += '<div class="npc-sidebar-cat-items">';
+            group.forEach(function(n) { html += renderNpcItem(n); });
+            html += '</div></div>';
+          });
+
+          // Uncategorized at the end
+          var uncatGroup = byCat[''] || [];
+          if (uncatGroup.length > 0) {
+            html += '<div class="npc-sidebar-cat" data-cat-key="">';
+            html += '<div class="npc-sidebar-cat-header" data-toggle-cat="">Uncategorized <span style="font-size:0.65rem;color:var(--text-secondary);">(' + uncatGroup.length + ')</span></div>';
+            html += '<div class="npc-sidebar-cat-items">';
+            uncatGroup.forEach(function(n) { html += renderNpcItem(n); });
+            html += '</div></div>';
+          }
           if (!html) html = '<p class="text-muted" style="font-size:0.75rem;padding:0.5rem;">No NPCs match search.</p>';
           npcSidebarList.innerHTML = html;
 
@@ -3390,7 +3440,7 @@
 
     npcPickerBtn.addEventListener('click', function() {
       var visible = npcSidebar.style.display !== 'none';
-      npcSidebar.style.display = visible ? 'none' : 'block';
+      npcSidebar.style.display = visible ? 'none' : 'flex';
       if (!visible) loadNpcSidebar();
     });
     npcSidebarClose.addEventListener('click', function() {

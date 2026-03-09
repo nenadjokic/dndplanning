@@ -208,6 +208,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS npc_categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
+    parent_id INTEGER REFERENCES npc_categories(id) ON DELETE CASCADE,
     created_by INTEGER REFERENCES users(id),
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
@@ -271,6 +272,9 @@ db.exec(`
 
 // Add alignment column to map_npc_tokens (idempotent)
 try { db.exec("ALTER TABLE map_npc_tokens ADD COLUMN alignment TEXT DEFAULT 'hostile'"); } catch (e) { /* already exists */ }
+
+// Add parent_id column to npc_categories (idempotent)
+try { db.exec("ALTER TABLE npc_categories ADD COLUMN parent_id INTEGER REFERENCES npc_categories(id) ON DELETE CASCADE"); } catch (e) { /* already exists */ }
 
 // Migrate existing single-category to junction table (one-time)
 try {
@@ -677,6 +681,17 @@ db.exec(`
   );
 `);
 
+// Handout categories (parent/child hierarchy like NPC categories)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS handout_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    parent_id INTEGER REFERENCES handout_categories(id) ON DELETE CASCADE,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
 // DM handout library
 db.exec(`
   CREATE TABLE IF NOT EXISTS handouts (
@@ -687,6 +702,7 @@ db.exec(`
     image_path TEXT,
     linked_npc_id INTEGER REFERENCES npc_tokens(id) ON DELETE SET NULL,
     linked_location_id INTEGER REFERENCES map_locations(id) ON DELETE SET NULL,
+    category_id INTEGER REFERENCES handout_categories(id) ON DELETE SET NULL,
     revealed INTEGER NOT NULL DEFAULT 0,
     created_by INTEGER NOT NULL REFERENCES users(id),
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -805,6 +821,9 @@ for (const sql of [
 ]) {
   try { db.exec(sql); } catch (e) { /* already exists */ }
 }
+
+// Add category_id to handouts (idempotent)
+try { db.exec("ALTER TABLE handouts ADD COLUMN category_id INTEGER REFERENCES handout_categories(id) ON DELETE SET NULL"); } catch (e) { /* already exists */ }
 
 // Backup config (Google Drive auto-backup via OAuth2)
 db.exec(`

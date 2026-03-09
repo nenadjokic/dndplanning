@@ -97,6 +97,7 @@ module.exports = {
       CREATE TABLE IF NOT EXISTS npc_categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
+        parent_id INTEGER REFERENCES npc_categories(id) ON DELETE CASCADE,
         created_by INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )

@@ -53,19 +53,104 @@
         </select>
       </div>
     </div>
-    <% if (campaigns.length > 0) { %>
-    <div class="form-group">
-      <label>Campaign</label>
-      <select name="campaign_id">
-        <option value="">-- No Campaign --</option>
-        <% for (const c of campaigns) { %>
-          <option value="<%= c.id %>" <%= activeCampaignId == c.id ? 'selected' : '' %>><%= c.name %></option>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+      <% if (campaigns.length > 0) { %>
+      <div class="form-group">
+        <label>Campaign</label>
+        <select name="campaign_id">
+          <option value="">-- No Campaign --</option>
+          <% for (const c of campaigns) { %>
+            <option value="<%= c.id %>" <%= activeCampaignId == c.id ? 'selected' : '' %>><%= c.name %></option>
+          <% } %>
+        </select>
+      </div>
+      <% } %>
+      <% if (handoutCategories.length > 0) { %>
+      <div class="form-group">
+        <label>Category</label>
+        <select name="category_id">
+          <option value="">-- No Category --</option>
+          <% const hcParents = handoutCategories.filter(c => !c.parent_id); %>
+          <% const hcChildren = handoutCategories.filter(c => c.parent_id); %>
+          <% for (const p of hcParents) { %>
+            <option value="<%= p.id %>"><%= p.name %></option>
+            <% for (const ch of hcChildren.filter(c => c.parent_id === p.id)) { %>
+              <option value="<%= ch.id %>">&nbsp;&nbsp;&nbsp;&nbsp;<%= ch.name %></option>
+            <% } %>
+          <% } %>
+          <% for (const orphan of hcChildren.filter(c => !hcParents.some(p => p.id === c.parent_id))) { %>
+            <option value="<%= orphan.id %>"><%= orphan.name %></option>
+          <% } %>
+        </select>
+      </div>
+      <% } %>
+    </div>
+    <button type="submit" class="btn btn-primary">Upload Handout</button>
+  </form>
+</div>
+
+<!-- Category Management -->
+<div class="card" style="margin-bottom:1.5rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+    <h3 style="margin:0;">Handout Categories</h3>
+    <button type="button" class="btn btn-small btn-outline" onclick="document.getElementById('new-hcat-form').style.display=document.getElementById('new-hcat-form').style.display==='none'?'flex':'none'">+ New Category</button>
+  </div>
+  <form id="new-hcat-form" action="/handouts/categories" method="POST" style="display:none;gap:0.5rem;align-items:flex-end;margin-bottom:0.75rem;">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="form-group" style="flex:1;margin:0;"><label>Name</label><input type="text" name="name" required placeholder="Category name"></div>
+    <div class="form-group" style="flex:1;margin:0;">
+      <label>Parent (optional)</label>
+      <select name="parent_id">
+        <option value="">-- None (top level) --</option>
+        <% for (const p of handoutCategories.filter(c => !c.parent_id)) { %>
+          <option value="<%= p.id %>"><%= p.name %></option>
         <% } %>
       </select>
     </div>
-    <% } %>
-    <button type="submit" class="btn btn-primary">Upload Handout</button>
+    <button type="submit" class="btn btn-small btn-primary">Create</button>
   </form>
+  <% if (handoutCategories.length === 0) { %>
+    <p style="color:var(--text-secondary);font-size:0.85rem;">No categories yet. Create one to organize your handouts.</p>
+  <% } else { %>
+    <div style="display:flex;flex-direction:column;gap:0.35rem;">
+      <% const topCats = handoutCategories.filter(c => !c.parent_id); %>
+      <% for (const cat of topCats) { %>
+        <div style="border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.75rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <strong><%= cat.name %></strong>
+            <div style="display:flex;gap:0.25rem;">
+              <button type="button" class="btn btn-small btn-outline" onclick="openHcatEdit(<%= cat.id %>, '<%= cat.name.replace(/'/g, "\\'") %>', '')">Edit</button>
+              <form action="/handouts/categories/<%= cat.id %>/delete" method="POST" class="inline-form"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this category?')">&times;</button></form>
+            </div>
+          </div>
+          <% const children = handoutCategories.filter(c => c.parent_id === cat.id); %>
+          <% if (children.length > 0) { %>
+            <div style="margin-top:0.35rem;padding-left:1rem;border-left:2px solid var(--gold-dim);">
+              <% for (const child of children) { %>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:0.2rem 0;">
+                  <span style="font-size:0.85rem;"><%= child.name %></span>
+                  <div style="display:flex;gap:0.25rem;">
+                    <button type="button" class="btn btn-small btn-outline" style="font-size:0.7rem;" onclick="openHcatEdit(<%= child.id %>, '<%= child.name.replace(/'/g, "\\'") %>', '<%= child.parent_id %>')">Edit</button>
+                    <form action="/handouts/categories/<%= child.id %>/delete" method="POST" class="inline-form"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button type="submit" class="btn btn-small btn-danger" style="font-size:0.7rem;" onclick="return confirm('Delete?')">&times;</button></form>
+                  </div>
+                </div>
+              <% } %>
+            </div>
+          <% } %>
+        </div>
+      <% } %>
+      <% const orphanCats = handoutCategories.filter(c => c.parent_id && !topCats.some(p => p.id === c.parent_id)); %>
+      <% for (const cat of orphanCats) { %>
+        <div style="border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.75rem;display:flex;justify-content:space-between;align-items:center;">
+          <span><%= cat.name %></span>
+          <div style="display:flex;gap:0.25rem;">
+            <button type="button" class="btn btn-small btn-outline" onclick="openHcatEdit(<%= cat.id %>, '<%= cat.name.replace(/'/g, "\\'") %>', '<%= cat.parent_id %>')">Edit</button>
+            <form action="/handouts/categories/<%= cat.id %>/delete" method="POST" class="inline-form"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete?')">&times;</button></form>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
 </div>
 <% } %>
 
@@ -96,13 +181,18 @@
           <% if (!h.revealed && isDM) { %>
             <span class="staged-badge">Hidden</span>
           <% } %>
+          <% if (h.category_parent_name && h.category_name) { %>
+            <span class="handout-link-badge"><%= h.category_parent_name %> > <%= h.category_name %></span>
+          <% } else if (h.category_name) { %>
+            <span class="handout-link-badge"><%= h.category_name %></span>
+          <% } %>
           <% if (h.campaign_name) { %><span class="handout-link-badge"><%= h.campaign_name %></span><% } %>
           <% if (h.npc_name) { %><span class="handout-link-badge">NPC: <%= h.npc_name %></span><% } %>
           <% if (h.location_name) { %><span class="handout-link-badge">Loc: <%= h.location_name %></span><% } %>
         </div>
         <% if (isDM) { %>
           <div class="handout-actions">
-            <button type="button" class="btn btn-small btn-outline" onclick="openHandoutEdit(<%= h.id %>, '<%= h.title.replace(/'/g, "\\'") %>', '<%= h.linked_npc_id || '' %>', '<%= h.linked_location_id || '' %>', '<%= h.campaign_id || '' %>')">Edit</button>
+            <button type="button" class="btn btn-small btn-outline" onclick="openHandoutEdit(<%= h.id %>, '<%= h.title.replace(/'/g, "\\'") %>', '<%= h.linked_npc_id || '' %>', '<%= h.linked_location_id || '' %>', '<%= h.campaign_id || '' %>', '<%= h.category_id || '' %>')">Edit</button>
             <% if (h.revealed) { %>
               <form action="/handouts/<%= h.id %>/hide" method="POST" class="inline-form">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -207,29 +297,76 @@ if (typeof EventSource !== 'undefined') {
           </select>
         </div>
       </div>
-      <% if (campaigns.length > 0) { %>
-      <div class="form-group"><label>Campaign</label>
-        <select name="campaign_id" id="he-campaign">
-          <option value="">-- No Campaign --</option>
-          <% for (const c of campaigns) { %><option value="<%= c.id %>"><%= c.name %></option><% } %>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+        <% if (campaigns.length > 0) { %>
+        <div class="form-group"><label>Campaign</label>
+          <select name="campaign_id" id="he-campaign">
+            <option value="">-- No Campaign --</option>
+            <% for (const c of campaigns) { %><option value="<%= c.id %>"><%= c.name %></option><% } %>
+          </select>
+        </div>
+        <% } %>
+        <div class="form-group"><label>Category</label>
+          <select name="category_id" id="he-category">
+            <option value="">-- No Category --</option>
+            <% const heParents = handoutCategories.filter(c => !c.parent_id); %>
+            <% const heChildren = handoutCategories.filter(c => c.parent_id); %>
+            <% for (const p of heParents) { %>
+              <option value="<%= p.id %>"><%= p.name %></option>
+              <% for (const ch of heChildren.filter(c => c.parent_id === p.id)) { %>
+                <option value="<%= ch.id %>">&nbsp;&nbsp;&nbsp;&nbsp;<%= ch.name %></option>
+              <% } %>
+            <% } %>
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-small">Save</button>
+    </form>
+  </div>
+</div>
+<!-- Category Edit Modal -->
+<div id="hcat-edit-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;">
+  <div class="card" style="max-width:380px;width:90%;margin:auto;position:relative;">
+    <button type="button" onclick="document.getElementById('hcat-edit-modal').style.display='none'" style="position:absolute;top:0.5rem;right:0.75rem;background:none;border:none;color:var(--text-secondary);font-size:1.2rem;cursor:pointer;">&times;</button>
+    <h3>Edit Category</h3>
+    <form id="hcat-edit-form" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="form-group"><label>Name</label><input type="text" name="name" id="hce-name" required></div>
+      <div class="form-group"><label>Parent</label>
+        <select name="parent_id" id="hce-parent">
+          <option value="">-- None (top level) --</option>
+          <% for (const p of handoutCategories.filter(c => !c.parent_id)) { %>
+            <option value="<%= p.id %>"><%= p.name %></option>
+          <% } %>
         </select>
       </div>
-      <% } %>
       <button type="submit" class="btn btn-primary btn-small">Save</button>
     </form>
   </div>
 </div>
 <script>
-function openHandoutEdit(id, title, npcId, locId, campId) {
+function openHandoutEdit(id, title, npcId, locId, campId, catId) {
   document.getElementById('handout-edit-form').action = '/handouts/' + id + '/edit';
   document.getElementById('he-title').value = title;
   document.getElementById('he-npc').value = npcId || '';
   document.getElementById('he-loc').value = locId || '';
   var campSel = document.getElementById('he-campaign');
   if (campSel) campSel.value = campId || '';
+  var catSel = document.getElementById('he-category');
+  if (catSel) catSel.value = catId || '';
   document.getElementById('handout-edit-modal').style.display = 'flex';
 }
 document.getElementById('handout-edit-modal').addEventListener('click', function(e) {
+  if (e.target === this) this.style.display = 'none';
+});
+
+function openHcatEdit(id, name, parentId) {
+  document.getElementById('hcat-edit-form').action = '/handouts/categories/' + id + '/edit';
+  document.getElementById('hce-name').value = name;
+  document.getElementById('hce-parent').value = parentId || '';
+  document.getElementById('hcat-edit-modal').style.display = 'flex';
+}
+document.getElementById('hcat-edit-modal').addEventListener('click', function(e) {
   if (e.target === this) this.style.display = 'none';
 });
 </script>

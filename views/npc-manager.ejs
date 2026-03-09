@@ -9,8 +9,11 @@
       <select id="npc-filter-cat" style="font-size:0.85rem;padding:0.3rem 0.6rem;">
         <option value="">All Categories</option>
         <option value="uncategorized">Uncategorized</option>
-        <% for (const cat of categories) { %>
+        <% for (const cat of categories.filter(c => !c.parent_id)) { %>
         <option value="<%= cat.id %>"><%= cat.name %> (<%= cat.npc_count %>)</option>
+        <% for (const sub of categories.filter(c => c.parent_id === cat.id)) { %>
+        <option value="<%= sub.id %>">&nbsp;&nbsp;&nbsp;&nbsp;<%= sub.name %> (<%= sub.npc_count %>)</option>
+        <% } %>
         <% } %>
       </select>
     </div>
@@ -33,17 +36,69 @@
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
       <h3 style="margin:0;font-size:0.95rem;color:var(--gold);">Categories</h3>
       <div style="display:flex;gap:0.3rem;align-items:center;">
+        <select id="new-cat-parent" style="font-size:0.8rem;padding:0.25rem 0.5rem;">
+          <option value="">Top-level</option>
+          <% for (const cat of categories.filter(c => !c.parent_id)) { %>
+          <option value="<%= cat.id %>">Under: <%= cat.name %></option>
+          <% } %>
+        </select>
         <input type="text" id="new-cat-name" placeholder="New category..." style="font-size:0.8rem;padding:0.25rem 0.5rem;width:160px;">
         <button type="button" class="btn btn-primary btn-small" id="add-cat-btn">Add</button>
       </div>
     </div>
-    <div id="cat-list" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem;">
-      <% for (const cat of categories) { %>
-      <div class="npc-mgr-cat-tag" data-cat-id="<%= cat.id %>">
+    <div id="cat-list" style="margin-top:0.5rem;">
+      <%
+        const parentCats = categories.filter(c => !c.parent_id);
+        const childCats = categories.filter(c => c.parent_id);
+      %>
+      <% for (const cat of parentCats) { %>
+      <div class="npc-mgr-cat-group" style="margin-bottom:0.5rem;border:1px solid var(--border);border-radius:6px;padding:0.4rem 0.5rem;background:rgba(212,175,55,0.03);">
+        <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">
+          <span class="npc-mgr-cat-name" title="Click to rename" data-cat-id="<%= cat.id %>" style="cursor:pointer;font-weight:700;font-size:0.9rem;color:var(--gold);"><%= cat.name %></span>
+          <span class="npc-mgr-cat-count" style="font-size:0.75rem;color:var(--text-secondary);">(<%= cat.npc_count %> NPCs)</span>
+          <div style="margin-left:auto;display:flex;gap:0.25rem;align-items:center;">
+            <select class="cat-move-select" data-cat-id="<%= cat.id %>" style="font-size:0.7rem;padding:0.15rem 0.3rem;display:none;">
+              <option value="">Top-level</option>
+              <% for (const p of parentCats.filter(p => p.id !== cat.id)) { %>
+              <option value="<%= p.id %>">Under: <%= p.name %></option>
+              <% } %>
+            </select>
+            <button type="button" class="npc-mgr-cat-move" title="Move to parent/top-level" data-cat-id="<%= cat.id %>" style="background:none;border:none;color:var(--text-secondary);font-size:0.75rem;cursor:pointer;padding:0.1rem 0.3rem;">Move</button>
+            <button type="button" class="npc-mgr-cat-del-npcs" title="Delete all NPCs" data-cat-id="<%= cat.id %>" data-cat-name="<%= cat.name %>" style="font-size:0.7rem;">Del NPCs</button>
+            <button type="button" class="npc-mgr-cat-del" title="Delete category" data-cat-id="<%= cat.id %>" data-cat-name="<%= cat.name %>">&times;</button>
+          </div>
+        </div>
+        <% const children = childCats.filter(c => c.parent_id === cat.id); %>
+        <% if (children.length > 0) { %>
+        <div style="margin-left:1rem;margin-top:0.35rem;display:flex;flex-direction:column;gap:0.25rem;">
+          <% for (const sub of children) { %>
+          <div style="display:flex;align-items:center;gap:0.35rem;padding:0.2rem 0.4rem;background:rgba(255,255,255,0.03);border-radius:4px;border-left:2px solid var(--gold-dim);">
+            <span class="npc-mgr-cat-name" title="Click to rename" data-cat-id="<%= sub.id %>" style="cursor:pointer;font-size:0.85rem;"><%= sub.name %></span>
+            <span class="npc-mgr-cat-count" style="font-size:0.7rem;color:var(--text-secondary);">(<%= sub.npc_count %>)</span>
+            <div style="margin-left:auto;display:flex;gap:0.25rem;align-items:center;">
+              <select class="cat-move-select" data-cat-id="<%= sub.id %>" style="font-size:0.7rem;padding:0.15rem 0.3rem;display:none;">
+                <option value="">Top-level</option>
+                <% for (const p of parentCats) { %>
+                <option value="<%= p.id %>" <%= p.id === cat.id ? 'selected' : '' %>><%= p.id === cat.id ? 'Current: ' : 'Under: ' %><%= p.name %></option>
+                <% } %>
+              </select>
+              <button type="button" class="npc-mgr-cat-move" title="Move to another parent" data-cat-id="<%= sub.id %>" style="background:none;border:none;color:var(--text-secondary);font-size:0.7rem;cursor:pointer;padding:0.1rem 0.2rem;">Move</button>
+              <button type="button" class="npc-mgr-cat-del-npcs" title="Delete all NPCs" data-cat-id="<%= sub.id %>" data-cat-name="<%= sub.name %>" style="font-size:0.65rem;">Del NPCs</button>
+              <button type="button" class="npc-mgr-cat-del" title="Delete subcategory" data-cat-id="<%= sub.id %>" data-cat-name="<%= sub.name %>">&times;</button>
+            </div>
+          </div>
+          <% } %>
+        </div>
+        <% } %>
+      </div>
+      <% } %>
+      <%# Orphan categories %>
+      <% const orphans = childCats.filter(c => !parentCats.find(p => p.id === c.parent_id)); %>
+      <% for (const cat of orphans) { %>
+      <div class="npc-mgr-cat-tag" data-cat-id="<%= cat.id %>" style="margin-bottom:0.25rem;">
         <span class="npc-mgr-cat-name" title="Click to rename" data-cat-id="<%= cat.id %>" style="cursor:pointer;"><%= cat.name %></span>
         <span class="npc-mgr-cat-count">(<%= cat.npc_count %>)</span>
-        <button type="button" class="npc-mgr-cat-del-npcs" title="Delete all NPCs in this category" data-cat-id="<%= cat.id %>" data-cat-name="<%= cat.name %>">Delete NPCs</button>
-        <button type="button" class="npc-mgr-cat-del" title="Delete category (NPCs keep)" data-cat-id="<%= cat.id %>" data-cat-name="<%= cat.name %>">&times;</button>
+        <button type="button" class="npc-mgr-cat-del" title="Delete" data-cat-id="<%= cat.id %>" data-cat-name="<%= cat.name %>">&times;</button>
       </div>
       <% } %>
       <% if (categories.length === 0) { %>
@@ -81,7 +136,10 @@
           <td>
             <% const npcCats = categories.filter(c => (npc.category_ids || []).includes(c.id) || npc.category_id === c.id); %>
             <% if (npcCats.length > 0) { %>
-              <% for (const c of npcCats) { %><span class="npc-mgr-cat-badge"><%= c.name %></span> <% } %>
+              <% for (const c of npcCats) { %>
+                <% const parent = c.parent_id ? categories.find(p => p.id === c.parent_id) : null; %>
+                <span class="npc-mgr-cat-badge" title="<%= parent ? parent.name + ' > ' + c.name : c.name %>"><%= parent ? parent.name + ' > ' : '' %><%= c.name %></span>
+              <% } %>
             <% } else { %>
               <span style="color:var(--text-secondary);font-size:0.8rem;">--</span>
             <% } %>
@@ -139,11 +197,18 @@
         <div style="display:flex;gap:0.5rem;align-items:flex-start;">
           <div class="form-group" style="flex:1;margin-bottom:0.5rem;">
             <label style="font-size:0.85rem;">Categories</label>
-            <div id="npc-form-cats" style="display:flex;flex-wrap:wrap;gap:0.35rem;max-height:80px;overflow-y:auto;padding:0.25rem 0;">
-              <% for (const cat of categories) { %>
-              <label style="display:flex;align-items:center;gap:0.25rem;font-size:0.8rem;cursor:pointer;">
-                <input type="checkbox" name="category_ids" value="<%= cat.id %>"> <%= cat.name %>
-              </label>
+            <div id="npc-form-cats" style="max-height:120px;overflow-y:auto;padding:0.25rem 0;">
+              <% for (const cat of categories.filter(c => !c.parent_id)) { %>
+              <div style="margin-bottom:0.15rem;">
+                <label style="display:flex;align-items:center;gap:0.25rem;font-size:0.8rem;cursor:pointer;font-weight:600;">
+                  <input type="checkbox" name="category_ids" value="<%= cat.id %>"> <%= cat.name %>
+                </label>
+                <% for (const sub of categories.filter(c => c.parent_id === cat.id)) { %>
+                <label style="display:flex;align-items:center;gap:0.25rem;font-size:0.8rem;cursor:pointer;margin-left:1.25rem;">
+                  <input type="checkbox" name="category_ids" value="<%= sub.id %>"> <%= sub.name %>
+                </label>
+                <% } %>
+              </div>
               <% } %>
             </div>
           </div>
@@ -260,12 +325,15 @@
   // --- Category: Add ---
   function addCategory() {
     var input = document.getElementById('new-cat-name');
+    var parentSelect = document.getElementById('new-cat-parent');
     var name = input.value.trim();
     if (!name) return;
+    var body = { name: name };
+    if (parentSelect && parentSelect.value) body.parent_id = parseInt(parentSelect.value);
     fetch('/map/npcs/categories', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-      body: JSON.stringify({ name: name })
+      body: JSON.stringify(body)
     }).then(function(r) { return r.json(); }).then(function(d) { if (d.success) location.reload(); });
   }
   document.getElementById('add-cat-btn').addEventListener('click', addCategory);
@@ -332,6 +400,29 @@
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
         body: JSON.stringify({ delete_category: delCat })
       }).then(function(r) { return r.json(); }).then(function(d) { if (d.success) location.reload(); });
+    });
+  });
+
+  // --- Category: Move (change parent) ---
+  document.querySelectorAll('.npc-mgr-cat-move').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var catId = btn.getAttribute('data-cat-id');
+      var select = document.querySelector('.cat-move-select[data-cat-id="' + catId + '"]');
+      if (!select) return;
+      if (select.style.display === 'none') {
+        // Show the select dropdown
+        select.style.display = 'inline-block';
+        btn.textContent = 'Save';
+        btn.style.color = 'var(--gold)';
+      } else {
+        // Save the new parent
+        var newParent = select.value || null;
+        fetch('/map/npcs/categories/' + catId + '/move', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({ parent_id: newParent })
+        }).then(function(r) { return r.json(); }).then(function(d) { if (d.success) location.reload(); });
+      }
     });
   });
 

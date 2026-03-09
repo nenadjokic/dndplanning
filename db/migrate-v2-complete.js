@@ -587,6 +587,7 @@ try {
       sql: `CREATE TABLE npc_categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
+        parent_id INTEGER REFERENCES npc_categories(id) ON DELETE CASCADE,
         created_by INTEGER REFERENCES users(id),
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )`
@@ -785,6 +786,16 @@ try {
       )`
     },
     {
+      name: 'handout_categories',
+      sql: `CREATE TABLE handout_categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        parent_id INTEGER REFERENCES handout_categories(id) ON DELETE CASCADE,
+        created_by INTEGER REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`
+    },
+    {
       name: 'handouts',
       sql: `CREATE TABLE handouts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -794,6 +805,7 @@ try {
         image_path TEXT,
         linked_npc_id INTEGER REFERENCES npc_tokens(id) ON DELETE SET NULL,
         linked_location_id INTEGER REFERENCES map_locations(id) ON DELETE SET NULL,
+        category_id INTEGER REFERENCES handout_categories(id) ON DELETE SET NULL,
         revealed INTEGER NOT NULL DEFAULT 0,
         created_by INTEGER NOT NULL REFERENCES users(id),
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -1006,7 +1018,8 @@ try {
     { table: 'handouts', column: 'campaign_id', sql: 'ALTER TABLE handouts ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)' },
     { table: 'encounters', column: 'campaign_id', sql: 'ALTER TABLE encounters ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)' },
     { table: 'campaign_arcs', column: 'campaign_id', sql: 'ALTER TABLE campaign_arcs ADD COLUMN campaign_id INTEGER REFERENCES campaigns(id)' },
-    { table: 'maps', column: 'published', sql: 'ALTER TABLE maps ADD COLUMN published INTEGER DEFAULT 0' }
+    { table: 'maps', column: 'published', sql: 'ALTER TABLE maps ADD COLUMN published INTEGER DEFAULT 0' },
+    { table: 'handouts', column: 'category_id', sql: 'ALTER TABLE handouts ADD COLUMN category_id INTEGER REFERENCES handout_categories(id) ON DELETE SET NULL' }
   ];
 
   for (const col of missingColumns) {

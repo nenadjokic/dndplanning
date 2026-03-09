@@ -4132,9 +4132,9 @@ body.map-fs-active .combat-panel {
   position: absolute;
   left: 0;
   top: 0;
-  bottom: 0;
-  width: 180px;
-  background: rgba(26, 26, 46, 0.88);
+  width: 200px;
+  height: 100%;
+  background: rgba(26, 26, 46, 0.95);
   border-right: 1px solid var(--border);
   z-index: 1000;
   display: flex;
@@ -4176,6 +4176,10 @@ body.map-fs-active .combat-panel {
   overflow-y: auto;
   overflow-x: hidden;
 }
+.npc-sidebar-list::-webkit-scrollbar { width: 6px; }
+.npc-sidebar-list::-webkit-scrollbar-track { background: transparent; }
+.npc-sidebar-list::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 3px; }
+.npc-sidebar-list::-webkit-scrollbar-thumb:hover { background: var(--gold); }
 .npc-sidebar-cat-header {
   padding: 0.3rem 0.5rem;
   font-size: 0.7rem;
@@ -4187,6 +4191,13 @@ body.map-fs-active .combat-panel {
   border-bottom: 1px solid var(--border);
 }
 .npc-sidebar-cat-header.collapsed { opacity: 0.6; }
+.npc-sidebar-cat-parent { font-weight: 700; }
+.npc-sidebar-subcat-header {
+  background: rgba(212, 175, 55, 0.04);
+  color: var(--text-primary);
+  font-weight: 600;
+  border-left: 2px solid var(--gold-dim);
+}
 .npc-sidebar-item {
   display: flex;
   align-items: center;

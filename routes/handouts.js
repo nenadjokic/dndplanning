@@ -52,12 +52,16 @@ router.get('/', requireLogin, (req, res) => {
 
   const handouts = db.prepare(`SELECT h.*, u.username as creator_name,
         nt.name as npc_name, ml.name as location_name,
-        camp.name as campaign_name
+        camp.name as campaign_name,
+        hc.name as category_name, hc.parent_id as category_parent_id,
+        hcp.name as category_parent_name
        FROM handouts h
        JOIN users u ON h.created_by = u.id
        LEFT JOIN npc_tokens nt ON h.linked_npc_id = nt.id
        LEFT JOIN map_locations ml ON h.linked_location_id = ml.id
        LEFT JOIN campaigns camp ON h.campaign_id = camp.id
+       LEFT JOIN handout_categories hc ON h.category_id = hc.id
+       LEFT JOIN handout_categories hcp ON hc.parent_id = hcp.id
        ${whereClause}
        ORDER BY h.created_at DESC`).all(...params);
 
@@ -66,9 +70,13 @@ router.get('/', requireLogin, (req, res) => {
 
   let campaigns = [];
   try { campaigns = db.prepare('SELECT id, name FROM campaigns ORDER BY name').all(); } catch (e) {}
+
+  let handoutCategories = [];
+  try { handoutCategories = db.prepare('SELECT * FROM handout_categories ORDER BY parent_id NULLS FIRST, name').all(); } catch (e) {}
+
   const activeCampaignId = campaignFilter || null;
 
-  res.render('handouts', { handouts, isDM, npcs, locations, campaigns, activeCampaignId });
+  res.render('handouts', { handouts, isDM, npcs, locations, campaigns, activeCampaignId, handoutCategories });
 });
 
 // Upload handout (DM)
@@ -76,7 +84,7 @@ router.post('/', requireLogin, requireDM, upload.single('image'), (req, res) => 
   const validateCSRF = req.app.locals.validateCSRF;
   if (!validateCSRF(req, res)) return;
 
-  const { title, type, content, linked_npc_id, linked_location_id, campaign_id } = req.body;
+  const { title, type, content, linked_npc_id, linked_location_id, campaign_id, category_id } = req.body;
   if (!title || !title.trim()) {
     req.flash('error', 'Title is required.');
     return res.redirect('/handouts');
@@ -94,10 +102,11 @@ router.post('/', requireLogin, requireDM, upload.single('image'), (req, res) => 
   }
 
   const campId = campaign_id ? parseInt(campaign_id, 10) : null;
+  const catId = category_id ? parseInt(category_id, 10) : null;
 
-  db.prepare(`INSERT INTO handouts (title, type, content, image_path, linked_npc_id, linked_location_id, created_by, campaign_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run(title.trim(), handoutType, textContent, imagePath, npcId, locId, req.user.id, campId);
+  db.prepare(`INSERT INTO handouts (title, type, content, image_path, linked_npc_id, linked_location_id, category_id, created_by, campaign_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(title.trim(), handoutType, textContent, imagePath, npcId, locId, catId, req.user.id, campId);
 
   req.flash('success', 'Handout created.');
   res.redirect('/handouts');
@@ -132,15 +141,16 @@ router.post('/:id/hide', requireLogin, requireDM, (req, res) => {
 
 // Edit handout
 router.post('/:id/edit', requireLogin, requireDM, (req, res) => {
-  const { title, linked_npc_id, linked_location_id, campaign_id } = req.body;
+  const { title, linked_npc_id, linked_location_id, campaign_id, category_id } = req.body;
   const handout = db.prepare('SELECT id FROM handouts WHERE id = ?').get(req.params.id);
   if (!handout) {
     req.flash('error', 'Handout not found.');
     return res.redirect('/handouts');
   }
   const campId = campaign_id ? parseInt(campaign_id, 10) : null;
-  db.prepare('UPDATE handouts SET title = ?, linked_npc_id = ?, linked_location_id = ?, campaign_id = ? WHERE id = ?')
-    .run((title && title.trim()) || 'Untitled', linked_npc_id ? parseInt(linked_npc_id, 10) : null, linked_location_id ? parseInt(linked_location_id, 10) : null, campId, handout.id);
+  const catId = category_id ? parseInt(category_id, 10) : null;
+  db.prepare('UPDATE handouts SET title = ?, linked_npc_id = ?, linked_location_id = ?, campaign_id = ?, category_id = ? WHERE id = ?')
+    .run((title && title.trim()) || 'Untitled', linked_npc_id ? parseInt(linked_npc_id, 10) : null, linked_location_id ? parseInt(linked_location_id, 10) : null, campId, catId, handout.id);
   req.flash('success', 'Handout updated.');
   res.redirect('/handouts');
 });
@@ -161,6 +171,85 @@ router.post('/:id/delete', requireLogin, requireDM, (req, res) => {
 
   db.prepare('DELETE FROM handouts WHERE id = ?').run(handout.id);
   req.flash('success', 'Handout deleted.');
+  res.redirect('/handouts');
+});
+
+// === Handout Category CRUD ===
+
+// Create category
+router.post('/categories', requireLogin, requireDM, (req, res) => {
+  const validateCSRF = req.app.locals.validateCSRF;
+  if (!validateCSRF(req, res)) return;
+
+  const { name, parent_id } = req.body;
+  if (!name || !name.trim()) {
+    req.flash('error', 'Category name is required.');
+    return res.redirect('/handouts');
+  }
+  const parentId = parent_id ? parseInt(parent_id, 10) : null;
+  if (parentId) {
+    const parent = db.prepare('SELECT id FROM handout_categories WHERE id = ?').get(parentId);
+    if (!parent) {
+      req.flash('error', 'Parent category not found.');
+      return res.redirect('/handouts');
+    }
+  }
+  db.prepare('INSERT INTO handout_categories (name, parent_id, created_by) VALUES (?, ?, ?)')
+    .run(name.trim(), parentId, req.user.id);
+  req.flash('success', 'Category created.');
+  res.redirect('/handouts');
+});
+
+// Edit category
+router.post('/categories/:catId/edit', requireLogin, requireDM, (req, res) => {
+  const validateCSRF = req.app.locals.validateCSRF;
+  if (!validateCSRF(req, res)) return;
+
+  const { name, parent_id } = req.body;
+  const catId = parseInt(req.params.catId, 10);
+  const cat = db.prepare('SELECT id FROM handout_categories WHERE id = ?').get(catId);
+  if (!cat) {
+    req.flash('error', 'Category not found.');
+    return res.redirect('/handouts');
+  }
+  const parentId = parent_id ? parseInt(parent_id, 10) : null;
+  if (parentId === catId) {
+    req.flash('error', 'Category cannot be its own parent.');
+    return res.redirect('/handouts');
+  }
+  db.prepare('UPDATE handout_categories SET name = ?, parent_id = ? WHERE id = ?')
+    .run((name && name.trim()) || 'Unnamed', parentId, catId);
+  req.flash('success', 'Category updated.');
+  res.redirect('/handouts');
+});
+
+// Delete category
+router.post('/categories/:catId/delete', requireLogin, requireDM, (req, res) => {
+  const validateCSRF = req.app.locals.validateCSRF;
+  if (!validateCSRF(req, res)) return;
+
+  const catId = parseInt(req.params.catId, 10);
+  const cat = db.prepare('SELECT id FROM handout_categories WHERE id = ?').get(catId);
+  if (!cat) {
+    req.flash('error', 'Category not found.');
+    return res.redirect('/handouts');
+  }
+  // Clear category_id from handouts in this category and descendants
+  const descendants = [];
+  function findDescendants(pid) {
+    const children = db.prepare('SELECT id FROM handout_categories WHERE parent_id = ?').all(pid);
+    for (const child of children) {
+      descendants.push(child.id);
+      findDescendants(child.id);
+    }
+  }
+  findDescendants(catId);
+  const allIds = [catId, ...descendants];
+  for (const id of allIds) {
+    db.prepare('UPDATE handouts SET category_id = NULL WHERE category_id = ?').run(id);
+  }
+  db.prepare('DELETE FROM handout_categories WHERE id = ?').run(catId);
+  req.flash('success', 'Category deleted.');
   res.redirect('/handouts');
 });
 

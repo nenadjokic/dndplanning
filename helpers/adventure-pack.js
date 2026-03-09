@@ -28,6 +28,7 @@ function exportPack(db, opts, onProgress) {
     maps: {},
     npcs: {},
     categories: {},
+    handout_categories: {},
     chests: {},
     quests: {},
     arcs: {},
@@ -130,19 +131,32 @@ function exportPack(db, opts, onProgress) {
       ? db.prepare(`SELECT * FROM npc_tokens WHERE id IN (${npcIds.map(() => '?').join(',')})`).all(...npcIds)
       : [];
 
-    // Categories
+    // Categories — collect all referenced categories + their parents
     const catIds = new Set();
     data.npc_categories = [];
     for (const npc of allNpcs) {
       const cats = db.prepare('SELECT category_id FROM npc_token_categories WHERE npc_token_id = ?').all(npc.id);
       for (const c of cats) catIds.add(c.category_id);
     }
+    // Also include parent categories
+    const allCatIds = new Set(catIds);
     for (const cid of catIds) {
+      const cat = db.prepare('SELECT * FROM npc_categories WHERE id = ?').get(cid);
+      if (cat && cat.parent_id) allCatIds.add(cat.parent_id);
+    }
+    for (const cid of allCatIds) {
       const cat = db.prepare('SELECT * FROM npc_categories WHERE id = ?').get(cid);
       if (cat) {
         const eid = assignId('categories', cat.id);
-        data.npc_categories.push({ _exportId: eid, name: cat.name });
+        data.npc_categories.push({ _exportId: eid, name: cat.name, parent_id: cat.parent_id || null });
       }
+    }
+    // Convert parent_id (DB id) to parent_export_id
+    for (const cat of data.npc_categories) {
+      if (cat.parent_id && idMap.categories[cat.parent_id]) {
+        cat.parent_export_id = idMap.categories[cat.parent_id];
+      }
+      delete cat.parent_id;
     }
 
     // NPC data
@@ -332,6 +346,37 @@ function exportPack(db, opts, onProgress) {
   if (options.handouts !== false) {
     progress('handouts', 'Exporting handouts...');
     const handouts = db.prepare('SELECT * FROM handouts WHERE campaign_id = ?').all(campaignId);
+
+    // Handout categories — collect all referenced categories + their parents
+    const hCatIds = new Set();
+    data.handout_categories = [];
+    for (const h of handouts) {
+      if (h.category_id) hCatIds.add(h.category_id);
+    }
+    const allHCatIds = new Set(hCatIds);
+    for (const cid of hCatIds) {
+      try {
+        const cat = db.prepare('SELECT * FROM handout_categories WHERE id = ?').get(cid);
+        if (cat && cat.parent_id) allHCatIds.add(cat.parent_id);
+      } catch (e) { /* table may not exist */ }
+    }
+    for (const cid of allHCatIds) {
+      try {
+        const cat = db.prepare('SELECT * FROM handout_categories WHERE id = ?').get(cid);
+        if (cat) {
+          const eid = assignId('handout_categories', cat.id);
+          data.handout_categories.push({ _exportId: eid, name: cat.name, parent_id: cat.parent_id || null });
+        }
+      } catch (e) { /* table may not exist */ }
+    }
+    // Convert parent_id to parent_export_id
+    for (const cat of data.handout_categories) {
+      if (cat.parent_id && idMap.handout_categories[cat.parent_id]) {
+        cat.parent_export_id = idMap.handout_categories[cat.parent_id];
+      }
+      delete cat.parent_id;
+    }
+
     data.handouts = [];
     for (const h of handouts) {
       const hData = {
@@ -340,7 +385,8 @@ function exportPack(db, opts, onProgress) {
         content: h.content || '',
         revealed: h.revealed || 0,
         linked_npc_export_id: h.linked_npc_id ? (idMap.npcs[h.linked_npc_id] || null) : null,
-        linked_location_export_id: h.linked_location_id ? (idMap.locations[h.linked_location_id] || null) : null
+        linked_location_export_id: h.linked_location_id ? (idMap.locations[h.linked_location_id] || null) : null,
+        category_export_id: h.category_id ? (idMap.handout_categories[h.category_id] || null) : null
       };
       if (h.image_path) {
         const imgSrc = path.join(dataDir, 'uploads', 'handouts', h.image_path);
@@ -458,6 +504,7 @@ function importPack(db, extractedDir, userId, onProgress) {
     maps: {},
     npcs: {},
     categories: {},
+    handout_categories: {},
     chests: {},
     quests: {},
     arcs: {},
@@ -497,17 +544,26 @@ function importPack(db, extractedDir, userId, onProgress) {
       }
     }
 
-    // NPC categories
+    // NPC categories (two-pass: create all, then set parent_id)
     if (data.npc_categories && data.npc_categories.length > 0) {
       progress('categories', 'Creating NPC categories...');
+      // First pass: create categories without parent
       for (const cat of data.npc_categories) {
-        // Check for existing category with same name
         const existing = db.prepare('SELECT id FROM npc_categories WHERE name = ?').get(cat.name);
         if (existing) {
           idMap.categories[cat._exportId] = existing.id;
         } else {
           const result = db.prepare('INSERT INTO npc_categories (name, created_by) VALUES (?, ?)').run(cat.name, userId);
           idMap.categories[cat._exportId] = result.lastInsertRowid;
+        }
+      }
+      // Second pass: set parent_id references
+      for (const cat of data.npc_categories) {
+        if (cat.parent_export_id && idMap.categories[cat.parent_export_id]) {
+          try {
+            db.prepare('UPDATE npc_categories SET parent_id = ? WHERE id = ?')
+              .run(idMap.categories[cat.parent_export_id], idMap.categories[cat._exportId]);
+          } catch (e) { /* ignore if column doesn't exist on old DB */ }
         }
       }
     }
@@ -711,6 +767,31 @@ function importPack(db, extractedDir, userId, onProgress) {
       }
     }
 
+    // Handout categories (two-pass: create all, then set parent_id)
+    if (data.handout_categories && data.handout_categories.length > 0) {
+      progress('handout_categories', 'Creating handout categories...');
+      for (const cat of data.handout_categories) {
+        try {
+          const existing = db.prepare('SELECT id FROM handout_categories WHERE name = ?').get(cat.name);
+          if (existing) {
+            idMap.handout_categories[cat._exportId] = existing.id;
+          } else {
+            const result = db.prepare('INSERT INTO handout_categories (name, created_by) VALUES (?, ?)').run(cat.name, userId);
+            idMap.handout_categories[cat._exportId] = result.lastInsertRowid;
+          }
+        } catch (e) { /* table may not exist on older versions */ }
+      }
+      // Second pass: set parent_id references
+      for (const cat of data.handout_categories) {
+        if (cat.parent_export_id && idMap.handout_categories[cat.parent_export_id]) {
+          try {
+            db.prepare('UPDATE handout_categories SET parent_id = ? WHERE id = ?')
+              .run(idMap.handout_categories[cat.parent_export_id], idMap.handout_categories[cat._exportId]);
+          } catch (e) { /* ignore if column doesn't exist */ }
+        }
+      }
+    }
+
     // Handouts
     if (data.handouts && data.handouts.length > 0) {
       progress('handouts', `Creating ${data.handouts.length} handouts...`);
@@ -727,14 +808,27 @@ function importPack(db, extractedDir, userId, onProgress) {
             imagePath = uniqueName;
           }
         }
-        db.prepare(
-          'INSERT INTO handouts (title, type, content, image_path, revealed, linked_npc_id, linked_location_id, campaign_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        ).run(
-          h.title, h.type || 'image', h.content || '', imagePath, h.revealed || 0,
-          h.linked_npc_export_id ? (idMap.npcs[h.linked_npc_export_id] || null) : null,
-          h.linked_location_export_id ? (idMap.locations[h.linked_location_export_id] || null) : null,
-          campaignId, userId
-        );
+        const categoryId = h.category_export_id ? (idMap.handout_categories[h.category_export_id] || null) : null;
+        try {
+          db.prepare(
+            'INSERT INTO handouts (title, type, content, image_path, revealed, linked_npc_id, linked_location_id, category_id, campaign_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+          ).run(
+            h.title, h.type || 'image', h.content || '', imagePath, h.revealed || 0,
+            h.linked_npc_export_id ? (idMap.npcs[h.linked_npc_export_id] || null) : null,
+            h.linked_location_export_id ? (idMap.locations[h.linked_location_export_id] || null) : null,
+            categoryId, campaignId, userId
+          );
+        } catch (e) {
+          // Fallback without category_id for older DBs
+          db.prepare(
+            'INSERT INTO handouts (title, type, content, image_path, revealed, linked_npc_id, linked_location_id, campaign_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+          ).run(
+            h.title, h.type || 'image', h.content || '', imagePath, h.revealed || 0,
+            h.linked_npc_export_id ? (idMap.npcs[h.linked_npc_export_id] || null) : null,
+            h.linked_location_export_id ? (idMap.locations[h.linked_location_export_id] || null) : null,
+            campaignId, userId
+          );
+        }
       }
     }
 
@@ -842,7 +936,20 @@ function deletePack(db, packId, userId) {
       db.prepare('DELETE FROM quest_objectives WHERE quest_id IN (SELECT id FROM quests WHERE campaign_id = ?)').run(pack.campaign_id);
       db.prepare('DELETE FROM quests WHERE campaign_id = ?').run(pack.campaign_id);
       db.prepare('DELETE FROM loot_items WHERE campaign_id = ?').run(pack.campaign_id);
-      db.prepare('DELETE FROM handouts WHERE campaign_id = ?').run(pack.campaign_id);
+      // Clean up handout category references before deleting handouts
+      try {
+        const handoutCatIds = db.prepare('SELECT DISTINCT category_id FROM handouts WHERE campaign_id = ? AND category_id IS NOT NULL').all(pack.campaign_id);
+        db.prepare('DELETE FROM handouts WHERE campaign_id = ?').run(pack.campaign_id);
+        // Remove orphaned handout categories (only if no other handouts reference them)
+        for (const { category_id } of handoutCatIds) {
+          const stillUsed = db.prepare('SELECT COUNT(*) as cnt FROM handouts WHERE category_id = ?').get(category_id);
+          if (stillUsed.cnt === 0) {
+            db.prepare('DELETE FROM handout_categories WHERE id = ?').run(category_id);
+          }
+        }
+      } catch (e) {
+        db.prepare('DELETE FROM handouts WHERE campaign_id = ?').run(pack.campaign_id);
+      }
       db.prepare('DELETE FROM campaign_arcs WHERE campaign_id = ?').run(pack.campaign_id);
       // Nullify session FK to campaign before deleting
       db.prepare('UPDATE sessions SET campaign_id = NULL WHERE campaign_id = ?').run(pack.campaign_id);

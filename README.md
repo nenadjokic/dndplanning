@@ -1,6 +1,6 @@
-# Quest Planner v3.0.8 — D&D Session Scheduler
+# Quest Planner v3.0.9 — D&D Session Scheduler
 
-> **Latest release:** v3.0.8 (2026-03-09)
+> **Latest release:** v3.0.9 (2026-03-09)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -870,6 +870,14 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v3.0.9 (2026-03-09) Subcategories & Handout Categories
+
+- **NPC Subcategories** — NPC categories now support parent/child hierarchy; organize NPCs by adventure book with individual adventures as subcategories
+- **Handout Categories** — New category system for handouts with parent/child support; assign handouts to categories and see "Parent > Child" badges
+- **NPC Sidebar Scroll Fix** — NPC sidebar on maps now properly scrolls when there are many NPCs
+- **Adventure Pack Categories** — Adventure pack export/import now preserves both NPC and handout category hierarchies
+- **Duplicate Cleanup** — Fixed duplicate NPC categories created by multiple adventure pack imports
 
 ### v3.0.8 (2026-03-09) Candlekeep Mysteries & Pack Fixes
 
