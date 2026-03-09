@@ -187,48 +187,87 @@
   <!-- SUBMIT -->
   <div id="tab-submit" class="ap-tab-content <%= tab === 'submit' ? 'active' : '' %>">
     <h3 style="font-family:'MedievalSharp',cursive;color:var(--gold);margin-bottom:0.5rem;">Submit Your Adventure Pack</h3>
-    <p style="color:var(--text-dim);margin-bottom:1rem;">Share your adventure packs with the Quest Planner community! Submit your pack for review, and once approved it will appear in the Browse Store for everyone.</p>
+    <p style="color:var(--text-dim);margin-bottom:1.5rem;">Share your adventures with the Quest Planner community! Once approved, your pack will appear in the Browse Store for everyone.</p>
 
-    <% if (packs.length === 0) { %>
+    <% if (campaigns.length === 0) { %>
       <div class="ap-empty">
-        <h3>No Packs to Submit</h3>
-        <p>Export a campaign as an Adventure Pack first, then you can submit it here.</p>
+        <h3>No Campaigns Found</h3>
+        <p>Create a campaign with maps, NPCs, and quests first, then come back here to submit it.</p>
       </div>
     <% } else { %>
-      <div class="ap-submit-form">
-        <label>Select Adventure Pack</label>
-        <select id="submit-pack">
-          <option value="">-- Choose a pack --</option>
-          <% for (const pack of packs) { %>
-            <option value="<%= pack.id %>" data-name="<%= pack.name %>" data-desc="<%= pack.description || '' %>" data-author="<%= pack.author || '' %>"><%= pack.name %></option>
-          <% } %>
-        </select>
-
-        <label>Pack Name</label>
-        <input type="text" id="submit-name" placeholder="Adventure name">
-
-        <label>Author</label>
-        <input type="text" id="submit-author" placeholder="Your name or username">
-
-        <label>Description</label>
-        <textarea id="submit-desc" placeholder="Brief description of the adventure..."></textarea>
-
-        <label>Additional Notes (for reviewer)</label>
-        <textarea id="submit-notes" placeholder="Any notes for the reviewer (content warnings, special instructions, etc.)"></textarea>
-
-        <div style="margin-top:1rem;">
-          <p style="color:var(--text-dim);font-size:0.85rem;margin-bottom:0.5rem;">Submission process:</p>
-          <ol style="color:var(--text-dim);font-size:0.85rem;padding-left:1.2rem;margin-bottom:1rem;">
-            <li>Click "Prepare Submission" below</li>
-            <li>Export the .qpa file from the Re-export button</li>
-            <li>A GitHub issue will be created with your submission details</li>
-            <li>Attach the .qpa file to the issue</li>
-            <li>Once reviewed and approved, it will appear in the store!</li>
-          </ol>
+      <div class="ap-submit-form" style="max-width:700px;">
+        <!-- Step 1: Choose Campaign -->
+        <div style="margin-bottom:1.2rem;padding-bottom:1rem;border-bottom:1px solid var(--gold-dim);">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.8rem;">
+            <span style="background:var(--gold);color:var(--bg-dark);width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:0.85rem;">1</span>
+            <strong style="color:var(--gold);font-family:'MedievalSharp',cursive;font-size:1.1rem;">Choose Campaign</strong>
+          </div>
+          <select id="submit-campaign" onchange="loadCampaignInfo(this.value)">
+            <option value="">-- Select a campaign --</option>
+            <% for (const c of campaigns) { %>
+              <option value="<%= c.id %>"><%= c.name %></option>
+            <% } %>
+          </select>
+          <div id="submit-stats" style="display:none;margin-top:0.6rem;display:none;">
+            <div style="display:flex;gap:0.8rem;flex-wrap:wrap;" id="submit-stats-badges"></div>
+          </div>
         </div>
 
-        <button class="ap-btn primary" onclick="submitPack()">Prepare Submission</button>
-        <div id="submit-result" style="margin-top:1rem;display:none;"></div>
+        <!-- Step 2: Pack Details -->
+        <div id="submit-details" style="margin-bottom:1.2rem;padding-bottom:1rem;border-bottom:1px solid var(--gold-dim);opacity:0.5;pointer-events:none;transition:opacity 0.3s;">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.8rem;">
+            <span style="background:var(--gold);color:var(--bg-dark);width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:0.85rem;">2</span>
+            <strong style="color:var(--gold);font-family:'MedievalSharp',cursive;font-size:1.1rem;">Pack Details</strong>
+          </div>
+
+          <label>Pack Name *</label>
+          <input type="text" id="submit-name" placeholder="Adventure name">
+
+          <label>Author</label>
+          <input type="text" id="submit-author" placeholder="Your name or username" value="<%= user.display_name || user.username %>">
+
+          <label>Description</label>
+          <textarea id="submit-desc" placeholder="Brief description of the adventure..."></textarea>
+
+          <div style="display:flex;gap:1rem;">
+            <div style="flex:1;">
+              <label>Min Level</label>
+              <input type="number" id="submit-level-min" min="1" max="20" placeholder="1">
+            </div>
+            <div style="flex:1;">
+              <label>Max Level</label>
+              <input type="number" id="submit-level-max" min="1" max="20" placeholder="20">
+            </div>
+          </div>
+
+          <label>Notes for Reviewer</label>
+          <textarea id="submit-notes" placeholder="Content warnings, special instructions, etc."></textarea>
+        </div>
+
+        <!-- Step 3: Export & Submit -->
+        <div id="submit-actions" style="opacity:0.5;pointer-events:none;transition:opacity 0.3s;">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.8rem;">
+            <span style="background:var(--gold);color:var(--bg-dark);width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:0.85rem;">3</span>
+            <strong style="color:var(--gold);font-family:'MedievalSharp',cursive;font-size:1.1rem;">Export & Submit</strong>
+          </div>
+
+          <div style="display:flex;gap:0.8rem;flex-wrap:wrap;margin-bottom:1rem;">
+            <button class="ap-btn primary" onclick="downloadSubmitPack()" id="submit-download-btn">Download .qpa</button>
+            <button class="ap-btn install" onclick="openGitHubIssue()" id="submit-github-btn">Open GitHub Issue</button>
+          </div>
+
+          <div style="background:rgba(212,168,67,0.08);border:1px solid var(--gold-dim);border-radius:8px;padding:1rem;font-size:0.9rem;color:var(--text-dim);">
+            <strong style="color:var(--gold);display:block;margin-bottom:0.4rem;">How it works:</strong>
+            <div style="display:flex;flex-direction:column;gap:0.3rem;">
+              <span id="check-download">1. Click <strong>Download .qpa</strong> to export your adventure pack</span>
+              <span id="check-github">2. Click <strong>Open GitHub Issue</strong> — a pre-filled issue opens in a new tab</span>
+              <span>3. Drag & drop the .qpa file into the GitHub issue text area</span>
+              <span>4. Submit the issue — we'll review it and add it to the store!</span>
+            </div>
+          </div>
+
+          <div id="submit-result" style="margin-top:1rem;display:none;"></div>
+        </div>
       </div>
     <% } %>
   </div>
@@ -361,49 +400,97 @@ function deleteRepo(id) {
   });
 }
 
-// Submit
-function submitPack() {
-  var sel = document.getElementById('submit-pack');
-  if (!sel.value) return alert('Please select a pack');
-  var opt = sel.options[sel.selectedIndex];
+// Submit tab
+function loadCampaignInfo(campaignId) {
+  var details = document.getElementById('submit-details');
+  var actions = document.getElementById('submit-actions');
+  var stats = document.getElementById('submit-stats');
+  if (!campaignId) {
+    details.style.opacity = '0.5'; details.style.pointerEvents = 'none';
+    actions.style.opacity = '0.5'; actions.style.pointerEvents = 'none';
+    stats.style.display = 'none';
+    return;
+  }
+  fetch('/adventure-packs/submit-info/' + campaignId)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      document.getElementById('submit-name').value = data.name;
+      document.getElementById('submit-desc').value = data.description;
+      var badges = document.getElementById('submit-stats-badges');
+      var c = data.counts;
+      badges.innerHTML = '<span class="ap-badge">' + c.maps + ' maps</span>'
+        + '<span class="ap-badge">' + c.npcs + ' NPCs</span>'
+        + '<span class="ap-badge">' + c.quests + ' quests</span>'
+        + '<span class="ap-badge">' + c.lootChests + ' loot</span>'
+        + '<span class="ap-badge">' + c.locations + ' locations</span>'
+        + '<span class="ap-badge">' + c.handouts + ' handouts</span>';
+      stats.style.display = 'block';
+      details.style.opacity = '1'; details.style.pointerEvents = 'auto';
+      actions.style.opacity = '1'; actions.style.pointerEvents = 'auto';
+    });
+}
+
+function downloadSubmitPack() {
+  var campaignId = document.getElementById('submit-campaign').value;
+  if (!campaignId) return alert('Select a campaign first');
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/adventure-packs/export/' + campaignId;
+  form.style.display = 'none';
+  var fields = {
+    _csrf: csrfToken,
+    name: document.getElementById('submit-name').value,
+    description: document.getElementById('submit-desc').value,
+    author: document.getElementById('submit-author').value,
+    levelMin: document.getElementById('submit-level-min').value,
+    levelMax: document.getElementById('submit-level-max').value,
+    maps: 'on', npcs: 'on', loot: 'on', quests: 'on', locations: 'on', links: 'on', handouts: 'on'
+  };
+  for (var key in fields) {
+    var input = document.createElement('input');
+    input.type = 'hidden'; input.name = key; input.value = fields[key];
+    form.appendChild(input);
+  }
+  document.body.appendChild(form);
+  form.submit();
+  setTimeout(function() { form.remove(); }, 1000);
+  document.getElementById('check-download').style.color = 'var(--gold)';
+}
+
+function openGitHubIssue() {
+  var campaignId = document.getElementById('submit-campaign').value;
+  var name = document.getElementById('submit-name').value;
+  if (!campaignId) return alert('Select a campaign first');
+  if (!name) return alert('Enter a pack name');
+  var btn = document.getElementById('submit-github-btn');
+  btn.disabled = true; btn.textContent = 'Preparing...';
   fetch('/adventure-packs/submit', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
     body: JSON.stringify({
-      packId: sel.value,
-      name: document.getElementById('submit-name').value || opt.dataset.name,
-      author: document.getElementById('submit-author').value || opt.dataset.author,
-      description: document.getElementById('submit-desc').value || opt.dataset.desc,
+      campaignId: parseInt(campaignId),
+      name: name,
+      author: document.getElementById('submit-author').value,
+      description: document.getElementById('submit-desc').value,
+      levelMin: document.getElementById('submit-level-min').value,
+      levelMax: document.getElementById('submit-level-max').value,
       notes: document.getElementById('submit-notes').value
     })
   })
   .then(function(r) { return r.json(); })
   .then(function(data) {
-    var result = document.getElementById('submit-result');
-    result.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Open GitHub Issue';
     if (data.success) {
-      result.innerHTML = '<div class="ap-flash success">'
-        + '<strong>Submission prepared!</strong><br>'
-        + '1. Re-export your pack using the "Re-export" button in My Packs<br>'
-        + '2. <a href="' + escHtml(data.submission.repoUrl) + '" target="_blank" style="color:#4CAF50;">Open GitHub and create a new issue</a><br>'
-        + '3. Paste this title: <code>' + escHtml(data.submission.title) + '</code><br>'
-        + '4. Attach the .qpa file to the issue'
-        + '</div>';
+      window.open(data.githubUrl, '_blank');
+      document.getElementById('check-github').style.color = 'var(--gold)';
+      var result = document.getElementById('submit-result');
+      result.style.display = 'block';
+      result.innerHTML = '<div class="ap-flash success">GitHub issue opened! Attach the .qpa file and submit it.</div>';
     } else {
-      result.innerHTML = '<div class="ap-flash error">' + escHtml(data.error) + '</div>';
+      alert(data.error || 'Failed to prepare submission');
     }
-  });
-}
-
-// Auto-fill submit fields when pack selected
-var submitPack2 = document.getElementById('submit-pack');
-if (submitPack2) {
-  submitPack2.addEventListener('change', function() {
-    var opt = this.options[this.selectedIndex];
-    if (opt.dataset.name) document.getElementById('submit-name').value = opt.dataset.name;
-    if (opt.dataset.author) document.getElementById('submit-author').value = opt.dataset.author;
-    if (opt.dataset.desc) document.getElementById('submit-desc').value = opt.dataset.desc;
-  });
+  })
+  .catch(function() { btn.disabled = false; btn.textContent = 'Open GitHub Issue'; });
 }
 
 function escHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }

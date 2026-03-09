@@ -1,6 +1,6 @@
-# Quest Planner v3.0.9 — D&D Session Scheduler
+# Quest Planner v3.0.10 — D&D Session Scheduler
 
-> **Latest release:** v3.0.9 (2026-03-09)
+> **Latest release:** v3.0.10 (2026-03-09)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -870,6 +870,10 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v3.0.10 (2026-03-09) Submit Adventure Pack Redesign
+
+- **Submit Tab Redesign** — Completely redesigned the Submit tab on Adventure Packs: pick a campaign, auto-fill pack details, one-click .qpa export, and one-click pre-filled GitHub issue — no more confusing multi-step cross-site workflow
 
 ### v3.0.9 (2026-03-09) Subcategories & Handout Categories
 

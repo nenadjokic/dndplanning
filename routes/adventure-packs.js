@@ -323,49 +323,81 @@ router.delete('/repos/:id', requireLogin, requireDM, (req, res) => {
 
 // --- SUBMIT TO STORE ---
 
-router.post('/submit', requireLogin, requireDM, express.json(), async (req, res) => {
-  const { packId, name, description, author, notes } = req.body;
-  if (!packId) return res.status(400).json({ error: 'Pack ID required' });
+// Campaign info for submit tab
+router.get('/submit-info/:campaignId', requireLogin, requireDM, (req, res) => {
+  const campaign = db.prepare('SELECT * FROM campaigns WHERE id = ?').get(req.params.campaignId);
+  if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
 
-  const pack = db.prepare('SELECT * FROM adventure_packs WHERE id = ?').get(packId);
-  if (!pack) return res.status(404).json({ error: 'Pack not found' });
-
-  try {
-    // Create a GitHub issue as submission request
-    const issueTitle = `[Adventure Pack Submission] ${name || pack.name}`;
-    const issueBody = [
-      `## Adventure Pack Submission`,
-      ``,
-      `**Pack Name:** ${name || pack.name}`,
-      `**Author:** ${author || pack.author || 'Unknown'}`,
-      `**Description:** ${description || pack.description || 'No description'}`,
-      `**Level Range:** ${pack.level_min || '?'} - ${pack.level_max || '?'}`,
-      `**Maps:** ${JSON.parse(pack.map_ids || '[]').length}`,
-      `**NPCs:** ${JSON.parse(pack.npc_ids || '[]').length}`,
-      ``,
-      `### Submitter Notes`,
-      notes || 'No additional notes.',
-      ``,
-      `---`,
-      `*Submitted from Quest Planner v${require('../package.json').version}*`
-    ].join('\n');
-
-    // We'll store the submission info — the actual GitHub issue creation
-    // requires a GitHub token which the user may not have
-    // Instead, provide the user with info to submit manually
-    res.json({
-      success: true,
-      message: 'Submission prepared! Export the pack and submit it.',
-      submission: {
-        title: issueTitle,
-        body: issueBody,
-        repoUrl: 'https://github.com/nenadjokic/questplanner-adventure-packs/issues/new'
-      }
-    });
-  } catch (err) {
-    console.error('[Adventure Pack] Submit error:', err);
-    res.status(500).json({ error: err.message });
+  const mapIds = db.prepare('SELECT id FROM maps WHERE campaign_id = ?').all(campaign.id).map(r => r.id);
+  const counts = { maps: mapIds.length, npcs: 0, locations: 0, lootChests: 0, quests: 0, handouts: 0 };
+  if (mapIds.length > 0) {
+    const ph = mapIds.map(() => '?').join(',');
+    counts.npcs = db.prepare(`SELECT COUNT(DISTINCT npc_token_id) as c FROM map_npc_tokens WHERE map_id IN (${ph})`).get(...mapIds).c;
+    counts.locations = db.prepare(`SELECT COUNT(*) as c FROM map_locations WHERE map_id IN (${ph})`).get(...mapIds).c;
+    counts.lootChests = db.prepare(`SELECT COUNT(*) as c FROM map_loot_chests WHERE map_id IN (${ph})`).get(...mapIds).c;
   }
+  counts.quests = db.prepare('SELECT COUNT(*) as c FROM quests WHERE campaign_id = ?').get(campaign.id).c;
+  counts.handouts = db.prepare('SELECT COUNT(*) as c FROM handouts WHERE campaign_id = ?').get(campaign.id).c;
+
+  res.json({
+    name: campaign.name,
+    description: campaign.description || '',
+    counts
+  });
+});
+
+// Generate pre-filled GitHub issue URL
+router.post('/submit', requireLogin, requireDM, express.json(), (req, res) => {
+  const { campaignId, name, description, author, levelMin, levelMax, notes } = req.body;
+  if (!campaignId) return res.status(400).json({ error: 'Campaign required' });
+
+  const campaign = db.prepare('SELECT * FROM campaigns WHERE id = ?').get(campaignId);
+  if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+
+  const mapIds = db.prepare('SELECT id FROM maps WHERE campaign_id = ?').all(campaign.id).map(r => r.id);
+  let npcCount = 0, locationCount = 0, lootCount = 0;
+  if (mapIds.length > 0) {
+    const ph = mapIds.map(() => '?').join(',');
+    npcCount = db.prepare(`SELECT COUNT(DISTINCT npc_token_id) as c FROM map_npc_tokens WHERE map_id IN (${ph})`).get(...mapIds).c;
+    locationCount = db.prepare(`SELECT COUNT(*) as c FROM map_locations WHERE map_id IN (${ph})`).get(...mapIds).c;
+    lootCount = db.prepare(`SELECT COUNT(*) as c FROM map_loot_chests WHERE map_id IN (${ph})`).get(...mapIds).c;
+  }
+  const questCount = db.prepare('SELECT COUNT(*) as c FROM quests WHERE campaign_id = ?').get(campaign.id).c;
+  const handoutCount = db.prepare('SELECT COUNT(*) as c FROM handouts WHERE campaign_id = ?').get(campaign.id).c;
+
+  const packName = name || campaign.name;
+  const issueTitle = `[Adventure Pack Submission] ${packName}`;
+  const issueBody = [
+    `## Adventure Pack Submission`,
+    ``,
+    `**Pack Name:** ${packName}`,
+    `**Author:** ${author || 'Unknown'}`,
+    `**Description:** ${description || 'No description'}`,
+    `**Level Range:** ${levelMin || '?'} – ${levelMax || '?'}`,
+    ``,
+    `### Contents`,
+    `| Content | Count |`,
+    `|---------|-------|`,
+    `| Maps | ${mapIds.length} |`,
+    `| NPCs | ${npcCount} |`,
+    `| Locations | ${locationCount} |`,
+    `| Loot Chests | ${lootCount} |`,
+    `| Quests | ${questCount} |`,
+    `| Handouts | ${handoutCount} |`,
+    ``,
+    `### Notes`,
+    notes || 'No additional notes.',
+    ``,
+    `### Attachment`,
+    `Please attach the .qpa file below.`,
+    ``,
+    `---`,
+    `*Submitted from Quest Planner v${require('../package.json').version}*`
+  ].join('\n');
+
+  const githubUrl = `https://github.com/nenadjokic/questplanner-adventure-packs/issues/new?title=${encodeURIComponent(issueTitle)}&body=${encodeURIComponent(issueBody)}&labels=submission`;
+
+  res.json({ success: true, githubUrl });
 });
 
 // Export for submission (re-export an imported pack)
@@ -381,7 +413,6 @@ router.get('/export-pack/:id', requireLogin, requireDM, (req, res) => {
     return res.redirect('/adventure-packs');
   }
 
-  // Redirect to export page for this campaign
   res.redirect(`/adventure-packs/export/${pack.campaign_id}`);
 });
 
