@@ -771,19 +771,29 @@ function deletePack(db, packId, userId) {
   const mapIds = JSON.parse(pack.map_ids || '[]');
   const npcIds = JSON.parse(pack.npc_ids || '[]');
 
+  // Safely run SQL that may reference tables not yet created
+  function safeRun(sql, ...args) {
+    try { db.prepare(sql).run(...args); } catch (e) {
+      if (!e.message.includes('no such table')) throw e;
+    }
+  }
+
+  // Disable FK checks for clean deletion of complex data graphs
+  db.pragma('foreign_keys = OFF');
+
   const deleteAll = db.transaction(() => {
     // 1. Delete deepest children first: combat participants, conditions, chest items
     for (const mapId of mapIds) {
-      db.prepare('DELETE FROM combat_participants WHERE encounter_id IN (SELECT id FROM combat_encounters WHERE map_id = ?)').run(mapId);
-      db.prepare('DELETE FROM combat_encounters WHERE map_id = ?').run(mapId);
-      db.prepare('DELETE FROM npc_token_conditions WHERE npc_map_token_id IN (SELECT id FROM map_npc_tokens WHERE map_id = ?)').run(mapId);
-      db.prepare('DELETE FROM token_conditions WHERE token_id IN (SELECT id FROM map_tokens WHERE map_id = ?)').run(mapId);
-      db.prepare('DELETE FROM chest_items WHERE chest_id IN (SELECT id FROM map_loot_chests WHERE map_id = ?)').run(mapId);
-      db.prepare('DELETE FROM map_loot_chests WHERE map_id = ?').run(mapId);
-      db.prepare('DELETE FROM map_npc_tokens WHERE map_id = ?').run(mapId);
-      db.prepare('DELETE FROM map_tokens WHERE map_id = ?').run(mapId);
-      db.prepare('DELETE FROM map_fog_data WHERE map_id = ?').run(mapId);
-      db.prepare('DELETE FROM map_links WHERE source_map_id = ? OR target_map_id = ?').run(mapId, mapId);
+      safeRun('DELETE FROM combat_participants WHERE encounter_id IN (SELECT id FROM combat_encounters WHERE map_id = ?)', mapId);
+      safeRun('DELETE FROM combat_encounters WHERE map_id = ?', mapId);
+      safeRun('DELETE FROM npc_token_conditions WHERE npc_map_token_id IN (SELECT id FROM map_npc_tokens WHERE map_id = ?)', mapId);
+      safeRun('DELETE FROM token_conditions WHERE token_id IN (SELECT id FROM map_tokens WHERE map_id = ?)', mapId);
+      safeRun('DELETE FROM chest_items WHERE chest_id IN (SELECT id FROM map_loot_chests WHERE map_id = ?)', mapId);
+      safeRun('DELETE FROM map_loot_chests WHERE map_id = ?', mapId);
+      safeRun('DELETE FROM map_npc_tokens WHERE map_id = ?', mapId);
+      safeRun('DELETE FROM map_tokens WHERE map_id = ?', mapId);
+      safeRun('DELETE FROM map_fog_data WHERE map_id = ?', mapId);
+      safeRun('DELETE FROM map_links WHERE source_map_id = ? OR target_map_id = ?', mapId, mapId);
     }
 
     // 2. Nullify session references to our locations before deleting them
@@ -845,7 +855,11 @@ function deletePack(db, packId, userId) {
     db.prepare('DELETE FROM adventure_packs WHERE id = ?').run(packId);
   });
 
-  deleteAll();
+  try {
+    deleteAll();
+  } finally {
+    db.pragma('foreign_keys = ON');
+  }
 }
 
 function slugify(str) {

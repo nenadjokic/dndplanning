@@ -25,6 +25,7 @@ CLAUDE.md
 
 # Development files
 docs/
+scripts/
 *.bak
 *.bak2
 .DS_Store

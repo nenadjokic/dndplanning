@@ -1,6 +1,6 @@
-# Quest Planner v3.0.7 — D&D Session Scheduler
+# Quest Planner v3.0.8 — D&D Session Scheduler
 
-> **Latest release:** v3.0.7 (2026-03-08)
+> **Latest release:** v3.0.8 (2026-03-09)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -870,6 +870,12 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v3.0.8 (2026-03-09) Candlekeep Mysteries & Pack Fixes
+
+- **Candlekeep Mysteries Adventure Pack** — First official adventure pack available in the Browse Store: all 17 adventures (levels 1–16) with 29 player maps, 83 NPCs with avatars, 40 loot chests with DC checks, 8 image handouts, 17 quests, and 138 named locations
+- **Adventure Pack Delete Fix** — Fixed FK constraint errors when deleting imported adventure packs; comprehensive child table cleanup with proper dependency ordering
+- **Adventure Pack Store** — Official adventure pack registry now live at `questplanner-adventure-packs` GitHub repository
 
 ### v3.0.7 (2026-03-08) Adventure Packs
 
