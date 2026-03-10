@@ -1,6 +1,6 @@
-# Quest Planner v3.0.12 — D&D Session Scheduler
+# Quest Planner v3.0.13 — D&D Session Scheduler
 
-> **Latest release:** v3.0.12 (2026-03-09)
+> **Latest release:** v3.0.13 (2026-03-10)
 
 A free, open-source web application where the Dungeon Master creates session time slots and players vote on their availability.
 Dark/light fantasy theme, Node.js + SQLite backend, EJS server-side rendering. Licensed under GPL-3.0.
@@ -870,6 +870,10 @@ Then restart the server.
 ---
 
 ## Changelog
+
+### v3.0.13 (2026-03-10) Fix calendar feed timezone offset
+
+- **Calendar Feed Fix** — Sessions no longer appear 1 hour late in Apple Calendar / Google Calendar; iCal feed now uses floating time instead of UTC
 
 ### v3.0.12 (2026-03-09) Discord Bot addon & notification refactor
 
